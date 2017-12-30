@@ -1,10 +1,10 @@
 <resources>
     <string name="app_name">Syncthing Lite</string>
-    <string name="index_update_progress_message">index update…</string>
-    <string name="folder_list_empty_message">no folder available</string>
-    <string name="clear_local_cache_index_label">clear local cache/index</string>
-    <string name="update_remote_index_label">update remote index</string>
-    <string name="devices_list_view_empty_message">no devices available</string>
+    <string name="index_update_progress_message">Index update…</string>
+    <string name="folder_list_empty_message">No folder available</string>
+    <string name="clear_local_cache_index_label">Clear local cache/index</string>
+    <string name="update_remote_index_label">Update remote index</string>
+    <string name="devices_list_view_empty_message">No devices available</string>
     <string name="toast_write_storage_permission_required">Write storage permission is required for this functionality</string>
     <string name="scan_qr_code">Scan QR code</string>
     <string name="enter_device_id">Enter device ID</string>
