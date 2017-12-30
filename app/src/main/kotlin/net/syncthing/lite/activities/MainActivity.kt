@@ -74,8 +74,8 @@ class MainActivity : SyncthingActivity() {
             R.id.devices -> setContentFragment(DevicesFragment())
             R.id.update_index -> UpdateIndexTask(this, syncthingClient()).updateIndex()
             R.id.clear_index -> AlertDialog.Builder(this)
-                    .setTitle("clear cache and index")
-                    .setMessage("clear all cache data and index data?")
+                    .setTitle("Clear local cache and index?")
+                    .setMessage("Clear all local cache data and index data?")
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setPositiveButton(android.R.string.yes) { _, _ -> cleanCacheAndIndex() }
                     .setNegativeButton(android.R.string.no, null)
@@ -100,7 +100,7 @@ class MainActivity : SyncthingActivity() {
 
     override fun onIndexUpdateProgress(folder: FolderInfo, percentage: Int) {
         binding.mainIndexProgressBar.visibility = View.VISIBLE
-        binding.mainIndexProgressBarLabel.text = ("index update, folder "
+        binding.mainIndexProgressBarLabel.text = ("Index update, folder "
                 + folder.label + " " + percentage + "% synchronized")
     }
 
