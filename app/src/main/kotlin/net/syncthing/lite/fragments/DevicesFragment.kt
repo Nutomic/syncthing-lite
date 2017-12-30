@@ -54,8 +54,8 @@ class DevicesFragment : SyncthingFragment() {
         binding.list.setOnItemLongClickListener { _, _, position, _ ->
             val deviceId = (binding.list.getItemAtPosition(position) as DeviceStats).deviceId
             AlertDialog.Builder(context)
-                    .setTitle("remove device " + deviceId.substring(0, 7))
-                    .setMessage("remove device" + deviceId.substring(0, 7) + " from list of known devices?")
+                    .setTitle("Remove device " + deviceId.substring(0, 7) + "?")
+                    .setMessage("Remove device " + deviceId.substring(0, 7) + " from list of known devices?")
                     .setPositiveButton(android.R.string.yes) { _, _ ->
                         getSyncthingActivity().configuration().edit().removePeer(deviceId).persistLater() }
                     .setNegativeButton(android.R.string.no, null)
