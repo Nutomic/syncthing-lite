@@ -19,7 +19,7 @@
     <string name="toast_upload_complete">Hochladen erfolgreich</string>
     <string name="dialog_uploading_file">Datei %1$s wird hochgeladen</string>
     <string name="directory_empty">Ordner ist leer</string>
-    <string name="clear_cache_and_index_title">Lokalen Cache und Index leeren?</string>
+    <string name="clear_cache_and_index_title">Lokalen Cache und Index löschen?</string>
     <string name="clear_cache_and_index_body">Gesamten lokalen Cache und Index löschen?</string>
     <string name="index_update_folder">Index aktualisierung, Ordner</string>
     <string name="index_update_percent_synchronized">% synchronisiert</string>
@@ -30,7 +30,7 @@
     <string name="last_modified_known">zuletzt modifiziert:</string>
     <string name="remove_device_title">Gerät entfernen?</string>
     <string name="remove_device_body_1">Gerät</string>
-    <string name="remove_device_body_2">von von den bekannten Geräten entfernen?</string>
+    <string name="remove_device_body_2">von den bekannten Geräten entfernen?</string>
     <string name="device_import_success">Gerät erfolgreich importiert:</string>
     <string name="device_already_known">Gerät ist bereits bekannt:</string>
 </resources>
