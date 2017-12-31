@@ -28,7 +28,7 @@
     <string name="last_modified">- zuletzt modifiziert</string>
     <string name="last_modified_unknown">zuletzt modifiziert: unbekannt</string>
     <string name="last_modified_known">zuletzt modifiziert:</string>
-    <string name="remove_device_title">Gerät entfernen?</string>
+    <string name="remove_device_title">Gerät entfernen:</string>
     <string name="remove_device_body_1">Gerät</string>
     <string name="remove_device_body_2">von den bekannten Geräten entfernen?</string>
     <string name="device_import_success">Gerät erfolgreich importiert:</string>
