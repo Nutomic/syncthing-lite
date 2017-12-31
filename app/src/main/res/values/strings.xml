@@ -24,15 +24,15 @@
     <string name="index_update_folder">Index update, folder</string>
     <string name="index_update_percent_synchronized">% synchronized</string>
     <string name="open_directory">open directory:</string>
-    <string name="loading_config_starting_syncthing_client">loading config, starting syncthing client</string>
+    <string name="loading_config_starting_syncthing_client">Loading config, starting syncthing client</string>
     <string name="last_modified">- last modified</string>
     <string name="last_modified_unknown">last modified: unknown</string>
     <string name="last_modified_known">last modified:</string>
     <string name="remove_device_title">Remove device?</string>
     <string name="remove_device_body_1">Remove device</string>
     <string name="remove_device_body_2">from list of known devices?</string>
-    <string name="device_import_success">successfully imported device:</string>
-    <string name="device_already_known">device already present:</string>
+    <string name="device_import_success">Successfully imported device:</string>
+    <string name="device_already_known">Device already present:</string>
     <string name="folders_label">Folders</string>
     <string name="devices_label">Devices</string>
 </resources>
