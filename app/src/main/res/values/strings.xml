@@ -19,4 +19,8 @@
     <string name="toast_upload_complete">File upload complete</string>
     <string name="dialog_uploading_file">Uploading file %1$s</string>
     <string name="directory_empty">Directory is empty</string>
+    <string name="clear_cache_and_index_title">Clear local cache and index?</string>
+    <string name="clear_cache_and_index_body">Clear all local cache data and index data?</string>
+    <string name="index_update_folder">Index update, folder</string>
+    <string name="index_update_percent_synchronized">% synchronized</string>
 </resources>
