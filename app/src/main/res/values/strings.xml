@@ -23,4 +23,5 @@
     <string name="clear_cache_and_index_body">Clear all local cache data and index data?</string>
     <string name="index_update_folder">Index update, folder</string>
     <string name="index_update_percent_synchronized">% synchronized</string>
+    <string name="open_directory">open directory:</string>
 </resources>

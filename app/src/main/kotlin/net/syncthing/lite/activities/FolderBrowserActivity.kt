@@ -127,7 +127,7 @@ class FolderBrowserActivity : SyncthingActivity() {
                     object : AsyncTask<Void?, Void?, Void?>() {
                         override fun onPreExecute() {
                             // TODO: show ProgressBar in ListView instead of dialog
-                            showLoadingDialog("open directory: " +
+                            showLoadingDialog(getString(R.string.open_directory) +
                                     if (indexBrowser!!.isRoot) folderBrowser()?.getFolderInfo(indexBrowser!!.folder)?.label
                                     else indexBrowser!!.currentPathFileName)
                         }
@@ -176,8 +176,8 @@ class FolderBrowserActivity : SyncthingActivity() {
     }
 
     override fun onIndexUpdateProgress(folder: FolderInfo, percentage: Int) {
-        binding.mainIndexProgressBarLabel.text = ("index update, folder "
-                + folder.label + " " + percentage + "% synchronized")
+        binding.mainIndexProgressBarLabel.text = (getString(R.string.index_update_folder)
+                + folder.label + " " + percentage + getString(R.string.index_update_percent_synchronized))
         updateFolderListView()
     }
 
