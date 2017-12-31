@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Syncthing Lite</string>
+    <string name="app_name" translatable="false">Syncthing Lite</string>
     <string name="index_update_progress_message">Index update…</string>
     <string name="folder_list_empty_message">No folder available</string>
     <string name="clear_local_cache_index_label">Clear local cache/index</string>

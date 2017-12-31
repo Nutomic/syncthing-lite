@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Syncthing Lite</string>
     <string name="index_update_progress_message">Index wird aktualisiert...</string>
     <string name="folder_list_empty_message">Keine Ordner verfügbar</string>
-    <string name="clear_local_cache_index_label">Lokalen Index und Cache entleeren</string>
+    <string name="clear_local_cache_index_label">Lokalen Index und Cache löschen</string>
     <string name="update_remote_index_label">Entfernten Index aktualisieren</string>
     <string name="devices_list_view_empty_message">Keine Geräte verfügbar</string>
     <string name="toast_write_storage_permission_required">Schreibrechte werden für diese Funktion benötigt</string>
@@ -31,4 +30,7 @@
     <string name="last_modified_known">zuletzt modifiziert:</string>
     <string name="remove_device_title">Gerät entfernen?</string>
     <string name="remove_device_body_1">Gerät</string>
+    <string name="remove_device_body_2">von von den bekannten Geräten entfernen?</string>
+    <string name="device_import_success">Gerät erfolgreich importiert:</string>
+    <string name="device_already_known">Gerät ist bereits bekannt:</string>
 </resources>
