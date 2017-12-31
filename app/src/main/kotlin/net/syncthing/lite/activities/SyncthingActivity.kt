@@ -38,7 +38,7 @@ abstract class SyncthingActivity : AppCompatActivity() {
         if (libraryHandler == null) {
             val binding = DataBindingUtil.inflate<DialogLoadingBinding>(
                     LayoutInflater.from(this), R.layout.dialog_loading, null, false)
-            binding.loadingText.text = "loading config, starting syncthing client"
+            binding.loadingText.text = getString(R.string.loading_config_starting_syncthing_client)
             loadingDialog = AlertDialog.Builder(this)
                     .setCancelable(false)
                     .setView(binding.root)
