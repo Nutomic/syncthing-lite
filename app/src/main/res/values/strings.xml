@@ -28,4 +28,9 @@
     <string name="last_modified">- last modified</string>
     <string name="last_modified_unknown">last modified: unknown</string>
     <string name="last_modified_known">last modified:</string>
+    <string name="remove_device_title">Remove device</string>
+    <string name="remove_device_body_1">Remove device</string>
+    <string name="remove_device_body_2">from list of known devices?</string>
+    <string name="device_import_success">successfully imported device:</string>
+    <string name="device_already_known">device already present:</string>
 </resources>

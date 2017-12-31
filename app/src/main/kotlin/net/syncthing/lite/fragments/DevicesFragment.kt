@@ -54,8 +54,8 @@ class DevicesFragment : SyncthingFragment() {
         binding.list.setOnItemLongClickListener { _, _, position, _ ->
             val deviceId = (binding.list.getItemAtPosition(position) as DeviceStats).deviceId
             AlertDialog.Builder(context)
-                    .setTitle("Remove device " + deviceId.substring(0, 7) + "?")
-                    .setMessage("Remove device " + deviceId.substring(0, 7) + " from list of known devices?")
+                    .setTitle(getString(R.string.remove_device_title) + deviceId.substring(0, 7) + "?")
+                    .setMessage(getString(R.string.remove_device_body_1) + deviceId.substring(0, 7) + getString(R.string.remove_device_body_2))
                     .setPositiveButton(android.R.string.yes) { _, _ ->
                         getSyncthingActivity().configuration().edit().removePeer(deviceId).persistLater() }
                     .setNegativeButton(android.R.string.no, null)
@@ -93,11 +93,11 @@ class DevicesFragment : SyncthingFragment() {
         val modified = getSyncthingActivity().configuration().edit().addPeers(DeviceInfo(deviceId, null))
         if (modified) {
             getSyncthingActivity().configuration().edit().persistLater()
-            Toast.makeText(context, "successfully imported device: " + deviceId, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.device_import_success) + deviceId, Toast.LENGTH_SHORT).show()
             updateDeviceList()//TODO remove this if event triggered (and handler trigger update)
             UpdateIndexTask(context!!, getSyncthingActivity().syncthingClient()).updateIndex()
         } else {
-            Toast.makeText(context, "device already present: " + deviceId, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.device_already_known) + deviceId, Toast.LENGTH_SHORT).show()
         }
     }
 
