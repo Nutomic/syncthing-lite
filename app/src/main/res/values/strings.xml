@@ -33,4 +33,6 @@
     <string name="remove_device_body_2">from list of known devices?</string>
     <string name="device_import_success">successfully imported device:</string>
     <string name="device_already_known">device already present:</string>
+    <string name="folders_label">Folders</string>
+    <string name="devices_label">Devices</string>
 </resources>

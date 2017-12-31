@@ -33,4 +33,6 @@
     <string name="remove_device_body_2">von den bekannten Geräten entfernen?</string>
     <string name="device_import_success">Gerät erfolgreich importiert:</string>
     <string name="device_already_known">Gerät ist bereits bekannt:</string>
+    <string name="folders_label">Ordner</string>
+    <string name="devices_label">Geräte</string>
 </resources>
