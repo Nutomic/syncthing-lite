@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Syncthing Lite</string>
+    <string name="index_update_progress_message">Index wird aktualisiert...</string>
+    <string name="folder_list_empty_message">Keine Ordner verfügbar</string>
+    <string name="clear_local_cache_index_label">Lokalen Index und Cache entleeren</string>
+    <string name="update_remote_index_label">Entfernten Index aktualisieren</string>
+    <string name="devices_list_view_empty_message">Keine Geräte verfügbar</string>
+    <string name="toast_write_storage_permission_required">Schreibrechte werden für diese Funktion benötigt</string>
+    <string name="scan_qr_code">QR code scannen</string>
+    <string name="enter_device_id">Geräte ID eingeben</string>
+    <string name="invalid_device_id">Ungültige Geräte ID</string>
+    <string name="device_id_dialog_title">Geräte ID eingeben</string>
+    <string name="toast_index_update_successful">Index erfolgreich aktualisiert</string>
+    <string name="toast_index_update_failed">Index update für %1$d Geräte fehlgeschlagen</string>
+    <string name="dialog_downloading_file">Datei %1$s wird heruntergeladen</string>
+    <string name="toast_file_download_failed">Datei konnte nicht heruntergeladen werden</string>
+    <string name="toast_open_file_failed">Keine kompatible app gefunden</string>
+    <string name="toast_file_upload_failed">Hochladen gescheitert</string>
+    <string name="toast_upload_complete">Hochladen erfolgreich</string>
+    <string name="dialog_uploading_file">Datei %1$s wird hochgeladen</string>
+    <string name="directory_empty">Ordner ist leer</string>
+    <string name="clear_cache_and_index_title">Lokalen Cache und Index leeren?</string>
+    <string name="clear_cache_and_index_body">Gesamten lokalen Cache und Index löschen?</string>
+    <string name="index_update_folder">Index aktualisierung, Ordner</string>
+    <string name="index_update_percent_synchronized">% synchronisiert</string>
+    <string name="open_directory">Ordner öffnen:</string>
+    <string name="loading_config_starting_syncthing_client">Konfiguartion wird geladen, Syncthing wird gestartet</string>
+    <string name="last_modified">- zuletzt modifiziert</string>
+    <string name="last_modified_unknown">zuletzt modifiziert: unbekannt</string>
+    <string name="last_modified_known">zuletzt modifiziert:</string>
+    <string name="remove_device_title">Gerät entfernen?</string>
+    <string name="remove_device_body_1">Gerät</string>
+</resources>
