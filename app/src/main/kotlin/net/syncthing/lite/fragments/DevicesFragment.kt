@@ -93,11 +93,11 @@ class DevicesFragment : SyncthingFragment() {
         val modified = getSyncthingActivity().configuration().edit().addPeers(DeviceInfo(deviceId, null))
         if (modified) {
             getSyncthingActivity().configuration().edit().persistLater()
-            Toast.makeText(context, getString(R.string.device_import_success) + deviceId, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.device_import_success) + " " + deviceId, Toast.LENGTH_SHORT).show()
             updateDeviceList()//TODO remove this if event triggered (and handler trigger update)
             UpdateIndexTask(context!!, getSyncthingActivity().syncthingClient()).updateIndex()
         } else {
-            Toast.makeText(context, getString(R.string.device_already_known) + deviceId, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.device_already_known) + " " + deviceId, Toast.LENGTH_SHORT).show()
         }
     }
 
