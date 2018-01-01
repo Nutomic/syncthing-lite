@@ -29,7 +29,7 @@ class FoldersListAdapter(context: Context?, list: List<Pair<FolderInfo, FolderSt
         binding.folderLastmodInfo.text =
                 if (folderStats.lastUpdate == null)
                     context.getString(R.string.last_modified_unknown)
-                else context.getString(R.string.last_modified_known) +
+                else context.getString(R.string.last_modified_known) + " " +
                         DateUtils.getRelativeDateTimeString(context, folderStats.lastUpdate.time, DateUtils.MINUTE_IN_MILLIS, DateUtils.WEEK_IN_MILLIS, 0)
         binding.folderContentInfo.text = "${folderStats.describeSize()}, ${folderStats.fileCount} files, ${folderStats.dirCount} dirs"
         return binding.root
