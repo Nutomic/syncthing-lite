@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="index_update_progress_message">索引更新…</string>
     <string name="folder_list_empty_message">没有可用的文件夹</string>
