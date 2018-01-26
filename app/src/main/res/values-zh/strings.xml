@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="index_update_progress_message">索引更新…</string>
+    <string name="folder_list_empty_message">没有可用的文件夹</string>
+    <string name="clear_local_cache_index_label">清除本地缓存/索引</string>
+    <string name="update_remote_index_label">更新远程索引</string>
+    <string name="devices_list_view_empty_message">没有可用的设备</string>
+    <string name="toast_write_storage_permission_required">此项功能需要存储写入权限</string>
+    <string name="scan_qr_code">扫描二维码</string>
+    <string name="enter_device_id">输入设备 ID</string>
+    <string name="invalid_device_id">无效的设备 ID</string>
+    <string name="device_id_dialog_title">输入设备 ID</string>
+    <string name="toast_index_update_successful">索引成功更新</string>
+    <string name="toast_index_update_failed">%1$d 设备的索引更新失败</string>
+    <string name="dialog_downloading_file">正下载文件 %1$s</string>
+    <string name="toast_file_download_failed">下载文件失败</string>
+    <string name="toast_open_file_failed">没有找到兼容的程序</string>
+    <string name="toast_file_upload_failed">上传文件失败</string>
+    <string name="toast_upload_complete">文件上传完成</string>
+    <string name="dialog_uploading_file">正上传文件 %1$s</string>
+    <string name="directory_empty">文件夹为空</string>
+    <string name="clear_cache_and_index_title">确定清除本地缓存和索引？</string>
+    <string name="clear_cache_and_index_body">确定清除全部本地缓存数据和索引数据？</string>
+    <string name="index_update_folder">索引更新，文件夹</string>
+    <string name="index_update_percent_synchronized">% 已同步</string>
+    <string name="loading_config_starting_syncthing_client">载入配置，正在启动 syncthing 客户端</string>
+    <string name="last_modified">- 最近更改</string>
+    <string name="last_modified_unknown">最近更改: 未知</string>
+    <string name="last_modified_known">最近更改:</string>
+    <string name="remove_device_title">移除设备:</string>
+    <string name="remove_device_body_1">移除设备</string>
+    <string name="remove_device_body_2">从已知设备列表中？</string>
+    <string name="device_import_success">成功导入的设备:</string>
+    <string name="device_already_known">已经存在的设备:</string>
+    <string name="folders_label">文件夹</string>
+    <string name="devices_label">设备</string>
+</resources>
