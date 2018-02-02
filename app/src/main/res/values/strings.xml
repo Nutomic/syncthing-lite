@@ -11,7 +11,10 @@
     <string name="invalid_device_id">Invalid device ID</string>
     <string name="device_id_dialog_title">Enter Device ID</string>
     <string name="toast_index_update_successful">Index update successful</string>
-    <string name="toast_index_update_failed">Index update failed for %1$d devices</string>
+    <plurals name="toast_index_update_failed">
+        <item quantity="one">Index update failed for %1$d device</item>
+        <item quantity="other">Index update failed for %1$d devices</item>
+    </plurals>
     <string name="dialog_downloading_file">Downloading file %1$s</string>
     <string name="toast_file_download_failed">Failed to download file</string>
     <string name="toast_open_file_failed">No compatible app found</string>
