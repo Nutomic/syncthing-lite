@@ -16,10 +16,10 @@
     <string name="clear_cache_and_index_title">Clear local cache and index?</string>
     <string name="clear_cache_and_index_body">Clear all local cache data and index data?</string>
     <string name="index_update_progress_label">Index update for folder %1$s, %2$d%% synchronized</string>
-    <string name="loading_config_starting_syncthing_client">Loading config, starting syncthing client</string>
+    <string name="loading_config_starting_syncthing_client">Loading config, starting syncthing client…</string>
     <string name="last_modified_time">Last modified: %1$s</string>
     <string name="remove_device_title">Remove device %1$s\?</string>
-    <string name="remove_device_message">Remove device %1$s from list of known devices?</string>
+    <string name="remove_device_message">Remove %1$s from the list of known devices?</string>
     <string name="device_import_success">Successfully imported device %1$s</string>
     <string name="device_already_known">Device already present %1$s</string>
     <string name="folders_label">Folders</string>
