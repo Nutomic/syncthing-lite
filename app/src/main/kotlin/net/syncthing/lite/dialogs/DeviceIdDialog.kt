@@ -24,23 +24,18 @@ import org.jetbrains.anko.doAsync
 
 
 class DeviceIdDialog(private val context: Context, private val deviceId: DeviceId) {
+    companion object {
+        private const val QR_RESOLUTION = 512
+        private const val Tag = "DeviceIdDialog"
+    }
 
-    private val Tag = "DeviceIdDialog"
-
-    private val binding = DataBindingUtil.inflate<DialogDeviceIdBinding>(
-            LayoutInflater.from(context), R.layout.dialog_device_id, null, false)
+    private val binding = DialogDeviceIdBinding.inflate(LayoutInflater.from(context), null, false)
 
     fun show() {
         generateQrCode()
         binding.deviceId.text = deviceId.deviceId
-        // Make QR code/progress bar views rectangular based on match_parent height.
-        binding.progressBar.post {
-            binding.progressBar.minimumHeight = binding.progressBar.width
-            binding.qrCode.minimumHeight = binding.progressBar.width
-        }
-        binding.deviceId.setOnClickListener({ copyDeviceId() })
-        binding.share.setOnClickListener {  }
-        binding.share.setOnClickListener({ shareDeviceId() })
+        binding.deviceId.setOnClickListener { copyDeviceId() }
+        binding.share.setOnClickListener { shareDeviceId() }
 
         val qrCodeDialog = AlertDialog.Builder(context)
                 .setTitle(context.getString(R.string.device_id))
@@ -52,10 +47,12 @@ class DeviceIdDialog(private val context: Context, private val deviceId: DeviceI
     }
 
     private fun generateQrCode() {
+        binding.qrCode.setImageBitmap(Bitmap.createBitmap(QR_RESOLUTION, QR_RESOLUTION, Bitmap.Config.RGB_565))
+
         doAsync {
             val writer = QRCodeWriter()
             try {
-                val bitMatrix = writer.encode(deviceId.deviceId, BarcodeFormat.QR_CODE, 512, 512)
+                val bitMatrix = writer.encode(deviceId.deviceId, BarcodeFormat.QR_CODE, QR_RESOLUTION, QR_RESOLUTION)
                 val width = bitMatrix.width
                 val height = bitMatrix.height
                 val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
@@ -65,8 +62,7 @@ class DeviceIdDialog(private val context: Context, private val deviceId: DeviceI
                     }
                 }
                 async(UI) {
-                    binding.progressBar.visibility = View.GONE
-                    binding.qrCode.visibility = View.VISIBLE
+                    binding.flipper.displayedChild = 1
                     binding.qrCode.setImageBitmap(bmp)
                 }
             } catch (e: WriterException) {
