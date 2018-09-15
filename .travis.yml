@@ -8,13 +8,14 @@ android:
   components:
     - tools
     - platform-tools
-    - build-tools-27.0.2
-    - android-27
+    - build-tools-28.0.2
+    - android-28
     - extra-android-m2repository
 
 before_install:
   # Hack to accept Android licenses
   - yes | sdkmanager "platforms;android-27"
+  - yes | sdkmanager "platforms;android-28"
   # Install protobuf compiler
   - sudo apt-get install protobuf-compiler
   # Install syncthing-java manually, as the current commit may require a development version.

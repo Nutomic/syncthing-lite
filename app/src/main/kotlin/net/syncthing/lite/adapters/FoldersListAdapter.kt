@@ -20,7 +20,7 @@ class FoldersListAdapter(context: Context?, list: List<Pair<FolderInfo, FolderSt
             if (v == null) {
                 DataBindingUtil.inflate(LayoutInflater.from(context), R.layout.listview_folder, parent, false)
             } else {
-                DataBindingUtil.bind(v)
+                DataBindingUtil.bind(v)!!
             }
         val folderInfo = getItem(position)!!.first
         val folderStats = getItem(position)!!.second

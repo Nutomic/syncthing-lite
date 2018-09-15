@@ -18,7 +18,7 @@ class DevicesAdapter(context: Context) :
             = if (v == null) {
                 DataBindingUtil.inflate(LayoutInflater.from(context), R.layout.listview_device, parent, false)
             } else {
-                DataBindingUtil.bind(v)
+                DataBindingUtil.bind(v)!!
             }
         val deviceStats = getItem(position)
         binding.deviceName.text = deviceStats!!.name

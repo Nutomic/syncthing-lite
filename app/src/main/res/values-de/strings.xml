@@ -13,7 +13,7 @@
     <string name="clear_cache_and_index_title">Lokalen Cache und Index löschen?</string>
     <string name="clear_cache_and_index_body">Gesamten lokalen Cache und Index löschen?</string>
     <string name="last_modified_time">Zuletzt modifiziert: %1$s</string>
-    <string name="remove_device_title">Gerät entfernen:</string>
+    <string name="remove_device_title">Gerät entfernen: %1$s</string>
     <string name="device_import_success">Gerät %1$s erfolgreich importiert</string>
     <string name="device_already_known">Gerät ist bereits bekannt $1%s</string>
     <string name="folders_label">Ordner</string>

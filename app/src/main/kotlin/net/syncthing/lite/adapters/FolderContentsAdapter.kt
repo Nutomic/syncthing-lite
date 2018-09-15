@@ -20,7 +20,7 @@ class FolderContentsAdapter(context: Context) :
             if (v == null) {
                 DataBindingUtil.inflate(LayoutInflater.from(context), R.layout.listview_file, parent, false)
             } else {
-                DataBindingUtil.bind(v)
+                DataBindingUtil.bind(v)!!
             }
         val fileInfo = getItem(position)
         binding.fileLabel.text = fileInfo!!.fileName
