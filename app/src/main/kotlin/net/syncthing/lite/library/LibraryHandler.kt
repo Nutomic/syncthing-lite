@@ -7,6 +7,7 @@ import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.async
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.client.SyncthingClient
+import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.IndexInfo
@@ -161,5 +162,13 @@ class LibraryHandler(context: Context, onLibraryLoaded: (LibraryHandler) -> Unit
             }.start()
         }, 60 * 1000)
 
+    }
+
+    fun registerMessageFromUnknownDeviceListener(listener: (DeviceId) -> Unit) {
+        library { _, syncthingClient, _ -> syncthingClient.discoveryHandler.registerMessageFromUnknownDeviceListener(listener) }
+    }
+
+    fun unregisterMessageFromUnknownDeviceListener(listener: (DeviceId) -> Unit) {
+        library { _, syncthingClient, _ -> syncthingClient.discoveryHandler.unregisterMessageFromUnknownDeviceListener(listener) }
     }
 }

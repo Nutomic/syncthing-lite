@@ -3,12 +3,15 @@ package net.syncthing.lite.activities
 import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
 import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import com.github.paolorotolo.appintro.AppIntro
 import com.google.zxing.integration.android.IntentIntegrator
 import net.syncthing.java.core.beans.DeviceId
@@ -120,6 +123,63 @@ class IntroActivity : AppIntro() {
                 binding.enterDeviceId!!.deviceId.error = getString(R.string.invalid_device_id)
                 false
             }
+        }
+
+        private val handler = Handler(Looper.getMainLooper())
+        private val addedDeviceIds = HashSet<DeviceId>()
+        private var isLibraryLoaded = false
+
+        override fun onLibraryLoaded() {
+            super.onLibraryLoaded()
+
+            isLibraryLoaded = true
+
+            if (isResumed) {
+                startListeningForDevices()
+            }
+        }
+
+        override fun onResume() {
+            super.onResume()
+
+            if (isLibraryLoaded) {
+                startListeningForDevices()
+            }
+        }
+
+        private val onDeviceFound: (DeviceId) -> Unit = {
+            deviceId ->
+
+            handler.post {
+                if (addedDeviceIds.add(deviceId)) {
+                    binding.foundDevices.addView(
+                            Button(context).apply {
+                                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                                text = deviceId.deviceId
+
+                                setOnClickListener {
+                                    binding.enterDeviceId.deviceId.setText(deviceId.deviceId)
+                                    binding.enterDeviceId.deviceIdHolder.isErrorEnabled = false
+
+                                    binding.scroll.scrollTo(0, 0)
+                                }
+                            }
+                    )
+                }
+            }
+        }
+
+        override fun onPause() {
+            super.onPause()
+
+            libraryHandler?.unregisterMessageFromUnknownDeviceListener(onDeviceFound)
+        }
+
+        private fun startListeningForDevices() {
+            binding.foundDevices.removeAllViews()
+            addedDeviceIds.clear()
+
+            libraryHandler!!.registerMessageFromUnknownDeviceListener(onDeviceFound)
         }
     }
 

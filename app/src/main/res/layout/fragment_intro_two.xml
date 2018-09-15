@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
@@ -10,40 +8,65 @@
         android:padding="28dp"
         android:gravity="center_horizontal">
 
-            <TextView
-                android:id="@+id/title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:textColor="#eee"
-                android:textSize="24sp"
-                android:text="@string/intro_page_two_title"/>
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:textColor="#eee"
+            android:textSize="24sp"
+            android:text="@string/intro_page_two_title"/>
 
-            <FrameLayout
+        <FrameLayout
+            android:layout_weight="1"
+            android:layout_width="match_parent"
+            android:layout_height="0dp">
+            <ScrollView
+                android:layout_gravity="center"
+                android:id="@+id/scroll"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:layout_gravity="center">
-
-                <include
+                android:layout_height="wrap_content">
+                <LinearLayout
+                    android:orientation="vertical"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:id="@+id/enter_device_id"
-                    layout="@layout/view_enter_device_id" />
+                    android:layout_height="wrap_content">
 
-            </FrameLayout>
+                    <include
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:id="@+id/enter_device_id"
+                        layout="@layout/view_enter_device_id" />
 
-            <TextView
-                android:id="@+id/description"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="@dimen/appIntroBottomBarHeight"
-                android:textSize="16sp"
-                android:textAlignment="center"
-                android:textColor="#eee"
-                android:text="@string/intro_page_two_description" />
+                    <LinearLayout
+                        android:id="@+id/found_devices"
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <!--
+                            Found device ids will be put here as buttons
+
+                            This does not use an ListView or RecyclerView because this allows using
+                            wrap_content as height and because it's expected to be an small list
+                        -->
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </ScrollView>
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/description"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="@dimen/appIntroBottomBarHeight"
+            android:textSize="16sp"
+            android:textAlignment="center"
+            android:textColor="#eee"
+            android:text="@string/intro_page_two_description" />
 
     </LinearLayout>
 
