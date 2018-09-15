@@ -2,56 +2,43 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <data>
+        <variable
+            name="isLoading"
+            type="Boolean" />
+
+        <import type="android.view.View" />
+    </data>
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:divider="?android:listDivider"
-                android:showDividers="middle">
+        <android.support.v7.widget.RecyclerView
+            android:visibility="@{safeUnbox(isLoading) ? View.GONE : View.VISIBLE}"
+            app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/list_view" />
 
-                <ListView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:id="@+id/list_view"
-                    android:divider="@color/divider"
-                    android:dividerHeight="2dp">
-                </ListView>
+        <ProgressBar
+            android:visibility="@{safeUnbox(isLoading) ? View.VISIBLE : View.GONE}"
+            android:layout_centerInParent="true"
+            android:id="@+id/progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
 
-                <TextView
-                    android:id="@+id/empty_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textAlignment="center"
-                    android:text="@string/folder_list_empty_message"
-                    android:textSize="20sp"
-                    android:visibility="gone" />
-
-                <ProgressBar
-                    android:id="@+id/progress_bar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:visibility="gone"/>
-
-            </LinearLayout>
-
-            <android.support.design.widget.FloatingActionButton
-                android:id="@+id/main_list_view_upload_here_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="24dp"
-                android:layout_marginBottom="24dp"
-                android:layout_alignParentEnd="true"
-                android:layout_alignParentBottom="true"
-                app:elevation="6dp"
-                app:pressedTranslationZ="12dp"
-                android:src="@drawable/ic_file_upload_white_24dp"/>
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/main_list_view_upload_here_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="24dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            app:elevation="6dp"
+            app:pressedTranslationZ="12dp"
+            android:src="@drawable/ic_file_upload_white_24dp"/>
 
     </RelativeLayout>
 

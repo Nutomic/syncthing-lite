@@ -2,26 +2,35 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <data>
+        <variable
+            name="isEmpty"
+            type="Boolean" />
+
+        <import type="android.view.View" />
+    </data>
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-            <ListView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:id="@+id/list"
-                android:divider="@color/divider"
-                android:dividerHeight="2dp">
-            </ListView>
+        <android.support.v7.widget.RecyclerView
+            app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/list"
+            android:divider="@color/divider"
+            android:dividerHeight="2dp">
+        </android.support.v7.widget.RecyclerView>
 
-            <TextView
-                android:id="@+id/empty"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="@string/devices_list_view_empty_message"
-                android:textSize="20sp"
-                android:visibility="gone" />
+        <TextView
+            android:id="@+id/empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="@string/devices_list_view_empty_message"
+            android:textSize="20sp"
+            android:visibility="@{safeUnbox(isEmpty) ? View.VISIBLE : View.GONE}" />
 
         <android.support.design.widget.FloatingActionButton
             android:id="@+id/add_device"

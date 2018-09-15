@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <data>
+        <variable
+            name="folderName"
+            type="String" />
+
+        <variable
+            name="lastModification"
+            type="String" />
+
+        <variable
+            name="info"
+            type="String" />
+    </data>
 
     <RelativeLayout
+        android:background="?selectableItemBackground"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingBottom="12dp"
@@ -10,7 +25,9 @@
         android:paddingTop="12dp">
 
         <TextView
-            android:id="@+id/folder_name"
+            tools:text="Music"
+            android:text="@{folderName}"
+            android:id="@+id/folder_name_view"
             android:layout_width="match_parent"
             android:layout_alignParentEnd="true"
             android:layout_height="wrap_content"
@@ -23,16 +40,20 @@
             android:textStyle="bold"/>
 
         <TextView
+            tools:text="Last modified: two minutes ago"
+            android:text="@{lastModification}"
             android:id="@+id/folder_lastmod_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:layout_below="@id/folder_name"
+            android:layout_below="@id/folder_name_view"
             android:textSize="14sp"
             android:layout_alignParentStart="true" />
 
         <TextView
+            tools:text="Additional information"
+            android:text="@{info}"
             android:id="@+id/folder_content_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

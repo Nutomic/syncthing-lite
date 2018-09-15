@@ -2,7 +2,21 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <data>
+        <variable
+            name="fileName"
+            type="String" />
+
+        <variable
+            name="fileSize"
+            type="String" />
+
+        <import type="android.view.View" />
+        <import type="android.text.TextUtils" />
+    </data>
+
     <RelativeLayout
+        android:background="?selectableItemBackground"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingTop="8dp"
@@ -19,6 +33,8 @@
             android:layout_alignParentTop="true" />
 
         <TextView
+            tools:text="Test Directory"
+            android:text="@{fileName}"
             android:id="@+id/file_label"
             android:maxLines="1"
             android:layout_width="wrap_content"
@@ -29,7 +45,9 @@
             android:textSize="22sp" />
 
         <TextView
-            android:id="@+id/file_size"
+            android:visibility="@{TextUtils.isEmpty(fileSize) ? View.GONE : View.VISIBLE}"
+            tools:text="250 MB"
+            android:text="@{fileSize}"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"

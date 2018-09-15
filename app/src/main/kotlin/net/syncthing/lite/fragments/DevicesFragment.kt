@@ -12,7 +12,9 @@ import android.view.inputmethod.InputMethodManager
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.async
+import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.lite.R
+import net.syncthing.lite.adapters.DeviceAdapterListener
 import net.syncthing.lite.adapters.DevicesAdapter
 import net.syncthing.lite.databinding.FragmentDevicesBinding
 import net.syncthing.lite.databinding.ViewEnterDeviceIdBinding
@@ -23,26 +25,25 @@ import java.io.IOException
 class DevicesFragment : SyncthingFragment() {
 
     private lateinit var binding: FragmentDevicesBinding
-    private lateinit var adapter: DevicesAdapter
+    private val adapter = DevicesAdapter()
     private var addDeviceDialog: AlertDialog? = null
     private var addDeviceDialogBinding: ViewEnterDeviceIdBinding? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         binding = DataBindingUtil.inflate(layoutInflater, R.layout.fragment_devices, container, false)
-        binding.list.emptyView = binding.empty
         binding.addDevice.setOnClickListener { showDialog() }
         return binding.root
     }
 
     override fun onResume() {
         super.onResume()
-        libraryHandler?.syncthingClient { it.addOnConnectionChangedListener { updateDeviceList() } }
+        libraryHandler?.syncthingClient { it.addOnConnectionChangedListener { _ -> updateDeviceList() } }
     }
 
     override fun onPause() {
         super.onPause()
-        libraryHandler?.syncthingClient { it.removeOnConnectionChangedListener{ updateDeviceList() } }
+        libraryHandler?.syncthingClient { it.removeOnConnectionChangedListener{ _ -> updateDeviceList() } }
     }
 
     override fun onLibraryLoaded() {
@@ -51,32 +52,33 @@ class DevicesFragment : SyncthingFragment() {
     }
 
     private fun initDeviceList() {
-        adapter = DevicesAdapter(context!!)
         binding.list.adapter = adapter
-        binding.list.setOnItemLongClickListener { _, _, position, _ ->
-            val device = adapter.getItem(position)
-            AlertDialog.Builder(context)
-                    .setTitle(getString(R.string.remove_device_title, device.name))
-                    .setMessage(getString(R.string.remove_device_message, device.deviceId.deviceId.substring(0, 7)))
-                    .setPositiveButton(android.R.string.yes) { _, _ ->
-                        libraryHandler?.configuration { config ->
-                            config.peers = config.peers.filterNot { it.deviceId == device.deviceId }.toSet()
-                            config.persistLater()
-                            updateDeviceList()
+
+        adapter.listener = object: DeviceAdapterListener {
+            override fun onDeviceLongClicked(deviceInfo: DeviceInfo): Boolean {
+                AlertDialog.Builder(context)
+                        .setTitle(getString(R.string.remove_device_title, deviceInfo.name))
+                        .setMessage(getString(R.string.remove_device_message, deviceInfo.deviceId.deviceId.substring(0, 7)))
+                        .setPositiveButton(android.R.string.yes) { _, _ ->
+                            libraryHandler?.configuration { config ->
+                                config.peers = config.peers.filterNot { it.deviceId == deviceInfo.deviceId }.toSet()
+                                config.persistLater()
+                                updateDeviceList()
+                            }
                         }
-                    }
-                    .setNegativeButton(android.R.string.no, null)
-                    .show()
-            false
+                        .setNegativeButton(android.R.string.no, null)
+                        .show()
+
+                return false
+            }
         }
     }
 
     private fun updateDeviceList() {
         async(UI) {
             libraryHandler?.syncthingClient { syncthingClient ->
-                adapter.clear()
-                adapter.addAll(syncthingClient.getPeerStatus())
-                adapter.notifyDataSetChanged()
+                adapter.data = syncthingClient.getPeerStatus()
+                binding.isEmpty = adapter.data.isEmpty()
             }
         }
     }
