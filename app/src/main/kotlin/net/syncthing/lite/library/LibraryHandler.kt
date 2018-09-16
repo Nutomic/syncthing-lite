@@ -165,10 +165,14 @@ class LibraryHandler(context: Context, onLibraryLoaded: (LibraryHandler) -> Unit
     }
 
     fun registerMessageFromUnknownDeviceListener(listener: (DeviceId) -> Unit) {
-        library { _, syncthingClient, _ -> syncthingClient.discoveryHandler.registerMessageFromUnknownDeviceListener(listener) }
+        library { _, syncthingClient, _ ->
+            syncthingClient.discoveryHandler.registerMessageFromUnknownDeviceListener(listener)
+        }
     }
 
     fun unregisterMessageFromUnknownDeviceListener(listener: (DeviceId) -> Unit) {
-        library { _, syncthingClient, _ -> syncthingClient.discoveryHandler.unregisterMessageFromUnknownDeviceListener(listener) }
+        library { _, syncthingClient, _ ->
+            syncthingClient.discoveryHandler.unregisterMessageFromUnknownDeviceListener(listener)
+        }
     }
 }

@@ -154,7 +154,10 @@ class IntroActivity : AppIntro() {
                 if (addedDeviceIds.add(deviceId)) {
                     binding.foundDevices.addView(
                             Button(context).apply {
-                                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                                layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
                                 text = deviceId.deviceId
 
                                 setOnClickListener {
