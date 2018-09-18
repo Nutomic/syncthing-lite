@@ -15,7 +15,6 @@ import net.syncthing.lite.R
  * However, by showing notifications from an Service, we tell Android that there is
  * a good reason to not kill the app process.
  */
-// TODO: better notification icon (currently an arrow)
 class LibraryConnectionService: Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -73,7 +72,7 @@ class LibraryConnectionService: Service() {
         showNotification(
                 NOTIFICATION_ID,
                 NotificationCompat.Builder(this)
-                        .setSmallIcon(R.drawable.ic_navigate_next_white)
+                        .setSmallIcon(R.drawable.ic_wifi_black_24dp)
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText("running and used")
                         .build()
@@ -84,7 +83,7 @@ class LibraryConnectionService: Service() {
         showNotification(
                 NOTIFICATION_ID,
                 NotificationCompat.Builder(this)
-                        .setSmallIcon(R.drawable.ic_navigate_next_white)
+                        .setSmallIcon(R.drawable.ic_wifi_black_24dp)
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText("unused - will shutdown in $countdownSeconds seconds")
                         .build()
