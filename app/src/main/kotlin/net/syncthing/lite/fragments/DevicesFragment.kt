@@ -75,8 +75,8 @@ class DevicesFragment : SyncthingFragment() {
     }
 
     private fun updateDeviceList() {
-        async(UI) {
-            libraryHandler?.syncthingClient { syncthingClient ->
+        libraryHandler.syncthingClient { syncthingClient ->
+            async(UI) {
                 adapter.data = syncthingClient.getPeerStatus()
                 binding.isEmpty = adapter.data.isEmpty()
             }

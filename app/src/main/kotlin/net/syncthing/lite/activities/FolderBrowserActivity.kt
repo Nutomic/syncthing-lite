@@ -5,6 +5,8 @@ import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.util.Log
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.async
 import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
@@ -63,9 +65,12 @@ class FolderBrowserActivity : SyncthingActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
         if (requestCode == REQUEST_SELECT_UPLOAD_FILE && resultCode == Activity.RESULT_OK) {
             libraryHandler?.syncthingClient { syncthingClient ->
-                FileUploadDialog(this@FolderBrowserActivity, syncthingClient, intent!!.data,
-                        indexBrowser.folder, indexBrowser.currentPath,
-                        { showFolderListView(indexBrowser.currentPath) }).show()
+                async (UI) {
+                    // FIXME: it would be better if the dialog would use the library handler
+                    FileUploadDialog(this@FolderBrowserActivity, syncthingClient, intent!!.data,
+                            indexBrowser.folder, indexBrowser.currentPath,
+                            { showFolderListView(indexBrowser.currentPath) }).show()
+                }
             }
         }
     }
@@ -87,7 +92,12 @@ class FolderBrowserActivity : SyncthingActivity() {
                 binding.isLoading = true
             } else {
                 Log.i(TAG, "pulling file = " + fileInfo)
-                libraryHandler?.syncthingClient { FileDownloadDialog(this, it, fileInfo).show() }
+                libraryHandler?.syncthingClient {
+                    // FIXME: it would be better if the dialog would use the library handler
+                    async(UI) {
+                        FileDownloadDialog(this@FolderBrowserActivity, it, fileInfo).show()
+                    }
+                }
             }
         }
     }
@@ -104,7 +114,11 @@ class FolderBrowserActivity : SyncthingActivity() {
             binding.listView.scrollToPosition(0)
             if (indexBrowser.isRoot())
                 libraryHandler?.folderBrowser {
-                    supportActionBar?.title = it.getFolderInfo(indexBrowser.folder)?.label
+                    val title = it.getFolderInfo(indexBrowser.folder)?.label
+
+                    async(UI) {
+                        supportActionBar?.title = title
+                    }
                 }
             else
                 supportActionBar?.title = indexBrowser.currentPathInfo().fileName

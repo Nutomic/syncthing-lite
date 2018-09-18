@@ -80,7 +80,7 @@ class MainActivity : SyncthingActivity() {
             R.id.folders -> setContentFragment(FoldersFragment())
             R.id.devices -> setContentFragment(DevicesFragment())
             R.id.settings -> setContentFragment(SettingsFragment())
-            R.id.device_id -> libraryHandler?.configuration { config ->
+            R.id.device_id -> libraryHandler.configuration { config ->
                 DeviceIdDialog(this, config.localDeviceId).show()
             }
             R.id.clear_index -> AlertDialog.Builder(this)
@@ -104,7 +104,7 @@ class MainActivity : SyncthingActivity() {
 
     private fun cleanCacheAndIndex() {
         async(UI) {
-            libraryHandler?.syncthingClient { it.clearCacheAndIndex() }
+            libraryHandler.syncthingClient { it.clearCacheAndIndex() }
             recreate()
         }
     }
