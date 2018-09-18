@@ -5,11 +5,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import net.syncthing.lite.BuildConfig
+import net.syncthing.lite.R
+import org.jetbrains.anko.defaultSharedPreferences
 
 object DefaultLibraryManager {
-    // TODO: eventually add an setting for this value
-    private const val SHUTDOWN_DELAY = 1000 * 60L
-
     private const val LOG_TAG = "DefaultLibraryManager"
     private const val COUNTDOWN_STEP_SIZE = 1000L
 
@@ -41,13 +40,18 @@ object DefaultLibraryManager {
                     countDownStep = Runnable {
                         unusedTime += COUNTDOWN_STEP_SIZE
 
-                        if (unusedTime >= SHUTDOWN_DELAY) {
+                        val shutdownDelay = context.defaultSharedPreferences.getString(
+                                "shutdown_delay",
+                                context.getString(R.string.default_shutdown_delay)
+                        ).toLong()
+
+                        if (unusedTime >= shutdownDelay) {
                             instance!!.shutdownIfThereAreZeroUsers {
                                 // ignore the result, we are informed using the isRunningListener too
                             }
                         } else {
                             // update notification
-                            LibraryConnectionService.notifyRunningAndUnused((SHUTDOWN_DELAY - unusedTime) / 1000, context)
+                            LibraryConnectionService.notifyRunningAndUnused((shutdownDelay - unusedTime) / 1000, context)
 
                             scheduleCountdownStep()
                         }

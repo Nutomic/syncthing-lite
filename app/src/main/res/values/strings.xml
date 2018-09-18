@@ -46,4 +46,8 @@
     <string name="notification_running_text_unused">It is unused and will shutdown in %d seconds</string>
     <string name="notification_running_text_used">It is currently used</string>
     <string name="notification_running_action_shutdown_now">Shutdown now</string>
+    <string name="settings_shutdown_delay_10_seconds">10 seconds</string>
+    <string name="settings_shutdown_delay_30_seconds">30 seconds</string>
+    <string name="settings_shutdown_delay_1_minute">1 minute</string>
+    <string name="settings_shutdown_delay_5_minutes">5 minutes</string>
 </resources>

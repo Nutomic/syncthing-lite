@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="shutdown_delay_labels">
+        <item>@string/settings_shutdown_delay_10_seconds</item>
+        <item>@string/settings_shutdown_delay_30_seconds</item>
+        <item>@string/settings_shutdown_delay_1_minute</item>
+        <item>@string/settings_shutdown_delay_5_minutes</item>
+    </string-array>
+
+    <string-array name="shutdown_delay_values">
+        <item>10000</item>
+        <item>30000</item>
+        <item>60000</item>
+        <item>300000</item>
+    </string-array>
+
+    <string translatable="false" name="default_shutdown_delay">60000</string>
+</resources>
