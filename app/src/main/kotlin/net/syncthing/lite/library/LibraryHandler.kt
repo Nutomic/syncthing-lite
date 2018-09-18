@@ -12,6 +12,7 @@ import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.IndexInfo
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.lite.BuildConfig
 import org.jetbrains.anko.doAsync
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -36,6 +37,11 @@ class LibraryHandler(context: Context, onLibraryLoaded: (LibraryHandler) -> Unit
 
     init {
         instanceCount++
+
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "instance created; instance count is now $instanceCount")
+        }
+
         if (configuration == null && !isLoading) {
             isLoading = true
             doAsync {
@@ -150,9 +156,18 @@ class LibraryHandler(context: Context, onLibraryLoaded: (LibraryHandler) -> Unit
         }
 
         instanceCount--
+
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "instance closed; instance count is now $instanceCount")
+        }
+
         Handler().postDelayed({
             Thread {
                 if (instanceCount == 0) {
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "all instances closed for some time; shutting down")
+                    }
+
                     folderBrowser?.close()
                     folderBrowser = null
                     syncthingClient?.close()
