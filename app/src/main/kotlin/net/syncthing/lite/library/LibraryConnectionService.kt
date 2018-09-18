@@ -1,9 +1,6 @@
 package net.syncthing.lite.library
 
-import android.app.Notification
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -21,6 +18,7 @@ class LibraryConnectionService: Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val REQUEST_SHUTDOWN_PENDING_INTENT = 1
+        private const val NOTIFICATION_CHANNEL = "running notification"
 
         private const val ACTION_NOTIFY_RUNNING_AND_USED = "notify running and used"
         private const val ACTION_NOTIFY_RUNNING_AND_UNUSED = "notify running and unused"
@@ -79,6 +77,20 @@ class LibraryConnectionService: Service() {
 
     var isShowingNotification = false
 
+    override fun onCreate() {
+        super.onCreate()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationManager.createNotificationChannel(
+                    NotificationChannel(
+                            NOTIFICATION_CHANNEL,
+                            getString(R.string.notification_running_channel_title),
+                            NotificationManager.IMPORTANCE_LOW
+                    )
+            )
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
 
@@ -100,8 +112,9 @@ class LibraryConnectionService: Service() {
     fun notifyRunningAndUsed() {
         showNotification(
                 NOTIFICATION_ID,
-                NotificationCompat.Builder(this)
+                NotificationCompat.Builder(this, NOTIFICATION_CHANNEL)
                         .setSmallIcon(R.drawable.ic_wifi_black_24dp)
+                        .setPriority(NotificationCompat.PRIORITY_LOW)
                         .setContentTitle(getString(R.string.notification_running_title))
                         .setContentText(getString(R.string.notification_running_text_used))
                         .build()
@@ -111,8 +124,9 @@ class LibraryConnectionService: Service() {
     fun notifyRunningAndUnused(countdownSeconds: Long) {
         showNotification(
                 NOTIFICATION_ID,
-                NotificationCompat.Builder(this)
+                NotificationCompat.Builder(this, NOTIFICATION_CHANNEL)
                         .setSmallIcon(R.drawable.ic_wifi_black_24dp)
+                        .setPriority(NotificationCompat.PRIORITY_LOW)
                         .setContentTitle(getString(R.string.notification_running_title))
                         .setContentText(
                                 getString(R.string.notification_running_text_unused, countdownSeconds)
