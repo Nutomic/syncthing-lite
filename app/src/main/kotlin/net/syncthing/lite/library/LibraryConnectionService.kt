@@ -2,9 +2,11 @@ package net.syncthing.lite.library
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
 import android.support.v4.app.NotificationCompat
 import android.support.v4.content.ContextCompat
@@ -18,11 +20,13 @@ import net.syncthing.lite.R
 class LibraryConnectionService: Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
+        private const val REQUEST_SHUTDOWN_PENDING_INTENT = 1
 
         private const val ACTION_NOTIFY_RUNNING_AND_USED = "notify running and used"
         private const val ACTION_NOTIFY_RUNNING_AND_UNUSED = "notify running and unused"
         private const val ACTION_NOTIFY_SHUT_DOWN = "notify shut down"
         private const val EXTRA_COUNTDOWN_SECONDS = "countdown seconds"
+        private const val ACTION_REQUEST_SHUTDOWN = "request shutdown"
 
         fun notifyRunningAndUsed(context: Context) {
             ContextCompat.startForegroundService(
@@ -51,6 +55,26 @@ class LibraryConnectionService: Service() {
     }
 
     val notificationManager: NotificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    val requestShutdownIntent: PendingIntent by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(
+                    this,
+                    REQUEST_SHUTDOWN_PENDING_INTENT,
+                    Intent(this, LibraryConnectionService::class.java)
+                            .setAction(ACTION_REQUEST_SHUTDOWN),
+                    PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        } else {
+            PendingIntent.getService(
+                    this,
+                    REQUEST_SHUTDOWN_PENDING_INTENT,
+                    Intent(this, LibraryConnectionService::class.java)
+                            .setAction(ACTION_REQUEST_SHUTDOWN),
+                    PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        }
+    }
+
     var isShowingNotification = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -61,6 +85,7 @@ class LibraryConnectionService: Service() {
                 ACTION_NOTIFY_RUNNING_AND_USED -> notifyRunningAndUsed()
                 ACTION_NOTIFY_RUNNING_AND_UNUSED -> notifyRunningAndUnused(intent.getLongExtra(EXTRA_COUNTDOWN_SECONDS, 0L))
                 ACTION_NOTIFY_SHUT_DOWN -> notifyShutDown()
+                ACTION_REQUEST_SHUTDOWN -> requestShutdown()
                 else -> throw IllegalArgumentException()
             }
         }
@@ -86,6 +111,7 @@ class LibraryConnectionService: Service() {
                         .setSmallIcon(R.drawable.ic_wifi_black_24dp)
                         .setContentTitle(getString(R.string.app_name))
                         .setContentText("unused - will shutdown in $countdownSeconds seconds")
+                        .addAction(R.drawable.ic_power_settings_new_black_24dp, "shutdown now", requestShutdownIntent)
                         .build()
         )
     }
@@ -102,6 +128,10 @@ class LibraryConnectionService: Service() {
             startForeground(notificationId, notification)
             isShowingNotification = true
         }
+    }
+
+    fun requestShutdown() {
+        DefaultLibraryManager.with(this).shutdownIfThereAreZeroUsers()
     }
 
     override fun onDestroy() {

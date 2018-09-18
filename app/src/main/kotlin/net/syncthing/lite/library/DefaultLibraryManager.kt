@@ -83,6 +83,8 @@ object DefaultLibraryManager {
                                     isRunning = newIsRunning
 
                                     if (!isRunning) {
+                                        cancelCountdown()
+
                                         // hide the notification
                                         LibraryConnectionService.notifyShutDown(context)
                                     }

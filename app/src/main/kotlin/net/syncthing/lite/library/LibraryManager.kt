@@ -64,7 +64,7 @@ class LibraryManager (
         }
     }
 
-    fun shutdownIfThereAreZeroUsers(listener: (wasShutdownPerformed: Boolean) -> Unit) {
+    fun shutdownIfThereAreZeroUsers(listener: (wasShutdownPerformed: Boolean) -> Unit = {}) {
         startStopExecutor.submit {
             if (userCounter == 0) {
                 instance?.shutdown()
