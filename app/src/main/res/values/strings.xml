@@ -41,4 +41,8 @@
     <string name="settings_local_device_name">Local device name</string>
     <string name="settings_local_device_summary">The name that other devices will see for this device</string>
     <string name="device_id_dialog_title">Enter Device ID</string>
+    <string name="notification_running_title">Syncthing Lite is active</string>
+    <string name="notification_running_text_unused">It is unused and will shutdown in %d seconds</string>
+    <string name="notification_running_text_used">It is currently used</string>
+    <string name="notification_running_action_shutdown_now">Shutdown now</string>
 </resources>

@@ -54,7 +54,9 @@ class LibraryConnectionService: Service() {
         }
     }
 
-    val notificationManager: NotificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    val notificationManager: NotificationManager by lazy {
+        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    }
     val requestShutdownIntent: PendingIntent by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PendingIntent.getForegroundService(
@@ -83,7 +85,9 @@ class LibraryConnectionService: Service() {
         if (intent != null) {
             when (intent.action) {
                 ACTION_NOTIFY_RUNNING_AND_USED -> notifyRunningAndUsed()
-                ACTION_NOTIFY_RUNNING_AND_UNUSED -> notifyRunningAndUnused(intent.getLongExtra(EXTRA_COUNTDOWN_SECONDS, 0L))
+                ACTION_NOTIFY_RUNNING_AND_UNUSED -> notifyRunningAndUnused(
+                        intent.getLongExtra(EXTRA_COUNTDOWN_SECONDS, 0L)
+                )
                 ACTION_NOTIFY_SHUT_DOWN -> notifyShutDown()
                 ACTION_REQUEST_SHUTDOWN -> requestShutdown()
                 else -> throw IllegalArgumentException()
@@ -98,8 +102,8 @@ class LibraryConnectionService: Service() {
                 NOTIFICATION_ID,
                 NotificationCompat.Builder(this)
                         .setSmallIcon(R.drawable.ic_wifi_black_24dp)
-                        .setContentTitle(getString(R.string.app_name))
-                        .setContentText("running and used")
+                        .setContentTitle(getString(R.string.notification_running_title))
+                        .setContentText(getString(R.string.notification_running_text_used))
                         .build()
         )
     }
@@ -109,9 +113,15 @@ class LibraryConnectionService: Service() {
                 NOTIFICATION_ID,
                 NotificationCompat.Builder(this)
                         .setSmallIcon(R.drawable.ic_wifi_black_24dp)
-                        .setContentTitle(getString(R.string.app_name))
-                        .setContentText("unused - will shutdown in $countdownSeconds seconds")
-                        .addAction(R.drawable.ic_power_settings_new_black_24dp, "shutdown now", requestShutdownIntent)
+                        .setContentTitle(getString(R.string.notification_running_title))
+                        .setContentText(
+                                getString(R.string.notification_running_text_unused, countdownSeconds)
+                        )
+                        .addAction(
+                                R.drawable.ic_power_settings_new_black_24dp,
+                                getString(R.string.notification_running_action_shutdown_now),
+                                requestShutdownIntent
+                        )
                         .build()
         )
     }
