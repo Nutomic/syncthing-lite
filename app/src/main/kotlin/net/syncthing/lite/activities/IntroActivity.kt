@@ -125,32 +125,26 @@ class IntroActivity : AppIntro() {
             }
         }
 
-        private val handler = Handler(Looper.getMainLooper())
         private val addedDeviceIds = HashSet<DeviceId>()
-        private var isLibraryLoaded = false
-
-        override fun onLibraryLoaded() {
-            super.onLibraryLoaded()
-
-            isLibraryLoaded = true
-
-            if (isResumed) {
-                startListeningForDevices()
-            }
-        }
 
         override fun onResume() {
             super.onResume()
 
-            if (isLibraryLoaded) {
-                startListeningForDevices()
-            }
+            binding.foundDevices.removeAllViews()
+            addedDeviceIds.clear()
+
+            libraryHandler.registerMessageFromUnknownDeviceListener(onDeviceFound)
+        }
+
+        override fun onPause() {
+            super.onPause()
+
+            libraryHandler.unregisterMessageFromUnknownDeviceListener(onDeviceFound)
         }
 
         private val onDeviceFound: (DeviceId) -> Unit = {
             deviceId ->
 
-            handler.post {
                 if (addedDeviceIds.add(deviceId)) {
                     binding.foundDevices.addView(
                             Button(context).apply {
@@ -169,20 +163,6 @@ class IntroActivity : AppIntro() {
                             }
                     )
                 }
-            }
-        }
-
-        override fun onPause() {
-            super.onPause()
-
-            libraryHandler?.unregisterMessageFromUnknownDeviceListener(onDeviceFound)
-        }
-
-        private fun startListeningForDevices() {
-            binding.foundDevices.removeAllViews()
-            addedDeviceIds.clear()
-
-            libraryHandler!!.registerMessageFromUnknownDeviceListener(onDeviceFound)
         }
     }
 

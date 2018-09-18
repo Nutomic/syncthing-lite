@@ -40,6 +40,9 @@
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
         </provider>
+        <service
+            android:exported="false"
+            android:name=".library.LibraryConnectionService" />
     </application>
 
 </manifest>

@@ -16,7 +16,6 @@ import org.jetbrains.anko.contentView
 import org.slf4j.impl.HandroidLoggerAdapter
 
 abstract class SyncthingActivity : AppCompatActivity() {
-
     companion object {
         fun checkLocalDiscoveryPort(context: Context) {
             if (LibraryHandler.isListeningPortTaken) {
@@ -29,38 +28,47 @@ abstract class SyncthingActivity : AppCompatActivity() {
         }
     }
 
-    var libraryHandler: LibraryHandler? = null
-        private set
+    val libraryHandler: LibraryHandler by lazy {
+        LibraryHandler(
+                context = this@SyncthingActivity,
+                onIndexUpdateProgressListener = this::onIndexUpdateProgress,
+                onIndexUpdateCompleteListener = this::onIndexUpdateComplete
+        )
+    }
     private var loadingDialog: AlertDialog? = null
     private var snackBar: Snackbar? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         HandroidLoggerAdapter.DEBUG = BuildConfig.DEBUG
+    }
+
+    override fun onStart() {
+        super.onStart()
 
         val binding = DataBindingUtil.inflate<DialogLoadingBinding>(
                 LayoutInflater.from(this), R.layout.dialog_loading, null, false)
         binding.loadingText.text = getString(R.string.loading_config_starting_syncthing_client)
+
         loadingDialog = AlertDialog.Builder(this)
                 .setCancelable(false)
                 .setView(binding.root)
                 .show()
-        LibraryHandler(this, this::onLibraryLoadedInternal,
-                                        this::onIndexUpdateProgress, this::onIndexUpdateComplete)
-    }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        libraryHandler?.close()
-        loadingDialog?.dismiss()
-    }
+        libraryHandler.start {
+            if (!isDestroyed) {
+                loadingDialog?.dismiss()
+            }
 
-    private fun onLibraryLoadedInternal(libraryHandler: LibraryHandler) {
-        this.libraryHandler = libraryHandler
-        if (!isDestroyed) {
-            loadingDialog?.dismiss()
+            onLibraryLoaded()
         }
-        onLibraryLoaded()
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        libraryHandler.stop()
+        loadingDialog?.dismiss()
     }
 
     open fun onIndexUpdateProgress(folderInfo: FolderInfo, percentage: Int) {

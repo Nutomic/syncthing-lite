@@ -43,18 +43,14 @@ class SyncthingProvider : DocumentsProvider() {
         return true
     }
 
-    private fun getLibraryHandler(): LibraryHandler {
-        val latch = CountDownLatch(1)
-        val libraryHandler = LibraryHandler(context, { latch.countDown() }, { _, _ -> }, {})
-        latch.await()
-        return libraryHandler
-    }
+    // this instance is not started -> it connects and disconnects on demand
+    private val libraryHandler: LibraryHandler by lazy { LibraryHandler(context) }
 
     override fun queryRoots(projection: Array<String>?): Cursor {
         Log.d(Tag, "queryRoots($projection)")
         val latch = CountDownLatch(1)
         var folders: List<Pair<FolderInfo, FolderStats>>? = null
-        getLibraryHandler().folderBrowser { folderBrowser ->
+        libraryHandler.folderBrowser { folderBrowser ->
             folders = folderBrowser.folderInfoAndStatsList()
             latch.countDown()
         }
@@ -107,7 +103,7 @@ class SyncthingProvider : DocumentsProvider() {
 
         val latch = CountDownLatch(1)
         var outputFile: File? = null
-        getLibraryHandler().syncthingClient { syncthingClient ->
+        libraryHandler.syncthingClient { syncthingClient ->
             DownloadFileTask(context, syncthingClient, fileInfo,
                     { t, _ -> if (signal?.isCanceled == true) t.cancel() }, {
                 outputFile = it
@@ -141,7 +137,7 @@ class SyncthingProvider : DocumentsProvider() {
     private fun getIndexBrowser(folderId: String): IndexBrowser {
         val latch = CountDownLatch(1)
         var indexBrowser: IndexBrowser? = null
-        getLibraryHandler().syncthingClient {
+        libraryHandler.syncthingClient {
             indexBrowser = it.indexHandler.newIndexBrowser(folderId)
             latch.countDown()
         }

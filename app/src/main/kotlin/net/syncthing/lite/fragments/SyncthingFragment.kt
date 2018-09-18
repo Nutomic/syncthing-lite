@@ -1,29 +1,29 @@
 package net.syncthing.lite.fragments
 
-import android.os.Bundle
 import android.support.v4.app.Fragment
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.lite.library.LibraryHandler
 
 abstract class SyncthingFragment : Fragment() {
+    val libraryHandler: LibraryHandler by lazy { LibraryHandler(
+            context = context!!,
+            onIndexUpdateProgressListener = this::onIndexUpdateProgress,
+            onIndexUpdateCompleteListener = this::onIndexUpdateComplete
+    )}
 
-    var libraryHandler: LibraryHandler? = null
-        private set
+    override fun onStart() {
+        super.onStart()
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        LibraryHandler(context!!, this::onLibraryLoadedInternal, this::onIndexUpdateProgress,
-                this::onIndexUpdateComplete)
+        libraryHandler.start {
+            // TODO: check if this is still useful
+            onLibraryLoaded()
+        }
     }
 
-    private fun onLibraryLoadedInternal(libraryHandler: LibraryHandler) {
-        this.libraryHandler = libraryHandler
-        onLibraryLoaded()
-    }
+    override fun onStop() {
+        super.onStop()
 
-    override fun onDestroy() {
-        super.onDestroy()
-        libraryHandler?.close()
+        libraryHandler.stop()
     }
 
     open fun onLibraryLoaded() {}
