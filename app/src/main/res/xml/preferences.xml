@@ -12,8 +12,8 @@
 
         <ListPreference
             android:key="shutdown_delay"
-            android:title="Shutdown delay"
-            android:summary="Time before shuting down the Syncthing client after its last usage"
+            android:title="@string/settings_shutdown_delay_title"
+            android:summary="@string/settings_shutdown_delay_summary"
             android:entries="@array/shutdown_delay_labels"
             android:entryValues="@array/shutdown_delay_values"
             android:defaultValue="@string/default_shutdown_delay" />

@@ -40,6 +40,8 @@
     <string name="settings_app_version_title">App version</string>
     <string name="settings_local_device_name">Local device name</string>
     <string name="settings_local_device_summary">The name that other devices will see for this device</string>
+    <string name="settings_shutdown_delay_title">Shutdown delay</string>
+    <string name="settings_shutdown_delay_summary">Time before shuting down the Syncthing client after its last usage</string>
     <string name="device_id_dialog_title">Enter Device ID</string>
     <string name="notification_running_channel_title">status notification</string>
     <string name="notification_running_title">Syncthing Lite is active</string>
