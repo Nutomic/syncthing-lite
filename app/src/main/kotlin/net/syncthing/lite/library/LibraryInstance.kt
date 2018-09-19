@@ -15,7 +15,7 @@ import java.net.SocketException
  * This class can not be recycled. This means that after doing a shutdown of it,
  * a new instance must be created
  *
- * The creation and the shutdown are synchronous, so keep them of the UI Thread
+ * The creation and the shutdown are synchronous, so keep them out of the UI Thread
  */
 class LibraryInstance (context: Context) {
     companion object {
