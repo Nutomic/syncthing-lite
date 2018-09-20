@@ -52,15 +52,25 @@ dependencies {
     implementation "org.jetbrains.anko:anko-coroutines:$anko_version"
     implementation "com.android.support:design:$support_version"
     implementation "com.android.support:preference-v14:$support_version"
+
+    /**
+     * syncthing-java depends on the Apache HTTP Client
+     * https://github.com/syncthing/syncthing-java/blob/dd020737ba5fc6a7c681a1d258025b8ddb2e8f67/core/build.gradle#L9
+     *
+     * Android itself contains an older version of this HTTP Client. Due to that, there is an
+     * extra version of it which does not cause conflicts with the builtin client of Android.
+     *
+     * This extra implementation is included below. As this other version is used,
+     * it's ignored as dependency of syncthing-java.
+     */
     implementation ("com.github.Nutomic:syncthing-java:0.2.1") {
         exclude group: 'commons-logging', module:'commons-logging'
         exclude group: 'org.apache.httpcomponents', module:'httpclient'
         exclude group: 'org.slf4j'
         exclude group: 'ch.qos.logback'
     }
-    // NOTE: httpclient-android seems to be used via reflection somehow. Removing this dependency
-    //       silently breaks the app.
     implementation 'org.apache.httpcomponents:httpclient-android:4.3.5.1'
+
     implementation 'sk.baka.slf4j:slf4j-handroid:1.7.26'
     implementation 'com.google.zxing:android-integration:3.3.0'
     implementation 'com.google.zxing:core:3.3.0'
