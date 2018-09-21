@@ -22,8 +22,8 @@ import java.util.concurrent.Executors
  */
 class LibraryManager (
         val synchronousInstanceCreator: () -> LibraryInstance,
-        val userCounterListener: (Int) -> Unit,
-        val isRunningListener: (isRunning: Boolean) -> Unit
+        val userCounterListener: (Int) -> Unit = {},
+        val isRunningListener: (isRunning: Boolean) -> Unit = {}
 ) {
     companion object {
         private val handler = Handler(Looper.getMainLooper())

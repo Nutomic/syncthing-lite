@@ -10,7 +10,6 @@ import org.jetbrains.anko.defaultSharedPreferences
 
 object DefaultLibraryManager {
     private const val LOG_TAG = "DefaultLibraryManager"
-    private const val COUNTDOWN_STEP_SIZE = 1000L
 
     private var instance: LibraryManager? = null
     private val lock = Object()
@@ -22,39 +21,21 @@ object DefaultLibraryManager {
         if (instance == null) {
             synchronized(lock) {
                 if (instance == null) {
-                    var isRunning = false
-                    var isUsed = false
-                    var unusedTime = 0L
-                    lateinit var countDownStep: Runnable
-
-                    fun scheduleCountdownStep() {
-                        handler.removeCallbacks(countDownStep)
-                        handler.postDelayed(countDownStep, COUNTDOWN_STEP_SIZE)
+                    val shutdownRunnable = Runnable {
+                        instance!!.shutdownIfThereAreZeroUsers()
                     }
 
-                    fun cancelCountdown() {
-                        unusedTime = 0
-                        handler.removeCallbacks(countDownStep)
-                    }
-
-                    countDownStep = Runnable {
-                        unusedTime += COUNTDOWN_STEP_SIZE
-
+                    fun scheduleShutdown() {
                         val shutdownDelay = context.defaultSharedPreferences.getString(
                                 "shutdown_delay",
                                 context.getString(R.string.default_shutdown_delay)
                         ).toLong()
 
-                        if (unusedTime >= shutdownDelay) {
-                            instance!!.shutdownIfThereAreZeroUsers {
-                                // ignore the result, we are informed using the isRunningListener too
-                            }
-                        } else {
-                            // update notification
-                            LibraryConnectionService.notifyRunningAndUnused((shutdownDelay - unusedTime) / 1000, context)
+                        handler.postDelayed(shutdownRunnable, shutdownDelay)
+                    }
 
-                            scheduleCountdownStep()
-                        }
+                    fun cancelShutdown() {
+                        handler.removeCallbacks(shutdownRunnable)
                     }
 
                     instance = LibraryManager(
@@ -66,32 +47,12 @@ object DefaultLibraryManager {
                                     Log.d(LOG_TAG, "user counter updated to $newUserCounter")
                                 }
 
-                                val newIsUsed = newUserCounter > 0
+                                val isUsed = newUserCounter > 0
 
-                                if (newIsUsed != isUsed) {
-                                    isUsed = newIsUsed
-
-                                    if (isUsed) {
-                                        cancelCountdown()
-
-                                        LibraryConnectionService.notifyRunningAndUsed(context)
-                                    } else {
-                                        scheduleCountdownStep()
-                                    }
-                                }
-                            },
-                            isRunningListener = {
-                                newIsRunning ->
-
-                                if (newIsRunning != isRunning) {
-                                    isRunning = newIsRunning
-
-                                    if (!isRunning) {
-                                        cancelCountdown()
-
-                                        // hide the notification
-                                        LibraryConnectionService.notifyShutDown(context)
-                                    }
+                                if (isUsed) {
+                                    cancelShutdown()
+                                } else {
+                                    scheduleShutdown()
                                 }
                             }
                     )

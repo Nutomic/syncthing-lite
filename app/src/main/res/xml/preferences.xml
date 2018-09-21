@@ -10,6 +10,10 @@
             android:summary="@string/settings_local_device_summary"
             android:persistent="false"/>
 
+        <!--
+
+        This is something for the advanced preferences (later), but it still has got an effect
+
         <ListPreference
             android:key="shutdown_delay"
             android:title="@string/settings_shutdown_delay_title"
@@ -17,6 +21,8 @@
             android:entries="@array/shutdown_delay_labels"
             android:entryValues="@array/shutdown_delay_values"
             android:defaultValue="@string/default_shutdown_delay" />
+
+        -->
 
         <Preference
             android:key="app_version"
