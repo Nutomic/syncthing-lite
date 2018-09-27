@@ -3,7 +3,7 @@
 buildscript {
     ext.kotlin_version = '1.2.61'
     ext.support_version = '27.0.2'
-    ext.build_tools_version = '3.2.0-rc03'
+    ext.build_tools_version = '3.2.0'
     ext.anko_version = '0.10.4'
     repositories {
         mavenLocal()
@@ -12,7 +12,7 @@ buildscript {
         google()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:3.2.0"
+        classpath "com.android.tools.build:gradle:$build_tools_version"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.github.ben-manes:gradle-versions-plugin:0.17.0'
     }
