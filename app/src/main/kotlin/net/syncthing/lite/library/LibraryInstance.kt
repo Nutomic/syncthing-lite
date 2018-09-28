@@ -4,6 +4,10 @@ import android.content.Context
 import android.util.Log
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.interfaces.IndexRepository
+import net.syncthing.java.core.interfaces.TempRepository
+import net.syncthing.lite.library.repository.TempDirectoryLocalRepository
+import java.io.File
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.SocketException
@@ -40,7 +44,11 @@ class LibraryInstance (context: Context) {
 
     val isListeningPortTaken = checkIsListeningPortTaken()  // this must come first to work correctly
     val configuration = Configuration(configFolder = context.filesDir)
-    val syncthingClient = SyncthingClient(configuration)
+    val syncthingClient = SyncthingClient(
+            configuration = configuration,
+            repository = TODO(),
+            tempRepository = TempDirectoryLocalRepository(File(context.filesDir, "temp_repository"))
+    )
     val folderBrowser = syncthingClient.indexHandler.newFolderBrowser()
 
     fun shutdown() {
