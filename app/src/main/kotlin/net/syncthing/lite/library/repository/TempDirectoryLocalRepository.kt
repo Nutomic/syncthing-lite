@@ -56,7 +56,7 @@ class TempDirectoryLocalRepository(private val directory: File): TempRepository 
         deleteAllData()
     }
 
-    private fun deleteAllData() {
+    fun deleteAllData() {
         directory.listFiles().forEach { file ->
             if (file.isFile) {
                 file.delete()

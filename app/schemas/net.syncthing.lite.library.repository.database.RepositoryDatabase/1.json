@@ -1,0 +1,272 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "de68d49df7f3c31849d4ce55617b7c5d",
+    "entities": [
+      {
+        "tableName": "file_blocks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folder` TEXT NOT NULL, `path` TEXT NOT NULL, `hash` TEXT NOT NULL, `size` INTEGER NOT NULL, `blocks` BLOB NOT NULL, PRIMARY KEY(`folder`, `path`))",
+        "fields": [
+          {
+            "fieldPath": "folder",
+            "columnName": "folder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "path",
+            "columnName": "path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hash",
+            "columnName": "hash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "size",
+            "columnName": "size",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blocks",
+            "columnName": "blocks",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "folder",
+            "path"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "file_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folder` TEXT NOT NULL, `path` TEXT NOT NULL, `file_name` TEXT NOT NULL, `parent` TEXT NOT NULL, `size` INTEGER, `hash` TEXT, `last_modified` INTEGER NOT NULL, `file_type` TEXT NOT NULL, `version_id` INTEGER NOT NULL, `version_value` INTEGER NOT NULL, `is_deleted` INTEGER NOT NULL, PRIMARY KEY(`folder`, `path`))",
+        "fields": [
+          {
+            "fieldPath": "folder",
+            "columnName": "folder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "path",
+            "columnName": "path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "file_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parent",
+            "columnName": "parent",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "size",
+            "columnName": "size",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hash",
+            "columnName": "hash",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastModified",
+            "columnName": "last_modified",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileType",
+            "columnName": "file_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versionId",
+            "columnName": "version_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versionValue",
+            "columnName": "version_value",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "folder",
+            "path"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_file_info_folder_parent",
+            "unique": false,
+            "columnNames": [
+              "folder",
+              "parent"
+            ],
+            "createSql": "CREATE  INDEX `index_file_info_folder_parent` ON `${TABLE_NAME}` (`folder`, `parent`)"
+          },
+          {
+            "name": "index_file_info_folder",
+            "unique": false,
+            "columnNames": [
+              "folder"
+            ],
+            "createSql": "CREATE  INDEX `index_file_info_folder` ON `${TABLE_NAME}` (`folder`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "folder_index_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folder` TEXT NOT NULL, `device_id` TEXT NOT NULL, `index_id` INTEGER NOT NULL, `local_sequence` INTEGER NOT NULL, `max_sequence` INTEGER NOT NULL, PRIMARY KEY(`folder`, `device_id`))",
+        "fields": [
+          {
+            "fieldPath": "folder",
+            "columnName": "folder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "device_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indexId",
+            "columnName": "index_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localSequence",
+            "columnName": "local_sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxSequence",
+            "columnName": "max_sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "folder",
+            "device_id"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "folder_stats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folder` TEXT NOT NULL, `file_count` INTEGER NOT NULL, `dir_count` INTEGER NOT NULL, `last_update` INTEGER NOT NULL, `size` INTEGER NOT NULL, PRIMARY KEY(`folder`))",
+        "fields": [
+          {
+            "fieldPath": "folder",
+            "columnName": "folder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileCount",
+            "columnName": "file_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dirCount",
+            "columnName": "dir_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdate",
+            "columnName": "last_update",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "size",
+            "columnName": "size",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "folder"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "index_sequence",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`index_id` INTEGER NOT NULL, `current_sequence` INTEGER NOT NULL, PRIMARY KEY(`index_id`))",
+        "fields": [
+          {
+            "fieldPath": "indexId",
+            "columnName": "index_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentSequence",
+            "columnName": "current_sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "index_id"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"de68d49df7f3c31849d4ce55617b7c5d\")"
+    ]
+  }
+}

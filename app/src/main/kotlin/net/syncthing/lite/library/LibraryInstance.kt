@@ -4,9 +4,9 @@ import android.content.Context
 import android.util.Log
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.configuration.Configuration
-import net.syncthing.java.core.interfaces.IndexRepository
-import net.syncthing.java.core.interfaces.TempRepository
+import net.syncthing.lite.library.repository.SqliteIndexRepository
 import net.syncthing.lite.library.repository.TempDirectoryLocalRepository
+import net.syncthing.lite.library.repository.database.RepositoryDatabase
 import java.io.File
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -42,12 +42,18 @@ class LibraryInstance (context: Context) {
         }
     }
 
+    private val tempRepository = TempDirectoryLocalRepository(File(context.filesDir, "temp_repository"))
+
     val isListeningPortTaken = checkIsListeningPortTaken()  // this must come first to work correctly
     val configuration = Configuration(configFolder = context.filesDir)
     val syncthingClient = SyncthingClient(
             configuration = configuration,
-            repository = TODO(),
-            tempRepository = TempDirectoryLocalRepository(File(context.filesDir, "temp_repository"))
+            repository = SqliteIndexRepository(
+                    database = RepositoryDatabase.with(context),
+                    closeDatabaseOnClose = false,
+                    clearTempStorageHook = { tempRepository.deleteAllData() }
+            ),
+            tempRepository = tempRepository
     )
     val folderBrowser = syncthingClient.indexHandler.newFolderBrowser()
 
