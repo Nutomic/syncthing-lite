@@ -81,7 +81,9 @@ class MainActivity : SyncthingActivity() {
             R.id.devices -> setContentFragment(DevicesFragment())
             R.id.settings -> setContentFragment(SettingsFragment())
             R.id.device_id -> libraryHandler.configuration { config ->
-                DeviceIdDialog(this, config.localDeviceId).show()
+                async (UI) {
+                    DeviceIdDialog(this@MainActivity, config.localDeviceId).show()
+                }
             }
             R.id.clear_index -> AlertDialog.Builder(this)
                     .setTitle(getString(R.string.clear_cache_and_index_title))
