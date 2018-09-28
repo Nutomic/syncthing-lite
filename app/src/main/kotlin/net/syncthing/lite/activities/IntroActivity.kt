@@ -14,6 +14,8 @@ import android.view.ViewGroup
 import android.widget.Button
 import com.github.paolorotolo.appintro.AppIntro
 import com.google.zxing.integration.android.IntentIntegrator
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.async
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.lite.R
 import net.syncthing.lite.databinding.FragmentIntroOneBinding
@@ -175,24 +177,26 @@ class IntroActivity : AppIntro() {
 
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
             binding = DataBindingUtil.inflate(inflater, R.layout.fragment_intro_three, container, false)
+
+            libraryHandler.library { config, client, _ ->
+                async(UI) {
+                    client.addOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
+                    val deviceId = config.localDeviceId.deviceId
+                    val desc = activity?.getString(R.string.intro_page_three_description, "<b>$deviceId</b>")
+                    binding.description.text = Html.fromHtml(desc)
+                }
+            }
+
             return binding.root
         }
 
-        override fun onLibraryLoaded() {
-            super.onLibraryLoaded()
-            libraryHandler?.library { config, client, _ ->
-                client.addOnConnectionChangedListener(this::onConnectionChanged)
-                val deviceId = config.localDeviceId.deviceId
-                val desc = activity?.getString(R.string.intro_page_three_description, "<b>$deviceId</b>")
-                binding.description.text = Html.fromHtml(desc)
-            }
-        }
-
         private fun onConnectionChanged(deviceId: DeviceId) {
-            libraryHandler?.library { config, client, _ ->
-                if (config.folders.isNotEmpty()) {
-                    client.removeOnConnectionChangedListener(this::onConnectionChanged)
-                    (activity as IntroActivity?)?.onDonePressed(this)
+            libraryHandler.library { config, client, _ ->
+                async(UI) {
+                    if (config.folders.isNotEmpty()) {
+                        client.removeOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
+                        (activity as IntroActivity?)?.onDonePressed(this@IntroFragmentThree)
+                    }
                 }
             }
         }
