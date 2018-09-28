@@ -17,6 +17,7 @@ import net.syncthing.lite.adapters.FolderContentsListener
 import net.syncthing.lite.databinding.ActivityFolderBrowserBinding
 import net.syncthing.lite.dialogs.FileDownloadDialog
 import net.syncthing.lite.dialogs.FileUploadDialog
+import org.jetbrains.anko.custom.async
 
 class FolderBrowserActivity : SyncthingActivity() {
 
@@ -86,9 +87,11 @@ class FolderBrowserActivity : SyncthingActivity() {
             finish()
         } else {
             if (fileInfo.isDirectory()) {
-                indexBrowser.navigateTo(fileInfo)
-                Log.d(TAG, "load folder cache bg")
+                async {
+                    indexBrowser.navigateTo(fileInfo)
+                }
 
+                Log.d(TAG, "load folder cache bg")
                 binding.isLoading = true
             } else {
                 Log.i(TAG, "pulling file = " + fileInfo)
@@ -106,22 +109,27 @@ class FolderBrowserActivity : SyncthingActivity() {
         runOnUiThread {
             binding.isLoading = false
 
-            val list = indexBrowser.listFiles()
-            Log.i("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list.size + " records")
-            Log.d("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list)
-            assert(!list.isEmpty())//list must contain at least the 'parent' path
-            adapter.data = list
-            binding.listView.scrollToPosition(0)
-            if (indexBrowser.isRoot())
-                libraryHandler?.folderBrowser {
-                    val title = it.getFolderInfo(indexBrowser.folder)?.label
+            async {
+                val list = indexBrowser.listFiles()
 
-                    async(UI) {
-                        supportActionBar?.title = title
-                    }
+                async (UI) {
+                    Log.i("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list.size + " records")
+                    Log.d("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list)
+                    assert(!list.isEmpty())//list must contain at least the 'parent' path
+                    adapter.data = list
+                    binding.listView.scrollToPosition(0)
+                    if (indexBrowser.isRoot())
+                        libraryHandler?.folderBrowser {
+                            val title = it.getFolderInfo(indexBrowser.folder)?.label
+
+                            async(UI) {
+                                supportActionBar?.title = title
+                            }
+                        }
+                    else
+                        supportActionBar?.title = indexBrowser.currentPathInfo().fileName
                 }
-            else
-                supportActionBar?.title = indexBrowser.currentPathInfo().fileName
+            }
         }
 }
 
