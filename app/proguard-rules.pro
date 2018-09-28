@@ -16,6 +16,9 @@
 #   public *;
 #}
 
+# ensure that stack traces make sense
+-keepattributes SourceFile,LineNumberTable
+
 # ensure that the config can be read
 -keep class net.syncthing.java.core.configuration.** { *; }
 -keep class net.syncthing.java.core.beans.DeviceInfo { *; }
