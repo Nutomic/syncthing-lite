@@ -32,12 +32,6 @@
 # ensure that the database? works
 -keep class org.h2.** { *; }
 
-# ensure that the communication works
-# net.syncthing.java.bep.BlockExchangeProtos are created using reflection
--keepclassmembers class ** {
-   public static *** parseFrom(***);
-}
-
 # this library uses factories with reflection
 -keep class net.jpountz.lz4.** { *; }
 
