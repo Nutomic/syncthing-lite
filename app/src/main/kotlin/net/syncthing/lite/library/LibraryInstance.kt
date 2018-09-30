@@ -4,9 +4,9 @@ import android.content.Context
 import android.util.Log
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.configuration.Configuration
-import net.syncthing.lite.library.repository.SqliteIndexRepository
-import net.syncthing.lite.library.repository.TempDirectoryLocalRepository
-import net.syncthing.lite.library.repository.database.RepositoryDatabase
+import net.syncthing.repository.android.SqliteIndexRepository
+import net.syncthing.repository.android.TempDirectoryLocalRepository
+import net.syncthing.repository.android.database.RepositoryDatabase
 import java.io.File
 import java.net.DatagramSocket
 import java.net.InetAddress
