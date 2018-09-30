@@ -44,16 +44,4 @@ abstract class RepositoryDatabase: RoomDatabase() {
     abstract fun folderStats(): FolderStatsDao
     abstract fun folderIndexInfo(): FolderIndexInfoDao
     abstract fun indexSequence(): IndexSequenceDao
-
-    /*
-            TODO: default setup
-
-            connection.prepareStatement("INSERT INTO index_sequence VALUES (?,?)").use { prepareStatement ->
-                val newIndexId = Math.abs(Random().nextLong()) + 1
-                val newStartingSequence = Math.abs(Random().nextLong()) + 1
-                prepareStatement.setLong(1, newIndexId)
-                prepareStatement.setLong(2, newStartingSequence)
-                assert(prepareStatement.executeUpdate() == 1)
-            }
-     */
 }
