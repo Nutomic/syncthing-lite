@@ -12,7 +12,7 @@ import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.async
 import net.syncthing.lite.R
 import net.syncthing.lite.databinding.ActivityMainBinding
-import net.syncthing.lite.dialogs.DeviceIdDialog
+import net.syncthing.lite.dialogs.DeviceIdDialogFragment
 import net.syncthing.lite.fragments.DevicesFragment
 import net.syncthing.lite.fragments.FoldersFragment
 import net.syncthing.lite.fragments.SettingsFragment
@@ -80,11 +80,7 @@ class MainActivity : SyncthingActivity() {
             R.id.folders -> setContentFragment(FoldersFragment())
             R.id.devices -> setContentFragment(DevicesFragment())
             R.id.settings -> setContentFragment(SettingsFragment())
-            R.id.device_id -> libraryHandler.configuration { config ->
-                async (UI) {
-                    DeviceIdDialog(this@MainActivity, config.localDeviceId).show()
-                }
-            }
+            R.id.device_id -> DeviceIdDialogFragment().show(supportFragmentManager)
             R.id.clear_index -> AlertDialog.Builder(this)
                     .setTitle(getString(R.string.clear_cache_and_index_title))
                     .setMessage(getString(R.string.clear_cache_and_index_body))

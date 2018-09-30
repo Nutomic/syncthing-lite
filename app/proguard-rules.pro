@@ -29,12 +29,6 @@
 -keepattributes *Annotation*
 -keep class sun.misc.Unsafe { *; }
 
-# ensure that the communication works
-# net.syncthing.java.bep.BlockExchangeProtos are created using reflection
--keepclassmembers class ** {
-   public static *** parseFrom(***);
-}
-
 # this library uses factories with reflection
 -keep class net.jpountz.lz4.** { *; }
 
