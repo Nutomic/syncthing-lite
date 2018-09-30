@@ -22,15 +22,22 @@ abstract class RepositoryDatabase: RoomDatabase() {
         private var instance: RepositoryDatabase? = null
         private val lock = Object()
 
+        fun createInstance(context: Context, name: String) = Room.databaseBuilder(
+                context.applicationContext,
+                RepositoryDatabase::class.java,
+                name
+        ).build()
+
+        fun createInMemoryInstance(context: Context) = Room.inMemoryDatabaseBuilder(
+                context.applicationContext,
+                RepositoryDatabase::class.java
+        ).build()
+
         fun with(context: Context): RepositoryDatabase {
             if (instance == null) {
                 synchronized (lock) {
                     if (instance == null) {
-                        instance = Room.databaseBuilder(
-                                context.applicationContext,
-                                RepositoryDatabase::class.java,
-                                "repository_database"
-                        ).build()
+                        instance = createInstance(context, "repository_database")
                     }
                 }
             }
