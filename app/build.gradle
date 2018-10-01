@@ -48,10 +48,6 @@ android {
     dataBinding {
         enabled = true
     }
-    lintOptions {
-        // TODO: remove this as soon as possible
-        abortOnError false
-    }
 }
 
 dependencies {
