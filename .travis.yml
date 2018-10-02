@@ -18,11 +18,6 @@ before_install:
   - yes | sdkmanager "platforms;android-28"
   # Install protobuf compiler
   - sudo apt-get install protobuf-compiler
-  # Install syncthing-java manually, as the current commit may require a development version.
-  - git clone https://github.com/Nutomic/syncthing-java.git
-  - cd "syncthing-java"
-  - gradle install
-  - cd ..
 
 # Cache gradle dependencies
 # https://docs.travis-ci.com/user/languages/android/#Caching
