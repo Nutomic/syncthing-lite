@@ -5,4 +5,5 @@ dependencies {
     compile project(':core')
     compile project(':bep')
     compile project(':discovery')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }

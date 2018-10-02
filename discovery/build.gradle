@@ -5,6 +5,7 @@ mainClassName = 'net.syncthing.java.discovery.Main'
 dependencies {
     compile project(':core')
     compile "commons-cli:commons-cli:1.4"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
 
 run {

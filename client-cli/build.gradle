@@ -6,6 +6,7 @@ dependencies {
     compile project(':client')
     compile project(':repository')
     compile "commons-cli:commons-cli:1.4"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
 
 run {

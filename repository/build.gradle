@@ -6,4 +6,5 @@ dependencies {
     compile project(':core')
     compile 'com.h2database:h2:1.4.196'
     compile 'com.zaxxer:HikariCP-java7:2.4.13'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
