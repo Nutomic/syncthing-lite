@@ -1,6 +1,8 @@
+apply plugin: 'java-library'
+
 dependencies {
-  compile project(':bep')
-  compile project(':core')
-  compile 'com.h2database:h2:1.4.196'
-  compile 'com.zaxxer:HikariCP-java7:2.4.13'
+    compile project(':bep')
+    compile project(':core')
+    compile 'com.h2database:h2:1.4.196'
+    compile 'com.zaxxer:HikariCP-java7:2.4.13'
 }

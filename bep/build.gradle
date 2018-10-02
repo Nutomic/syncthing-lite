@@ -1,4 +1,7 @@
+apply plugin: 'java-library'
+
 dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
     compile project(':core')
     compile project(':relay')
     compile project(':http-relay')
