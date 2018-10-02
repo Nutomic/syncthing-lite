@@ -1,4 +1,5 @@
 apply plugin: 'application'
+apply plugin: 'kotlin'
 mainClassName = 'net.syncthing.java.client.cli.Main'
 
 dependencies {
