@@ -67,7 +67,7 @@ dependencies {
      * This extra implementation is included below. As this other version is used,
      * it's ignored as dependency of syncthing-java.
      */
-    implementation ("com.github.Nutomic:syncthing-java:0.2.1") {
+    implementation (project(':client')) {
         exclude group: 'commons-logging', module:'commons-logging'
         exclude group: 'org.apache.httpcomponents', module:'httpclient'
         exclude group: 'org.slf4j'
