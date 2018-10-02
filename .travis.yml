@@ -16,8 +16,6 @@ before_install:
   # Hack to accept Android licenses
   - yes | sdkmanager "platforms;android-27"
   - yes | sdkmanager "platforms;android-28"
-  # Install protobuf compiler
-  - sudo apt-get install protobuf-compiler
 
 # Cache gradle dependencies
 # https://docs.travis-ci.com/user/languages/android/#Caching
