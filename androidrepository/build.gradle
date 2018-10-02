@@ -47,10 +47,12 @@ dependencies {
     implementation "android.arch.persistence.room:runtime:$room_version"
     kapt "android.arch.persistence.room:compiler:$room_version"
 
-    implementation (project(':core')) {
+    implementation (project(':client')) {
         exclude group: 'commons-logging', module:'commons-logging'
         exclude group: 'org.apache.httpcomponents', module:'httpclient'
         exclude group: 'org.slf4j'
         exclude group: 'ch.qos.logback'
     }
+
+    implementation "com.google.protobuf:protobuf-lite:$protobuf_lite_version"
 }
