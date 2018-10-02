@@ -3,11 +3,7 @@ apply plugin: 'kotlin'
 apply plugin: 'com.google.protobuf'
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':core')
-    compile project(':relay')
-    compile project(':http-relay')
-    compile "net.jpountz.lz4:lz4:1.3.0"
+    compile project(':syncthing-relay-client')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation "com.google.protobuf:protobuf-lite:$protobuf_lite_version"
 }

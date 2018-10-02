@@ -47,7 +47,7 @@ dependencies {
     implementation "android.arch.persistence.room:runtime:$room_version"
     kapt "android.arch.persistence.room:compiler:$room_version"
 
-    implementation (project(':client')) {
+    implementation (project(':syncthing-client')) {
         exclude group: 'commons-logging', module:'commons-logging'
         exclude group: 'org.apache.httpcomponents', module:'httpclient'
         exclude group: 'org.slf4j'

@@ -1,1 +1,1 @@
-include ':app', ':androidrepository', ':repository', ':relay', ':bep', ':core', ':client', ':discovery', ':client-cli', ':http-relay'
+include ':app', ':syncthing-repository-android', ':syncthing-repository-default', ':syncthing-relay-client', ':syncthing-bep', ':syncthing-core', ':syncthing-client', ':syncthing-discovery', ':syncthing-client-cli', ':syncthing-http-relay-client'

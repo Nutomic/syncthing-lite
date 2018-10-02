@@ -2,8 +2,6 @@ apply plugin: 'java-library'
 apply plugin: 'kotlin'
 
 dependencies {
-    compile project(':core')
-    compile project(':bep')
-    compile project(':discovery')
+    compile project(':syncthing-core')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
