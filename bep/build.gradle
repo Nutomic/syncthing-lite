@@ -1,0 +1,6 @@
+dependencies {
+    compile project(':core')
+    compile project(':relay')
+    compile project(':http-relay')
+    compile "net.jpountz.lz4:lz4:1.3.0"
+}

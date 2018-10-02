@@ -1,0 +1,161 @@
+package net.syncthing.java.bep;
+
+option optimize_for = LITE_RUNTIME;
+
+message Hello {
+    optional string device_name    = 1;
+    optional string client_name    = 2;
+    optional string client_version = 3;
+}
+
+message Header {
+    optional MessageType        type        = 1;
+    optional MessageCompression compression = 2;
+}
+
+enum MessageType {
+    CLUSTER_CONFIG    = 0;
+    INDEX             = 1;
+    INDEX_UPDATE      = 2;
+    REQUEST           = 3;
+    RESPONSE          = 4;
+    DOWNLOAD_PROGRESS = 5;
+    PING              = 6;
+    CLOSE             = 7;
+}
+
+enum MessageCompression {
+    NONE = 0;
+    LZ4  = 1;
+}
+
+message ClusterConfig {
+    repeated Folder folders = 1;
+}
+
+message Folder {
+    optional string id                   = 1;
+    optional string label                = 2;
+    optional bool   read_only            = 3;
+    optional bool   ignore_permissions   = 4;
+    optional bool   ignore_delete        = 5;
+    optional bool   disable_temp_indexes = 6;
+
+    repeated Device devices = 16;
+}
+
+message Device {
+    optional bytes       id           = 1;
+    optional string      name         = 2;
+    repeated string      addresses    = 3;
+    optional Compression compression  = 4;
+    optional string      cert_name    = 5;
+    optional int64       max_sequence = 6;
+    optional bool        introducer   = 7;
+    optional uint64      index_id     = 8;
+}
+
+enum Compression {
+    METADATA = 0;
+    NEVER    = 1;
+    ALWAYS   = 2;
+}
+
+message Index {
+    optional string   folder = 1;
+    repeated FileInfo files  = 2;
+}
+
+message IndexUpdate {
+    optional string   folder = 1;
+    repeated FileInfo files  = 2;
+}
+
+message FileInfo {
+    optional string       name           = 1;
+    optional FileInfoType type           = 2;
+    optional int64        size           = 3;
+    optional uint32       permissions    = 4;
+    optional int64        modified_s     = 5;
+    optional int32        modified_ns    = 11;
+    optional uint64       modified_by    = 12;
+    optional bool         deleted        = 6;
+    optional bool         invalid        = 7;
+    optional bool         no_permissions = 8;
+    optional Vector       version        = 9;
+    optional int64        sequence       = 10;
+
+    repeated BlockInfo Blocks         = 16;
+    optional string    symlink_target = 17;
+}
+
+enum FileInfoType {
+    FILE              = 0;
+    DIRECTORY         = 1;
+    SYMLINK_FILE      = 2;
+    SYMLINK_DIRECTORY = 3;
+    SYMLINK           = 4;
+}
+
+message BlockInfo {
+    optional  int64  offset    = 1;
+    optional  int32  size      = 2;
+    optional  bytes  hash      = 3;
+    optional  uint32 weak_hash = 4;
+}
+
+message Vector {
+    repeated Counter counters = 1;
+}
+
+message Counter {
+    optional uint64 id    = 1;
+    optional uint64 value = 2;
+}
+
+message Request {
+    optional int32  id             = 1;
+    optional string folder         = 2;
+    optional string name           = 3;
+    optional int64  offset         = 4;
+    optional int32  size           = 5;
+    optional bytes  hash           = 6;
+    optional bool   from_temporary = 7;
+}
+
+message Response {
+    optional int32     id   = 1;
+    optional bytes     data = 2;
+    optional ErrorCode code = 3;
+}
+
+enum ErrorCode {
+    NO_ERROR     = 0;
+    GENERIC      = 1;
+    NO_SUCH_FILE = 2;
+    INVALID_FILE = 3;
+}
+
+message DownloadProgress {
+    optional string                     folder  = 1;
+    repeated FileDownloadProgressUpdate updates = 2;
+}
+
+message FileDownloadProgressUpdate {
+    optional FileDownloadProgressUpdateType update_type   = 1;
+    optional string                         name          = 2;
+    optional Vector                         version       = 3;
+    repeated int32                          block_indexes = 4;
+}
+
+enum FileDownloadProgressUpdateType {
+    APPEND = 0;
+    FORGET = 1;
+}
+
+message Ping {
+}
+
+message Close {
+    optional string reason = 1;
+}

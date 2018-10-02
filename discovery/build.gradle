@@ -1,0 +1,13 @@
+apply plugin: 'application'
+mainClassName = 'net.syncthing.java.discovery.Main'
+
+dependencies {
+    compile project(':core')
+    compile "commons-cli:commons-cli:1.4"
+}
+
+run {
+    if (project.hasProperty('args')) {
+        args project.args.split('\\s+')
+    }
+}

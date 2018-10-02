@@ -1,0 +1,14 @@
+apply plugin: 'application'
+mainClassName = 'net.syncthing.java.client.cli.Main'
+
+dependencies {
+    compile project(':syncthing-java')
+    compile project(':repository')
+    compile "commons-cli:commons-cli:1.4"
+}
+
+run {
+    if (project.hasProperty('args')) {
+        args project.args.split('\\s+')
+    }
+}

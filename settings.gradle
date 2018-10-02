@@ -1,1 +1,1 @@
-include ':app', ':androidrepository'
+include ':app', ':androidrepository', ':repository', ':relay', ':bep', ':core', ':client', ':discovery', ':client-cli', ':http-relay'
