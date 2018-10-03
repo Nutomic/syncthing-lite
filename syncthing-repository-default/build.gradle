@@ -6,5 +6,7 @@ dependencies {
     compile project(':syncthing-core')
     compile 'com.h2database:h2:1.4.196'
     compile 'com.zaxxer:HikariCP-java7:2.4.13'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    // JDK8 version of the library is required for AutoCloseable.use()
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "com.google.protobuf:protobuf-lite:$protobuf_lite_version"
 }
