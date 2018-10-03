@@ -1,6 +1,7 @@
 package net.syncthing.java.core.configuration
 
-import com.google.gson.GsonBuilder
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.java.core.beans.FolderInfo
@@ -8,25 +9,14 @@ import net.syncthing.java.core.security.KeystoreHandler
 import org.bouncycastle.util.encoders.Base64
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.io.StringReader
+import java.io.StringWriter
 import java.net.InetAddress
 import java.util.*
 
 class Configuration(configFolder: File = DefaultConfigFolder) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
-
-    private data class Config(
-            val peers: Set<DeviceInfo>,
-            val folders: Set<FolderInfo>,
-            val localDeviceName: String,
-            val localDeviceId: String,
-            val discoveryServers: Set<String>,
-            val keystoreAlgorithm: String,
-            val keystoreData: String) {
-        // Exclude keystoreData from toString()
-        override fun toString() = "Config(peers=$peers, folders=$folders, localDeviceName=$localDeviceName, " +
-                "localDeviceId=$localDeviceId, discoveryServers=$discoveryServers, keystoreAlgorithm=$keystoreAlgorithm)"
-    }
 
     private val configFile = File(configFolder, ConfigFileName)
     val databaseFolder = File(configFolder, DatabaseFolderName)
@@ -54,7 +44,7 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
                     keystoreAlgorithm = keystoreData.third)
             persistNow()
         } else {
-            config = Gson.fromJson(configFile.readText(), Config::class.java)
+            config = Config.parse(JsonReader(StringReader(configFile.readText())))
 
             // automatic migration if the old config was used
             if (config.discoveryServers == OldDiscoveryServers) {
@@ -81,7 +71,6 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
         private val OldDiscoveryServers = setOf(
                 "discovery-v4-1.syncthing.net", "discovery-v4-2.syncthing.net", "discovery-v4-3.syncthing.net",
                 "discovery-v6-1.syncthing.net", "discovery-v6-2.syncthing.net", "discovery-v6-3.syncthing.net")
-        private val Gson = GsonBuilder().setPrettyPrinting().create()
     }
 
     val instanceId = Math.abs(Random().nextLong())
@@ -140,7 +129,15 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
 
         config.let {
             System.out.println("writing config to $configFile")
-            configFile.writeText(Gson.toJson(config))
+            configFile.writeText(
+                    StringWriter().apply {
+                        JsonWriter(this).apply {
+                            setIndent("  ")
+
+                            config.serialize(this)
+                        }
+                    }.toString()
+            )
             isSaved = true
         }
     }

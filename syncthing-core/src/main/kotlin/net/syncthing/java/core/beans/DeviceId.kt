@@ -1,5 +1,7 @@
 package net.syncthing.java.core.beans
 
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
 import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.codec.binary.Base32
 import org.slf4j.LoggerFactory
@@ -24,6 +26,8 @@ data class DeviceId @Throws(IOException::class) constructor(val deviceId: String
     }
 
     companion object {
+
+        private const val DEVICE_ID = "deviceId"
 
         private const val SHA256_BYTES = 256 / 8
 
@@ -54,5 +58,26 @@ data class DeviceId @Throws(IOException::class) constructor(val deviceId: String
             val check = (n - remainder) % n
             return alphabet[check]
         }
+
+        fun parse(reader: JsonReader): DeviceId {
+            var deviceId: String? = null
+
+            reader.beginObject()
+            while (reader.hasNext()) {
+                when (reader.nextName()) {
+                    DEVICE_ID -> deviceId = reader.nextString()
+                    else -> reader.skipValue()
+                }
+            }
+            reader.endObject()
+
+            return DeviceId(deviceId!!)
+        }
+    }
+
+    fun serialize(writer: JsonWriter) {
+        writer.beginObject()
+        writer.name(DEVICE_ID).value(deviceId)
+        writer.endObject()
     }
 }
