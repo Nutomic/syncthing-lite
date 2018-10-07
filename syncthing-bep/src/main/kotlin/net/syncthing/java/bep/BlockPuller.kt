@@ -17,6 +17,7 @@ package net.syncthing.java.bep
 import com.google.protobuf.ByteString
 import net.syncthing.java.bep.BlockExchangeProtos.ErrorCode
 import net.syncthing.java.bep.BlockExchangeProtos.Request
+import net.syncthing.java.bep.utils.longSumBy
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.io.FileUtils
@@ -43,8 +44,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(fileBlocks.folder), {"supplied connection handler $connectionHandler will not share folder ${fileBlocks.folder}"})
 
         val lock = Object()
-        // TODO: things like sumBy work with integers, it would be better to use longs directly
-        val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.sumBy { it.size }
+        val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() }
 
         // TODO: keeping this in memory can cause problems with big files
         val blocksByHash = Collections.synchronizedMap(HashMap<String, ByteArray>())
@@ -52,9 +52,9 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         val error = AtomicReference<Exception>()
         val fileDownloadObserver = object : FileDownloadObserver() {
 
-            private fun receivedData() = blocksByHash.values.sumBy { it.size }.toLong()
+            private fun receivedData() = blocksByHash.values.longSumBy { it.size.toLong() }
 
-            private fun totalData() = totalTransferSize.toLong()
+            private fun totalData() = totalTransferSize
 
             override fun progress() = if (isCompleted()) 1.0 else receivedData() / totalData().toDouble()
 
