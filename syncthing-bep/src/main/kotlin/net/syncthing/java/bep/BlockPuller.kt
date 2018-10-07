@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -25,19 +25,14 @@ import org.slf4j.LoggerFactory
 import java.io.*
 import java.security.MessageDigest
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.collections.HashMap
 
 class BlockPuller internal constructor(private val connectionHandler: ConnectionHandler,
                                        private val indexHandler: IndexHandler,
                                        private val responseHandler: ResponseHandler) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val blocksByHash = ConcurrentHashMap<String, ByteArray>()
-    private val hashList = mutableListOf<String>()
-    private val missingHashes: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
-    private val requestIds: MutableSet<Int> = Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
-    private val lock = Object()
 
     fun pullFile(fileInfo: FileInfo): FileDownloadObserver {
         val fileBlocks = indexHandler.waitForRemoteIndexAcquired(connectionHandler)
@@ -46,25 +41,33 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                 ?: throw IOException("file not found in local index for folder = ${fileInfo.folder} path = ${fileInfo.path}")
         logger.info("pulling file = {}", fileBlocks)
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(fileBlocks.folder), {"supplied connection handler $connectionHandler will not share folder ${fileBlocks.folder}"})
+
+        val lock = Object()
+        // TODO: things like sumBy work with integers, it would be better to use longs directly
+        val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.sumBy { it.size }
+
+        // TODO: keeping this in memory can cause problems with big files
+        val blocksByHash = Collections.synchronizedMap(HashMap<String, ByteArray>())
+
         val error = AtomicReference<Exception>()
         val fileDownloadObserver = object : FileDownloadObserver() {
 
-            private fun receivedData() = (blocksByHash.size * BlockPusher.BLOCK_SIZE).toLong()
+            private fun receivedData() = blocksByHash.values.sumBy { it.size }.toLong()
 
-            private fun totalData() = ((blocksByHash.size + missingHashes.size) * BlockPusher.BLOCK_SIZE).toLong()
+            private fun totalData() = totalTransferSize.toLong()
 
             override fun progress() = if (isCompleted()) 1.0 else receivedData() / totalData().toDouble()
 
             override fun progressMessage() = (Math.round(progress() * 1000.0) / 10.0).toString() + "% " +
                     FileUtils.byteCountToDisplaySize(receivedData()) + " / " + FileUtils.byteCountToDisplaySize(totalData())
 
-            override fun isCompleted() = missingHashes.isEmpty()
+            override fun isCompleted() = fileBlocks.blocks.size == blocksByHash.size
 
             override fun inputStream(): InputStream {
-                    NetworkUtils.assertProtocol(missingHashes.isEmpty(), {"pull failed, some blocks are still missing"})
-                    val blockList = hashList.map { blocksByHash[it] }.toList()
-                    return SequenceInputStream(Collections.enumeration(blockList.map { ByteArrayInputStream(it) }))
-                }
+                NetworkUtils.assertProtocol(isCompleted()) {"pull failed, some blocks are still missing"}
+                val blockList = fileBlocks.blocks.map { blocksByHash[it.hash] }.toList()
+                return SequenceInputStream(Collections.enumeration(blockList.map { ByteArrayInputStream(it) }))
+            }
 
             override fun checkError() {
                 if (error.get() != null) {
@@ -85,51 +88,45 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
             }
 
             override fun close() {
-                missingHashes.clear()
-                hashList.clear()
                 blocksByHash.clear()
             }
         }
+
         synchronized(lock) {
-            hashList.addAll(fileBlocks.blocks.map { it.hash })
-            missingHashes.addAll(hashList)
-            for (block in fileBlocks.blocks) {
-                if (missingHashes.contains(block.hash)) {
-                    val requestId = responseHandler.registerListener {
-                        onResponseMessageReceived(it)
+            for (block in fileBlocks.blocks.distinctBy { it.hash }) {
+                val requestId = responseHandler.registerListener {
+                    response ->
+
+                    // TODO: error handling (passing errors to the listener)
+
+                    synchronized(lock) {
+                        NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR, {"received error response, code = ${response.code}"})
+                        val data = response.data.toByteArray()
+                        val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
+
+                        if (hash != block.hash) {
+                            throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
+                        }
+
+                        blocksByHash[hash] = data
+                        logger.debug("aquired block, hash = {}", hash)
+                        lock.notify()
                     }
-
-                    requestIds.add(requestId)
-                    connectionHandler.sendMessage(Request.newBuilder()
-                            .setId(requestId)
-                            .setFolder(fileBlocks.folder)
-                            .setName(fileBlocks.path)
-                            .setOffset(block.offset)
-                            .setSize(block.size)
-                            .setHash(ByteString.copyFrom(Hex.decode(block.hash)))
-                            .build())
-                    logger.debug("sent request for block, hash = {}", block.hash)
                 }
-            }
-            return fileDownloadObserver
-        }
-    }
 
-    private fun onResponseMessageReceived(response: BlockExchangeProtos.Response) {
-        synchronized(lock) {
-            if (!requestIds.contains(response.id)) {
-                return
+                connectionHandler.sendMessage(Request.newBuilder()
+                        .setId(requestId)
+                        .setFolder(fileBlocks.folder)
+                        .setName(fileBlocks.path)
+                        .setOffset(block.offset)
+                        .setSize(block.size)
+                        .setHash(ByteString.copyFrom(Hex.decode(block.hash)))
+                        .build())
+
+                logger.debug("sent request for block, hash = {}", block.hash)
             }
-            NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR, {"received error response, code = ${response.code}"})
-            val data = response.data.toByteArray()
-            val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
-            if (missingHashes.remove(hash)) {
-                blocksByHash.put(hash, data)
-                logger.debug("aquired block, hash = {}", hash)
-                lock.notify()
-            } else {
-                logger.warn("received not-needed block, hash = {}", hash)
-            }
+
+            return fileDownloadObserver
         }
     }
 
