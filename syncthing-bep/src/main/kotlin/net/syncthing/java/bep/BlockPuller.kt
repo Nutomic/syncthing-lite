@@ -70,8 +70,10 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
             }
 
             override fun checkError() {
-                if (error.get() != null) {
-                    throw IOException(error.get())
+                val error2 = error.get()
+
+                if (error2 != null) {
+                    throw IOException(error2)
                 }
             }
 
@@ -97,22 +99,25 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                 response ->
 
                 try {
+                    NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR, { "received error response, code = ${response.code}" })
+                    val data = response.data.toByteArray()
+                    val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
+
+                    if (hash != block.hash) {
+                        throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
+                    }
+
                     synchronized(lock) {
-                        NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR, { "received error response, code = ${response.code}" })
-                        val data = response.data.toByteArray()
-                        val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
-
-                        if (hash != block.hash) {
-                            throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
-                        }
-
                         blocksByHash[hash] = data
                         logger.debug("aquired block, hash = {}", hash)
                         lock.notify()
                     }
                 } catch (ex: Exception) {
                     error.compareAndSet(null, ex)
-                    lock.notify()
+
+                    synchronized(lock) {
+                        lock.notify()
+                    }
                 }
             }
 
