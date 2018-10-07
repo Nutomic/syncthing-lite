@@ -97,19 +97,22 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                 val requestId = responseHandler.registerListener {
                     response ->
 
-                    // TODO: error handling (passing errors to the listener)
+                    try {
+                        synchronized(lock) {
+                            NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR, { "received error response, code = ${response.code}" })
+                            val data = response.data.toByteArray()
+                            val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
 
-                    synchronized(lock) {
-                        NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR, {"received error response, code = ${response.code}"})
-                        val data = response.data.toByteArray()
-                        val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
+                            if (hash != block.hash) {
+                                throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
+                            }
 
-                        if (hash != block.hash) {
-                            throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
+                            blocksByHash[hash] = data
+                            logger.debug("aquired block, hash = {}", hash)
+                            lock.notify()
                         }
-
-                        blocksByHash[hash] = data
-                        logger.debug("aquired block, hash = {}", hash)
+                    } catch (ex: Exception) {
+                        error.compareAndSet(null, ex)
                         lock.notify()
                     }
                 }
