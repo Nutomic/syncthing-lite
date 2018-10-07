@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -61,7 +62,8 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
     internal var clusterConfigInfo: ClusterConfigInfo? = null
         private set
     private val clusterConfigWaitingLock = Object()
-    private val blockPuller = BlockPuller(this, indexHandler)
+    private val responseHandler = ResponseHandler()
+    private val blockPuller = BlockPuller(this, indexHandler, responseHandler)
     private val blockPusher = BlockPusher(configuration.localDeviceId, this, indexHandler)
     private val onRequestMessageReceivedListeners = mutableSetOf<(Request) -> Unit>()
     private var isClosed = false
@@ -395,7 +397,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                                 onRequestMessageReceivedListeners.forEach { it(message.value as Request) }
                             }
                             BlockExchangeProtos.MessageType.RESPONSE -> {
-                                blockPuller.onResponseMessageReceived(message.value as Response)
+                                responseHandler.handleResponse(message.value as Response)
                             }
                             BlockExchangeProtos.MessageType.PING -> logger.debug("ping message received")
                             BlockExchangeProtos.MessageType.CLOSE -> {

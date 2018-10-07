@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -28,7 +29,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
 class BlockPuller internal constructor(private val connectionHandler: ConnectionHandler,
-                                       private val indexHandler: IndexHandler) {
+                                       private val indexHandler: IndexHandler,
+                                       private val responseHandler: ResponseHandler) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val blocksByHash = ConcurrentHashMap<String, ByteArray>()
@@ -93,7 +95,10 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
             missingHashes.addAll(hashList)
             for (block in fileBlocks.blocks) {
                 if (missingHashes.contains(block.hash)) {
-                    val requestId = Math.abs(Random().nextInt())
+                    val requestId = responseHandler.registerListener {
+                        onResponseMessageReceived(it)
+                    }
+
                     requestIds.add(requestId)
                     connectionHandler.sendMessage(Request.newBuilder()
                             .setId(requestId)
@@ -110,7 +115,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         }
     }
 
-    fun onResponseMessageReceived(response: BlockExchangeProtos.Response) {
+    private fun onResponseMessageReceived(response: BlockExchangeProtos.Response) {
         synchronized(lock) {
             if (!requestIds.contains(response.id)) {
                 return
