@@ -1,6 +1,8 @@
 package net.syncthing.lite.library
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import net.syncthing.java.bep.BlockPuller
 import net.syncthing.java.client.SyncthingClient
@@ -15,13 +17,19 @@ class DownloadFileTask(private val context: Context, syncthingClient: SyncthingC
                        private val onComplete: (File) -> Unit,
                        private val onError: () -> Unit) {
 
-    private val Tag = "DownloadFileTask"
+    companion object {
+        private const val TAG = "DownloadFileTask"
+        private val handler = Handler(Looper.getMainLooper())
+    }
+
     private var isCancelled = false
 
     init {
         syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
             val observer = blockPuller.pullFile(fileInfo)
-            onProgress(this, observer)
+
+            handler.post { onProgress(this, observer) }
+
             try {
                 while (!observer.isCompleted()) {
                     if (isCancelled)
@@ -29,18 +37,18 @@ class DownloadFileTask(private val context: Context, syncthingClient: SyncthingC
 
                     observer.waitForProgressUpdate()
                     Log.i("pullFile", "download progress = " + observer.progressMessage())
-                    onProgress(this, observer)
+                    handler.post { onProgress(this, observer) }
                 }
 
                 val outputFile = File("${context.externalCacheDir}/${fileInfo.folder}/${fileInfo.path}")
                 FileUtils.copyInputStreamToFile(observer.inputStream(), outputFile)
-                Log.i(Tag, "Downloaded file $fileInfo")
-                onComplete(outputFile)
+                Log.i(TAG, "Downloaded file $fileInfo")
+                handler.post { onComplete(outputFile) }
             } catch (e: IOException) {
-                onError()
-                Log.w(Tag, "Failed to download file $fileInfo", e)
+                handler.post { onError() }
+                Log.w(TAG, "Failed to download file $fileInfo", e)
             }
-        }, { onError() })
+        }, { handler.post { onError() } })
     }
 
     fun cancel() {
