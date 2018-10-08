@@ -50,6 +50,6 @@ class UploadFileTask(context: Context, syncthingClient: SyncthingClient,
     }
 
     fun cancel() {
-        handler.post { isCancelled = true }
+        isCancelled = true
     }
 }
