@@ -47,6 +47,8 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() }
 
         // TODO: keeping this in memory can cause problems with big files
+        // TODO: request multiple blocks at once and split them after they were received
+        // TODO: use a specific number of parallel requests
         val blocksByHash = Collections.synchronizedMap(HashMap<String, ByteArray>())
 
         val error = AtomicReference<Exception>()
