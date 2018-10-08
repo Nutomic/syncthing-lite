@@ -7,8 +7,6 @@ import android.content.Intent
 import android.support.v4.content.FileProvider
 import android.util.Log
 import android.webkit.MimeTypeMap
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
 import net.syncthing.java.bep.BlockPuller
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.FileInfo
@@ -47,35 +45,29 @@ class FileDownloadDialog(private val context: Context, private val syncthingClie
     }
 
     private fun onProgress(downloadFileTask: DownloadFileTask, fileDownloadObserver: BlockPuller.FileDownloadObserver) {
-        async(UI) {
-            progressDialog.isIndeterminate = false
-            progressDialog.max = (fileInfo.size as Long).toInt()
-            progressDialog.progress = (fileDownloadObserver.progress() * fileInfo.size!!).toInt()
-        }
+        progressDialog.isIndeterminate = false
+        progressDialog.max = (fileInfo.size as Long).toInt()
+        progressDialog.progress = (fileDownloadObserver.progress() * fileInfo.size!!).toInt()
     }
 
     private fun onComplete(file: File) {
-        async(UI) {
-            progressDialog.dismiss()
-            val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(file.name))
-            val intent = Intent(Intent.ACTION_VIEW)
-            val uri = FileProvider.getUriForFile(this@FileDownloadDialog.context, "net.syncthing.lite.fileprovider", file)
-            intent.setDataAndType(uri, mimeType)
-            intent.newTask()
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            try {
-                this@FileDownloadDialog.context.startActivity(intent)
-            } catch (e: ActivityNotFoundException) {
-                this@FileDownloadDialog.context.toast(R.string.toast_open_file_failed)
-                Log.w(Tag, "No handler found for file " + file.name, e)
-            }
+        progressDialog.dismiss()
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(file.name))
+        val intent = Intent(Intent.ACTION_VIEW)
+        val uri = FileProvider.getUriForFile(this@FileDownloadDialog.context, "net.syncthing.lite.fileprovider", file)
+        intent.setDataAndType(uri, mimeType)
+        intent.newTask()
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            this@FileDownloadDialog.context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            this@FileDownloadDialog.context.toast(R.string.toast_open_file_failed)
+            Log.w(Tag, "No handler found for file " + file.name, e)
         }
     }
 
     private fun onError() {
-        async(UI) {
-            progressDialog.cancel()
-            this@FileDownloadDialog.context.toast(R.string.toast_file_download_failed)
-        }
+        progressDialog.cancel()
+        this@FileDownloadDialog.context.toast(R.string.toast_file_download_failed)
     }
 }
