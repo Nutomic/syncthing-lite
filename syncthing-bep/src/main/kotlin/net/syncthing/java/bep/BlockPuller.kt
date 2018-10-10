@@ -29,6 +29,7 @@ import org.apache.commons.io.FileUtils
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.*
+import java.lang.Exception
 import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.HashMap
@@ -63,66 +64,76 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() }
 
         val blockTempIdByHash = Collections.synchronizedMap(HashMap<String, String>())
-        var receivedData = 0L
 
-        val reportProgressLock = Object()
+        try {
+            var receivedData = 0L
+            val reportProgressLock = Object()
 
-        fun updateProgress(newReceivedDataSize: Long) {
-            synchronized(reportProgressLock) {
-                receivedData += newReceivedDataSize
+            fun updateProgress(newReceivedDataSize: Long) {
+                synchronized(reportProgressLock) {
+                    receivedData += newReceivedDataSize
 
-                val progress = totalTransferSize / receivedData.toDouble()
-                val progressMessage = (Math.round(progress * 1000.0) / 10.0).toString() + "% " +
-                        FileUtils.byteCountToDisplaySize(receivedData) + " / " + FileUtils.byteCountToDisplaySize(totalTransferSize)
+                    val progress = totalTransferSize / receivedData.toDouble()
+                    val progressMessage = (Math.round(progress * 1000.0) / 10.0).toString() + "% " +
+                            FileUtils.byteCountToDisplaySize(receivedData) + " / " + FileUtils.byteCountToDisplaySize(totalTransferSize)
 
-                progressListener(progress, progressMessage)
-            }
-        }
-
-        coroutineScope {
-            val pipe = Channel<BlockInfo>()
-
-            repeat(4 /* 4 blocks per time */) {
-                workerNumber ->
-
-                async {
-                    for (block in pipe) {
-                        logger.debug("request block with hash = {} from worker {}", block.hash, workerNumber)
-
-                        val blockContent = pullBlock(fileBlocks, block, 1000 * 15 /* 15 seconds timeout per block */)
-
-                        if (!isActive) {
-                            return@async
-                        }
-
-                        blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
-
-                        updateProgress(blockContent.size.toLong())
-                    }
+                    progressListener(progress, progressMessage)
                 }
             }
 
-            fileBlocks.blocks.distinctBy { it.hash }.forEach {
-                block -> pipe.send(block)
+            coroutineScope {
+                val pipe = Channel<BlockInfo>()
+
+                repeat(4 /* 4 blocks per time */) { workerNumber ->
+                    async {
+                        for (block in pipe) {
+                            logger.debug("request block with hash = {} from worker {}", block.hash, workerNumber)
+
+                            val blockContent = pullBlock(fileBlocks, block, 1000 * 15 /* 15 seconds timeout per block */)
+
+                            if (!isActive) {
+                                return@async
+                            }
+
+                            blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
+
+                            updateProgress(blockContent.size.toLong())
+                        }
+                    }
+                }
+
+                fileBlocks.blocks.distinctBy { it.hash }.forEach { block ->
+                    pipe.send(block)
+                }
+
+                pipe.close()
             }
 
-            pipe.close()
+            // the sequence is evaluated lazy -> only one block per time is loaded
+            val fileBlocksIterator = fileBlocks.blocks
+                    .asSequence()
+                    .map { tempRepository.popTempData(blockTempIdByHash[it.hash]!!) }
+                    .map { ByteArrayInputStream(it) }
+                    .iterator()
+
+            return object : SequenceInputStream(object : Enumeration<InputStream> {
+                override fun hasMoreElements() = fileBlocksIterator.hasNext()
+                override fun nextElement() = fileBlocksIterator.next()
+            }) {
+                override fun close() {
+                    super.close()
+
+                    // delete all temp blocks now
+                    // they are deleted after reading, but the consumer could stop before reading the whole stream
+                    tempRepository.deleteTempData(blockTempIdByHash.values.toList())
+                }
+            }
+        } catch (ex: Exception) {
+            // delete all temp blocks now
+            tempRepository.deleteTempData(blockTempIdByHash.values.toList())
+
+            throw ex
         }
-
-        // TODO: clean up after stream close
-        // TODO: clean up at error
-
-        // the sequence is evaluated lazy -> only one block per time is loaded
-        val fileBlocksIterator = fileBlocks.blocks
-                .asSequence()
-                .map { tempRepository.popTempData(blockTempIdByHash[it.hash]!!) }
-                .map { ByteArrayInputStream(it) }
-                .iterator()
-
-        return SequenceInputStream(object: Enumeration<InputStream> {
-            override fun hasMoreElements() = fileBlocksIterator.hasNext()
-            override fun nextElement() = fileBlocksIterator.next()
-        })
     }
 
     private suspend fun pullBlock(fileBlocks: FileBlocks, block: BlockInfo, timeoutInMillis: Long): ByteArray {
