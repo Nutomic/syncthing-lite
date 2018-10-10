@@ -95,8 +95,7 @@ class Main(private val commandLine: CommandLine) {
                 val fileInfo = FileInfo(folder = folder, path = path, type = FileInfo.FileType.FILE)
                 syncthingClient.getBlockPuller(folder, { blockPuller ->
                     try {
-                        val observer = blockPuller.pullFile(fileInfo)
-                        val inputStream = observer.waitForComplete().inputStream()
+                        val inputStream = blockPuller.pullFileSync(fileInfo)
                         val fileName = syncthingClient.indexHandler.getFileInfoByPath(folder, path)!!.fileName
                         val file  =
                                 if (commandLine.hasOption("o")) {

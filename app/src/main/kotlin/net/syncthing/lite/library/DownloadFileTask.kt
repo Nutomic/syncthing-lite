@@ -2,8 +2,9 @@ package net.syncthing.lite.library
 
 import android.os.Handler
 import android.os.Looper
+import android.support.v4.os.CancellationSignal
 import android.util.Log
-import net.syncthing.java.bep.BlockPuller
+import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.BuildConfig
@@ -14,7 +15,7 @@ import java.io.IOException
 class DownloadFileTask(private val externalCacheDir: File,
                        syncthingClient: SyncthingClient,
                        private val fileInfo: FileInfo,
-                       private val onProgress: (DownloadFileTask, BlockPuller.FileDownloadObserver) -> Unit,
+                       private val onProgress: (progress: Double, progressMessage: String) -> Unit,
                        private val onComplete: (File) -> Unit,
                        private val onError: () -> Unit) {
 
@@ -23,53 +24,48 @@ class DownloadFileTask(private val externalCacheDir: File,
         private val handler = Handler(Looper.getMainLooper())
     }
 
-    private var isCancelled = false
+    private val cancellationSignal = CancellationSignal()
     private var doneListenerCalled = false
 
     init {
         syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
-            val observer = blockPuller.pullFile(fileInfo)
+            val job = launch {
+                try {
+                    val inputStream = blockPuller.pullFileCoroutine(
+                            fileInfo
+                    ) { progress, progressMessage -> callProgress(progress, progressMessage) }
 
-            callProgress(observer)
-
-            try {
-                while (!observer.isCompleted()) {
-                    if (isCancelled) {
-                        callError()
-                        return@getBlockPuller
-                    }
-
-                    observer.waitForProgressUpdate()
+                    val outputFile = File("$externalCacheDir/${fileInfo.folder}/${fileInfo.path}")
+                    FileUtils.copyInputStreamToFile(inputStream, outputFile)
 
                     if (BuildConfig.DEBUG) {
-                        Log.i("pullFile", "download progress = " + observer.progressMessage())
+                        Log.i(TAG, "Downloaded file $fileInfo")
                     }
 
-                    callProgress(observer)
+                    callComplete(outputFile)
+                } catch (e: IOException) {
+                    callError()
+
+                    if (BuildConfig.DEBUG) {
+                        Log.w(TAG, "Failed to download file $fileInfo", e)
+                    }
                 }
+            }
 
-                val outputFile = File("$externalCacheDir/${fileInfo.folder}/${fileInfo.path}")
-                FileUtils.copyInputStreamToFile(observer.inputStream(), outputFile)
-
-                if (BuildConfig.DEBUG) {
-                    Log.i(TAG, "Downloaded file $fileInfo")
-                }
-
-                callComplete(outputFile)
-            } catch (e: IOException) {
-                callError()
-
-                if (BuildConfig.DEBUG) {
-                    Log.w(TAG, "Failed to download file $fileInfo", e)
-                }
+            cancellationSignal.setOnCancelListener {
+                job.cancel()
             }
         }, { callError() })
     }
 
-    private fun callProgress(observer: BlockPuller.FileDownloadObserver) {
+    private fun callProgress(progress: Double, progressMessage: String) {
         handler.post {
             if (!doneListenerCalled) {
-                onProgress(this, observer)
+                if (BuildConfig.DEBUG) {
+                    Log.i("pullFile", "download progress = $progressMessage")
+                }
+
+                onProgress(progress, progressMessage)
             }
         }
     }
@@ -95,7 +91,7 @@ class DownloadFileTask(private val externalCacheDir: File,
     }
 
     fun cancel() {
-        isCancelled = true
+        cancellationSignal.cancel()
         callError()
     }
 }
