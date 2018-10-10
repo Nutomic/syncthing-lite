@@ -137,14 +137,22 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
 
         val response =
                 withTimeout(timeoutInMillis) {
-                    doRequest(
-                            Request.newBuilder()
-                                    .setFolder(fileBlocks.folder)
-                                    .setName(fileBlocks.path)
-                                    .setOffset(block.offset)
-                                    .setSize(block.size)
-                                    .setHash(ByteString.copyFrom(Hex.decode(block.hash)))
-                    )
+                    try {
+                        doRequest(
+                                Request.newBuilder()
+                                        .setFolder(fileBlocks.folder)
+                                        .setName(fileBlocks.path)
+                                        .setOffset(block.offset)
+                                        .setSize(block.size)
+                                        .setHash(ByteString.copyFrom(Hex.decode(block.hash)))
+                        )
+                    } catch (ex: TimeoutCancellationException) {
+                        // It seems like the TimeoutCancellationException
+                        // is handled differently so that the timeout is ignored.
+                        // Due to that, it's converted to an IOException.
+
+                        throw IOException("timeout during requesting block")
+                    }
                 }
 
         NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR) {
