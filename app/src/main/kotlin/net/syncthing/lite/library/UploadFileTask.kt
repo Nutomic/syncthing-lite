@@ -2,6 +2,8 @@ package net.syncthing.lite.library
 
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import net.syncthing.java.bep.BlockPusher
 import net.syncthing.java.client.SyncthingClient
@@ -17,7 +19,10 @@ class UploadFileTask(context: Context, syncthingClient: SyncthingClient,
                      private val onComplete: () -> Unit,
                      private val onError: () -> Unit) {
 
-    private val TAG = "UploadFileTask"
+    companion object {
+        private const val TAG = "UploadFileTask"
+        private val handler = Handler(Looper.getMainLooper())
+    }
 
     private val syncthingPath = PathUtils.buildPath(syncthingSubFolder, Util.getContentFileName(context, localFile))
     private val uploadStream = context.contentResolver.openInputStream(localFile)
@@ -28,18 +33,20 @@ class UploadFileTask(context: Context, syncthingClient: SyncthingClient,
         Log.i(TAG, "Uploading file $localFile to folder $syncthingFolder:$syncthingPath")
         syncthingClient.getBlockPusher(syncthingFolder, { blockPusher ->
             val observer = blockPusher.pushFile(uploadStream, syncthingFolder, syncthingPath)
-            onProgress(observer)
-                while (!observer.isCompleted()) {
-                    if (isCancelled)
-                        return@getBlockPusher
 
-                    observer.waitForProgressUpdate()
-                    Log.i(TAG, "upload progress = ${observer.progressPercentage()}%")
-                    onProgress(observer)
-                }
-                IOUtils.closeQuietly(uploadStream)
-                onComplete()
-        }, { onError() })
+            handler.post { onProgress(observer) }
+
+            while (!observer.isCompleted()) {
+                if (isCancelled)
+                    return@getBlockPusher
+
+                observer.waitForProgressUpdate()
+                Log.i(TAG, "upload progress = ${observer.progressPercentage()}%")
+                handler.post { onProgress(observer) }
+            }
+            IOUtils.closeQuietly(uploadStream)
+            handler.post { onComplete() }
+        }, { handler.post { onError() } })
     }
 
     fun cancel() {

@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,7 +14,8 @@
  */
 package net.syncthing.java.discovery.protocol
 
-import com.google.gson.Gson
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
@@ -28,9 +30,11 @@ import org.apache.http.util.EntityUtils
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
+import java.io.StringReader
 import java.security.KeyManagementException
 import java.security.KeyStoreException
 import java.security.NoSuchAlgorithmException
+import java.util.*
 
 internal class GlobalDiscoveryHandler(private val configuration: Configuration) : Closeable {
 
@@ -71,8 +75,14 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
                         return@execute emptyList()
                     }
                     HttpStatus.SC_OK -> {
-                        val announcementMessage = Gson().fromJson(EntityUtils.toString(response.entity), AnnouncementMessage::class.java)
-                        return@execute (announcementMessage?.addresses ?: emptyList())
+                        val announcementMessage = AnnouncementMessage.parse(
+                                JsonReader(
+                                        StringReader(
+                                                EntityUtils.toString(response.entity)
+                                        )
+                                )
+                        )
+                        return@execute (announcementMessage.addresses)
                                 .map { DeviceAddress(deviceId.deviceId, it) }
                     }
                     else -> {
@@ -91,5 +101,38 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
 
     override fun close() {}
 
-    private data class AnnouncementMessage(val addresses: List<String>)
+    private data class AnnouncementMessage(val addresses: List<String>) {
+        companion object {
+            private const val ADDRESSES = "addresses"
+
+            fun parse(reader: JsonReader): AnnouncementMessage {
+                var addresses = listOf<String>()
+
+                reader.beginObject()
+                while (reader.hasNext()) {
+                    when (reader.nextName()) {
+                        ADDRESSES -> {
+                            val newAddresses = ArrayList<String>()
+
+                            if (reader.peek() == JsonToken.NULL) {
+                                reader.skipValue()
+                            } else {
+                                reader.beginArray()
+                                while (reader.hasNext()) {
+                                    newAddresses.add(reader.nextString())
+                                }
+                                reader.endArray()
+                            }
+
+                            addresses = Collections.unmodifiableList(newAddresses)
+                        }
+                        else -> reader.skipValue()
+                    }
+                }
+                reader.endObject()
+
+                return AnnouncementMessage(addresses)
+            }
+        }
+    }
 }

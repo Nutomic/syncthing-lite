@@ -19,16 +19,6 @@
 # ensure that stack traces make sense
 -keepattributes SourceFile,LineNumberTable
 
-# ensure that the config can be read
--keep class net.syncthing.java.core.configuration.** { *; }
--keep class net.syncthing.java.core.beans.DeviceInfo { *; }
--keep class net.syncthing.java.core.beans.FolderInfo { *; }
--keep class net.syncthing.java.core.beans.DeviceId { *; }
-
--keepattributes Signature
--keepattributes *Annotation*
--keep class sun.misc.Unsafe { *; }
-
 # this library uses factories with reflection
 -keep class net.jpountz.lz4.** { *; }
 

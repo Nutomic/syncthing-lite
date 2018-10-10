@@ -11,12 +11,13 @@ import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.utils.PathUtils
+import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.R
 import net.syncthing.lite.adapters.FolderContentsAdapter
 import net.syncthing.lite.adapters.FolderContentsListener
 import net.syncthing.lite.databinding.ActivityFolderBrowserBinding
-import net.syncthing.lite.dialogs.FileDownloadDialog
 import net.syncthing.lite.dialogs.FileUploadDialog
+import net.syncthing.lite.dialogs.downloadfile.DownloadFileDialogFragment
 import org.jetbrains.anko.custom.async
 
 class FolderBrowserActivity : SyncthingActivity() {
@@ -94,13 +95,11 @@ class FolderBrowserActivity : SyncthingActivity() {
                 Log.d(TAG, "load folder cache bg")
                 binding.isLoading = true
             } else {
-                Log.i(TAG, "pulling file = " + fileInfo)
-                libraryHandler?.syncthingClient {
-                    // FIXME: it would be better if the dialog would use the library handler
-                    async(UI) {
-                        FileDownloadDialog(this@FolderBrowserActivity, it, fileInfo).show()
-                    }
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "pulling file = " + fileInfo)
                 }
+
+                DownloadFileDialogFragment.newInstance(fileInfo).show(supportFragmentManager)
             }
         }
     }

@@ -41,25 +41,19 @@ class FileUploadDialog(private val context: Context, private val syncthingClient
     }
 
     private fun onProgress(observer: BlockPusher.FileUploadObserver) {
-        async(UI) {
-            progressDialog.isIndeterminate = false
-            progressDialog.progress = observer.progressPercentage()
-            progressDialog.max = 100
-        }
+        progressDialog.isIndeterminate = false
+        progressDialog.progress = observer.progressPercentage()
+        progressDialog.max = 100
     }
 
     private fun onComplete() {
-        async(UI) {
-            progressDialog.dismiss()
-            this@FileUploadDialog.context.toast(R.string.toast_upload_complete)
-            onUploadCompleteListener()
-        }
+        progressDialog.dismiss()
+        this@FileUploadDialog.context.toast(R.string.toast_upload_complete)
+        onUploadCompleteListener()
     }
 
     private fun onError() {
-        async(UI) {
-            progressDialog.dismiss()
-            this@FileUploadDialog.context.toast(R.string.toast_file_upload_failed)
-        }
+        progressDialog.dismiss()
+        this@FileUploadDialog.context.toast(R.string.toast_file_upload_failed)
     }
 }

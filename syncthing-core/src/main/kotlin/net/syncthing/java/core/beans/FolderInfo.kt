@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,7 +14,35 @@
  */
 package net.syncthing.java.core.beans
 
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
+
 open class FolderInfo(val folderId: String, label: String? = null) {
+    companion object {
+        private const val FOLDER_ID = "folderId"
+        private const val LABEL = "label"
+
+        fun parse(reader: JsonReader): FolderInfo {
+            var folderId: String? = null
+            var label: String? = null
+
+            reader.beginObject()
+            while (reader.hasNext()) {
+                when (reader.nextName()) {
+                    FOLDER_ID -> folderId = reader.nextString()
+                    LABEL -> label = reader.nextString()
+                    else -> reader.skipValue()
+                }
+            }
+            reader.endObject()
+
+            return FolderInfo(
+                    folderId = folderId!!,
+                    label = label!!
+            )
+        }
+    }
+
     val label: String
 
     init {
@@ -23,6 +52,15 @@ open class FolderInfo(val folderId: String, label: String? = null) {
 
     override fun toString(): String {
         return "FolderInfo(folderId=$folderId, label=$label)"
+    }
+
+    fun serialize(writer: JsonWriter) {
+        writer.beginObject()
+
+        writer.name(FOLDER_ID).value(folderId)
+        writer.name(LABEL).value(label)
+
+        writer.endObject()
     }
 
 }
