@@ -17,26 +17,26 @@ package net.syncthing.java.bep
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.ClosedReceiveChannelException
 import net.syncthing.java.bep.BlockExchangeProtos.ErrorCode
 import net.syncthing.java.bep.BlockExchangeProtos.Request
 import net.syncthing.java.bep.utils.longSumBy
 import net.syncthing.java.core.beans.BlockInfo
 import net.syncthing.java.core.beans.FileBlocks
 import net.syncthing.java.core.beans.FileInfo
+import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.io.FileUtils
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.*
-import java.lang.Exception
 import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.HashMap
 
 class BlockPuller internal constructor(private val connectionHandler: ConnectionHandler,
                                        private val indexHandler: IndexHandler,
-                                       private val responseHandler: ResponseHandler) {
+                                       private val responseHandler: ResponseHandler,
+                                       private val tempRepository: TempRepository) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -62,12 +62,15 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
 
         val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() }
 
-        // TODO: keeping this in memory can cause problems with big files
-        val blocksByHash = Collections.synchronizedMap(HashMap<String, ByteArray>())
+        val blockTempIdByHash = Collections.synchronizedMap(HashMap<String, String>())
+        var receivedData = 0L
 
-        fun updateProgress() {
-            synchronized(blocksByHash) {
-                val receivedData = blocksByHash.values.longSumBy { it.size.toLong() }
+        val reportProgressLock = Object()
+
+        fun updateProgress(newReceivedDataSize: Long) {
+            synchronized(reportProgressLock) {
+                receivedData += newReceivedDataSize
+
                 val progress = totalTransferSize / receivedData.toDouble()
                 val progressMessage = (Math.round(progress * 1000.0) / 10.0).toString() + "% " +
                         FileUtils.byteCountToDisplaySize(receivedData) + " / " + FileUtils.byteCountToDisplaySize(totalTransferSize)
@@ -86,9 +89,15 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                     for (block in pipe) {
                         logger.debug("request block with hash = {} from worker {}", block.hash, workerNumber)
 
-                        blocksByHash[block.hash] = pullBlock(fileBlocks, block, 1000 * 15 /* 15 seconds timeout per block */)
+                        val blockContent = pullBlock(fileBlocks, block, 1000 * 15 /* 15 seconds timeout per block */)
 
-                        updateProgress()
+                        if (!isActive) {
+                            return@async
+                        }
+
+                        blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
+
+                        updateProgress(blockContent.size.toLong())
                     }
                 }
             }
@@ -100,7 +109,8 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
             pipe.close()
         }
 
-        val blockList = fileBlocks.blocks.map { blocksByHash[it.hash] }.toList()
+        // TODO: this loads the whole file into the memory
+        val blockList = fileBlocks.blocks.map { tempRepository.popTempData(blockTempIdByHash[it.hash]!!) }.toList()
 
         // TODO: clean up after stream close
         // TODO: clean up at error

@@ -104,11 +104,19 @@ class SyncthingProvider : DocumentsProvider() {
         val latch = CountDownLatch(1)
         var outputFile: File? = null
         libraryHandler.syncthingClient { syncthingClient ->
-            DownloadFileTask(context.externalCacheDir, syncthingClient, fileInfo,
-                    { t, _ -> if (signal?.isCanceled == true) t.cancel() }, {
-                outputFile = it
-                latch.countDown()
-            }, {})
+            val task = DownloadFileTask(context.externalCacheDir, syncthingClient, fileInfo,
+                    { _, _ -> /* ignore progress */ },
+                    {
+                        outputFile = it
+                        latch.countDown()
+                    }, {
+                // FIXME: ignores exception
+            }
+            )
+
+            signal?.setOnCancelListener {
+                task.cancel()
+            }
         }
         latch.await()
         return ParcelFileDescriptor.open(outputFile, ParcelFileDescriptor.MODE_READ_ONLY)

@@ -78,7 +78,7 @@ class SyncthingClient(
     private fun openConnection(deviceAddress: DeviceAddress): ConnectionHandler {
         logger.debug("Connecting to ${deviceAddress.deviceId}, active connections: ${connections.map { it.deviceId().deviceId }}")
         val connectionHandler = ConnectionHandler(
-                configuration, deviceAddress, indexHandler, { connectionHandler, _ ->
+                configuration, deviceAddress, indexHandler, tempRepository, { connectionHandler, _ ->
                     connectionHandler.close()
                     openConnection(deviceAddress)
                 },

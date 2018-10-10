@@ -24,6 +24,7 @@ import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.security.KeystoreHandler
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.submitLogging
@@ -46,6 +47,7 @@ import javax.net.ssl.SSLSocket
 
 class ConnectionHandler(private val configuration: Configuration, val address: DeviceAddress,
                         private val indexHandler: IndexHandler,
+                        private val tempRepository: TempRepository,
                         private val onNewFolderSharedListener: (ConnectionHandler, FolderInfo) -> Unit,
                         private val onConnectionChangedListener: (ConnectionHandler) -> Unit) : Closeable {
 
@@ -63,7 +65,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
         private set
     private val clusterConfigWaitingLock = Object()
     private val responseHandler = ResponseHandler()
-    private val blockPuller = BlockPuller(this, indexHandler, responseHandler)
+    private val blockPuller = BlockPuller(this, indexHandler, responseHandler, tempRepository)
     private val blockPusher = BlockPusher(configuration.localDeviceId, this, indexHandler)
     private val onRequestMessageReceivedListeners = mutableSetOf<(Request) -> Unit>()
     private var isClosed = false
