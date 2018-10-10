@@ -636,6 +636,20 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
         }
     }
 
+    @Throws(SQLException::class)
+    override fun deleteTempData(keys: List<String>) {
+        getConnection().use { connection ->
+            connection.prepareStatement("DELETE FROM temporary_data WHERE record_key = ?").use { statement ->
+                keys.forEach {
+                    key ->
+
+                    statement.setString(1, key)
+                    statement.executeUpdate()
+                }
+            }
+        }
+    }
+
     //SEQUENCER
     private inner class IndexRepoSequencer : Sequencer {
 

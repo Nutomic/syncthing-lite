@@ -20,4 +20,6 @@ interface TempRepository: Closeable {
     fun pushTempData(data: ByteArray): String
 
     fun popTempData(key: String): ByteArray
+
+    fun deleteTempData(keys: List<String>)
 }

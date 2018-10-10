@@ -52,6 +52,12 @@ class TempDirectoryLocalRepository(private val directory: File): TempRepository 
         return buffer
     }
 
+    override fun deleteTempData(keys: List<String>) {
+        keys.forEach {
+            key -> File(directory, key).delete()
+        }
+    }
+
     override fun close() {
         deleteAllData()
     }
