@@ -109,12 +109,20 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
             pipe.close()
         }
 
-        // TODO: this loads the whole file into the memory
-        val blockList = fileBlocks.blocks.map { tempRepository.popTempData(blockTempIdByHash[it.hash]!!) }.toList()
-
         // TODO: clean up after stream close
         // TODO: clean up at error
-        return SequenceInputStream(Collections.enumeration(blockList.map {ByteArrayInputStream(it) }))
+
+        // the sequence is evaluated lazy -> only one block per time is loaded
+        val fileBlocksIterator = fileBlocks.blocks
+                .asSequence()
+                .map { tempRepository.popTempData(blockTempIdByHash[it.hash]!!) }
+                .map { ByteArrayInputStream(it) }
+                .iterator()
+
+        return SequenceInputStream(object: Enumeration<InputStream> {
+            override fun hasMoreElements() = fileBlocksIterator.hasNext()
+            override fun nextElement() = fileBlocksIterator.next()
+        })
     }
 
     private suspend fun pullBlock(fileBlocks: FileBlocks, block: BlockInfo, timeoutInMillis: Long): ByteArray {
