@@ -73,7 +73,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                 synchronized(reportProgressLock) {
                     receivedData += newReceivedDataSize
 
-                    val progress = totalTransferSize / receivedData.toDouble()
+                    val progress = receivedData / totalTransferSize.toDouble()
                     val progressMessage = (Math.round(progress * 1000.0) / 10.0).toString() + "% " +
                             FileUtils.byteCountToDisplaySize(receivedData) + " / " + FileUtils.byteCountToDisplaySize(totalTransferSize)
 
