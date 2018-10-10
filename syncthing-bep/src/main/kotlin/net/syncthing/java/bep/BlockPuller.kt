@@ -91,10 +91,6 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
 
                             val blockContent = pullBlock(fileBlocks, block, 1000 * 15 /* 15 seconds timeout per block */)
 
-                            if (!isActive) {
-                                return@async
-                            }
-
                             blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
 
                             updateProgress(blockContent.size.toLong())

@@ -10,7 +10,6 @@ import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.BuildConfig
 import org.apache.commons.io.FileUtils
 import java.io.File
-import java.io.IOException
 
 class DownloadFileTask(private val externalCacheDir: File,
                        syncthingClient: SyncthingClient,
@@ -28,34 +27,36 @@ class DownloadFileTask(private val externalCacheDir: File,
     private var doneListenerCalled = false
 
     init {
-        syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
-            val job = launch {
-                try {
-                    val inputStream = blockPuller.pullFileCoroutine(
-                            fileInfo
-                    ) { progress, progressMessage -> callProgress(progress, progressMessage) }
+        launch {
+            syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
+                val job = launch {
+                    try {
+                        val inputStream = blockPuller.pullFileCoroutine(
+                                fileInfo
+                        ) { progress, progressMessage -> callProgress(progress, progressMessage) }
 
-                    val outputFile = File("$externalCacheDir/${fileInfo.folder}/${fileInfo.path}")
-                    FileUtils.copyInputStreamToFile(inputStream, outputFile)
+                        val outputFile = File("$externalCacheDir/${fileInfo.folder}/${fileInfo.path}")
+                        FileUtils.copyInputStreamToFile(inputStream, outputFile)
 
-                    if (BuildConfig.DEBUG) {
-                        Log.i(TAG, "Downloaded file $fileInfo")
-                    }
+                        if (BuildConfig.DEBUG) {
+                            Log.i(TAG, "Downloaded file $fileInfo")
+                        }
 
-                    callComplete(outputFile)
-                } catch (e: IOException) {
-                    callError()
+                        callComplete(outputFile)
+                    } catch (e: Exception) {
+                        callError()
 
-                    if (BuildConfig.DEBUG) {
-                        Log.w(TAG, "Failed to download file $fileInfo", e)
+                        if (BuildConfig.DEBUG) {
+                            Log.w(TAG, "Failed to download file $fileInfo", e)
+                        }
                     }
                 }
-            }
 
-            cancellationSignal.setOnCancelListener {
-                job.cancel()
-            }
-        }, { callError() })
+                cancellationSignal.setOnCancelListener {
+                    job.cancel()
+                }
+            }, { callError() })
+        }
     }
 
     private fun callProgress(progress: Double, progressMessage: String) {
