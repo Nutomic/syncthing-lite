@@ -94,8 +94,8 @@ class SyncthingProvider : DocumentsProvider() {
     override fun openDocument(documentId: String, mode: String, signal: CancellationSignal?):
             ParcelFileDescriptor {
         Log.d(Tag, "openDocument($documentId, $mode, $signal)")
-        val fileInfo = FileInfo(folder = getFolderIdForDocId(documentId),
-                path = getPathForDocId(documentId), type = FileInfo.FileType.FILE)
+        val fileInfo = getIndexBrowser(getFolderIdForDocId(documentId))
+                .getFileInfoByAbsolutePath(getPathForDocId(documentId))
         val accessMode = ParcelFileDescriptor.parseMode(mode)
         if (accessMode != ParcelFileDescriptor.MODE_READ_ONLY) {
             throw NotImplementedError()
