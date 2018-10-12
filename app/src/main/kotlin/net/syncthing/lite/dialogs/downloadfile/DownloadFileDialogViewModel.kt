@@ -42,7 +42,7 @@ class DownloadFileDialogViewModel : ViewModel() {
                 )!!
 
                 val task = DownloadFileTask(
-                        externalCacheDir = externalCacheDir,
+                        fileStorageDirectory = externalCacheDir,
                         syncthingClient = syncthingClient,
                         fileInfo = fileInfo,
                         onProgress = { progress, _ ->

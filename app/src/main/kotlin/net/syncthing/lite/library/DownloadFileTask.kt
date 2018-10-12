@@ -10,8 +10,9 @@ import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.BuildConfig
 import org.apache.commons.io.FileUtils
 import java.io.File
+import java.io.IOException
 
-class DownloadFileTask(private val externalCacheDir: File,
+class DownloadFileTask(private val fileStorageDirectory: File,
                        syncthingClient: SyncthingClient,
                        private val fileInfo: FileInfo,
                        private val onProgress: (progress: Double, progressMessage: String) -> Unit,
@@ -27,22 +28,43 @@ class DownloadFileTask(private val externalCacheDir: File,
     private var doneListenerCalled = false
 
     init {
+        val file = DownloadFilePath(fileStorageDirectory, fileInfo.hash!!)
+
         launch {
+            if (file.targetFile.exists()) {
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "there is already a file")
+                }
+
+                callComplete(file.targetFile)
+            }
+
             syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
                 val job = launch {
                     try {
+                        if (!file.filesDirectory.isDirectory) {
+                            if (!file.filesDirectory.mkdirs()) {
+                                throw IOException("could not create output directory")
+                            }
+                        }
+
+                        // download the file to a temp location
                         val inputStream = blockPuller.pullFileCoroutine(
                                 fileInfo
                         ) { progress, progressMessage -> callProgress(progress, progressMessage) }
 
-                        val outputFile = File("$externalCacheDir/${fileInfo.folder}/${fileInfo.path}")
-                        FileUtils.copyInputStreamToFile(inputStream, outputFile)
+                        try {
+                            FileUtils.copyInputStreamToFile(inputStream, file.tempFile)
+                            file.tempFile.renameTo(file.targetFile)
+                        } finally {
+                            file.tempFile.delete()
+                        }
 
                         if (BuildConfig.DEBUG) {
                             Log.i(TAG, "Downloaded file $fileInfo")
                         }
 
-                        callComplete(outputFile)
+                        callComplete(file.targetFile)
                     } catch (e: Exception) {
                         callError()
 

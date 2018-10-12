@@ -78,7 +78,7 @@ class DownloadFileDialogFragment : DialogFragment() {
                                 Intent(Intent.ACTION_VIEW)
                                         .setDataAndType(
                                                 FileProvider.getUriForFile(context!!, "net.syncthing.lite.fileprovider", status.file),
-                                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(status.file.name))
+                                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(fileSpec.fileName))
                                         )
                                         .newTask()
                                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
