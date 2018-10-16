@@ -8,12 +8,13 @@ import android.provider.DocumentsContract.Document
 import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
 import android.util.Log
+import kotlinx.coroutines.experimental.cancel
+import kotlinx.coroutines.experimental.runBlocking
 import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.lite.R
-import java.io.File
 import java.io.FileNotFoundException
 import java.net.URLConnection
 import java.util.concurrent.CountDownLatch
@@ -45,6 +46,7 @@ class SyncthingProvider : DocumentsProvider() {
 
     // this instance is not started -> it connects and disconnects on demand
     private val libraryHandler: LibraryHandler by lazy { LibraryHandler(context) }
+    private val libraryManager: LibraryManager by lazy { DefaultLibraryManager.with(context) }
 
     override fun queryRoots(projection: Array<String>?): Cursor {
         Log.d(Tag, "queryRoots($projection)")
@@ -101,24 +103,25 @@ class SyncthingProvider : DocumentsProvider() {
             throw NotImplementedError()
         }
 
-        val latch = CountDownLatch(1)
-        var outputFile: File? = null
-        libraryHandler.syncthingClient { syncthingClient ->
-            val task = DownloadFileTask(context.externalCacheDir, syncthingClient, fileInfo,
-                    { _, _ -> /* ignore progress */ },
-                    {
-                        outputFile = it
-                        latch.countDown()
-                    }, {
-                // FIXME: ignores exception
-            }
-            )
-
+        val outputFile = runBlocking {
             signal?.setOnCancelListener {
-                task.cancel()
+                this.coroutineContext.cancel()
+            }
+
+            val libraryInstance = libraryManager.startLibraryUsageCoroutine()
+
+            try {
+                DownloadFileTask.downloadFileCoroutine(
+                        externalCacheDir = context.externalCacheDir,
+                        syncthingClient = libraryInstance.syncthingClient,
+                        fileInfo = fileInfo,
+                        onProgress = { /* ignore the progress */ }
+                )
+            } finally {
+                libraryManager.stopLibraryUsage()
             }
         }
-        latch.await()
+
         return ParcelFileDescriptor.open(outputFile, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
@@ -128,7 +131,7 @@ class SyncthingProvider : DocumentsProvider() {
         row.add(Document.COLUMN_DISPLAY_NAME, fileInfo.fileName)
         row.add(Document.COLUMN_SIZE, fileInfo.size)
         val mime = if (fileInfo.isDirectory()) Document.MIME_TYPE_DIR
-                   else URLConnection.guessContentTypeFromName(fileInfo.fileName)
+        else URLConnection.guessContentTypeFromName(fileInfo.fileName)
         row.add(Document.COLUMN_MIME_TYPE, mime)
         row.add(Document.COLUMN_LAST_MODIFIED, fileInfo.lastModified)
         row.add(Document.COLUMN_FLAGS, 0)

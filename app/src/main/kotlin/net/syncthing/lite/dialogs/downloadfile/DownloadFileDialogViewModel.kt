@@ -45,8 +45,8 @@ class DownloadFileDialogViewModel : ViewModel() {
                         fileStorageDirectory = externalCacheDir,
                         syncthingClient = syncthingClient,
                         fileInfo = fileInfo,
-                        onProgress = { progress, _ ->
-                            val newProgress = (progress * DownloadFileStatusRunning.MAX_PROGRESS).toInt()
+                        onProgress = { status ->
+                            val newProgress = (status.downloadedBytes * DownloadFileStatusRunning.MAX_PROGRESS / status.totalTransferSize).toInt()
                             val currentStatus = statusInternal.value
 
                             // only update if it changed

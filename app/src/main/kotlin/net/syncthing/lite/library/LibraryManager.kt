@@ -3,6 +3,7 @@ package net.syncthing.lite.library
 import android.os.Handler
 import android.os.Looper
 import java.util.concurrent.Executors
+import kotlin.coroutines.experimental.suspendCoroutine
 
 /**
  * This class manages the access to an LibraryInstance
@@ -47,6 +48,14 @@ class LibraryManager (
             }
 
             handler.post { callback(instance!!) }
+        }
+    }
+
+    suspend fun startLibraryUsageCoroutine(): LibraryInstance {
+        return suspendCoroutine { continuation ->
+            startLibraryUsage { instance ->
+                continuation.resume(instance)
+            }
         }
     }
 
