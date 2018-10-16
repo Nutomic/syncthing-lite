@@ -66,7 +66,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         var status = BlockPullerStatus(
                 downloadedBytes = 0,
                 totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() },
-                totalFileSize = fileInfo.size!!
+                totalFileSize = fileBlocks.size
         )
 
         try {
