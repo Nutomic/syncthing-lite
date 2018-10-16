@@ -5,6 +5,7 @@ import android.os.Looper
 import android.support.v4.os.CancellationSignal
 import android.util.Log
 import kotlinx.coroutines.experimental.launch
+import net.syncthing.java.bep.BlockPullerStatus
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.BuildConfig
@@ -14,7 +15,7 @@ import java.io.File
 class DownloadFileTask(private val externalCacheDir: File,
                        syncthingClient: SyncthingClient,
                        private val fileInfo: FileInfo,
-                       private val onProgress: (progress: Double, progressMessage: String) -> Unit,
+                       private val onProgress: (status: BlockPullerStatus) -> Unit,
                        private val onComplete: (File) -> Unit,
                        private val onError: () -> Unit) {
 
@@ -31,9 +32,7 @@ class DownloadFileTask(private val externalCacheDir: File,
             syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
                 val job = launch {
                     try {
-                        val inputStream = blockPuller.pullFileCoroutine(
-                                fileInfo
-                        ) { progress, progressMessage -> callProgress(progress, progressMessage) }
+                        val inputStream = blockPuller.pullFileCoroutine(fileInfo, this@DownloadFileTask::callProgress)
 
                         val outputFile = File("$externalCacheDir/${fileInfo.folder}/${fileInfo.path}")
                         FileUtils.copyInputStreamToFile(inputStream, outputFile)
@@ -59,14 +58,14 @@ class DownloadFileTask(private val externalCacheDir: File,
         }
     }
 
-    private fun callProgress(progress: Double, progressMessage: String) {
+    private fun callProgress(status: BlockPullerStatus) {
         handler.post {
             if (!doneListenerCalled) {
                 if (BuildConfig.DEBUG) {
-                    Log.i("pullFile", "download progress = $progressMessage")
+                    Log.i("pullFile", "download progress = $status")
                 }
 
-                onProgress(progress, progressMessage)
+                onProgress(status)
             }
         }
     }

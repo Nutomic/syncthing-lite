@@ -43,7 +43,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
 
     fun pullFileSync(
             fileInfo: FileInfo,
-            progressListener: (progress: Double, progressMessage: String) -> Unit = { _, _ -> }
+            progressListener: (status: BlockPullerStatus) -> Unit = {  }
     ): InputStream {
         return runBlocking {
             pullFileCoroutine(fileInfo, progressListener)
@@ -52,7 +52,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
 
     suspend fun pullFileCoroutine(
             fileInfo: FileInfo,
-            progressListener: (progress: Double, progressMessage: String) -> Unit = { _, _ -> }
+            progressListener: (status: BlockPullerStatus) -> Unit = {  }
     ): InputStream {
         val fileBlocks = indexHandler.waitForRemoteIndexAcquired(connectionHandler)
                 .getFileInfoAndBlocksByPath(fileInfo.folder, fileInfo.path)
@@ -61,23 +61,24 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         logger.info("pulling file = {}", fileBlocks)
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(fileBlocks.folder), { "supplied connection handler $connectionHandler will not share folder ${fileBlocks.folder}" })
 
-        val totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() }
-
         val blockTempIdByHash = Collections.synchronizedMap(HashMap<String, String>())
 
+        var status = BlockPullerStatus(
+                downloadedBytes = 0,
+                totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() },
+                totalFileSize = fileInfo.size!!
+        )
+
         try {
-            var receivedData = 0L
             val reportProgressLock = Object()
 
-            fun updateProgress(newReceivedDataSize: Long) {
+            fun updateProgress(additionalDownloadedBytes: Long) {
                 synchronized(reportProgressLock) {
-                    receivedData += newReceivedDataSize
+                    status = status.copy(
+                            downloadedBytes = status.downloadedBytes + additionalDownloadedBytes
+                    )
 
-                    val progress = receivedData / totalTransferSize.toDouble()
-                    val progressMessage = (Math.round(progress * 1000.0) / 10.0).toString() + "% " +
-                            FileUtils.byteCountToDisplaySize(receivedData) + " / " + FileUtils.byteCountToDisplaySize(totalTransferSize)
-
-                    progressListener(progress, progressMessage)
+                    progressListener(status)
                 }
             }
 
@@ -183,3 +184,9 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         }
     }
 }
+
+data class BlockPullerStatus(
+        val downloadedBytes: Long,
+        val totalTransferSize: Long,
+        val totalFileSize: Long
+)

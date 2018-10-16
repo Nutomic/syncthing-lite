@@ -105,7 +105,7 @@ class SyncthingProvider : DocumentsProvider() {
         var outputFile: File? = null
         libraryHandler.syncthingClient { syncthingClient ->
             val task = DownloadFileTask(context.externalCacheDir, syncthingClient, fileInfo,
-                    { _, _ -> /* ignore progress */ },
+                    { _ -> /* ignore progress */ },
                     {
                         outputFile = it
                         latch.countDown()
