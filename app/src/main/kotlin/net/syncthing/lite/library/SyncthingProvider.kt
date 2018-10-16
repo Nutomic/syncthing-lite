@@ -128,7 +128,7 @@ class SyncthingProvider : DocumentsProvider() {
         row.add(Document.COLUMN_DISPLAY_NAME, fileInfo.fileName)
         row.add(Document.COLUMN_SIZE, fileInfo.size)
         val mime = if (fileInfo.isDirectory()) Document.MIME_TYPE_DIR
-                   else URLConnection.guessContentTypeFromName(fileInfo.fileName)
+        else URLConnection.guessContentTypeFromName(fileInfo.fileName)
         row.add(Document.COLUMN_MIME_TYPE, mime)
         row.add(Document.COLUMN_LAST_MODIFIED, fileInfo.lastModified)
         row.add(Document.COLUMN_FLAGS, 0)

@@ -170,12 +170,8 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
     }
 
     private suspend fun doRequest(request: Request.Builder): BlockExchangeProtos.Response {
-        return suspendCancellableCoroutine {
-            continuation ->
-
-            val requestId = responseHandler.registerListener {
-                response ->
-
+        return suspendCancellableCoroutine { continuation ->
+            val requestId = responseHandler.registerListener { response ->
                 continuation.resume(response)
             }
 
