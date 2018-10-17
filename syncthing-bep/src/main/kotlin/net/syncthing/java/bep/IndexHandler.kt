@@ -236,9 +236,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             val fileBlocks = indexRepository.findFileBlocks(folder, path)
             checkNotNull(fileBlocks, {"file blocks not found for file info = $fileInfo"})
 
-            if (fileInfo.hash != fileBlocks!!.hash) {
-                throw IllegalStateException("file blocks hash does not match file hash")
-            }
+            FileInfo.checkBlocks(fileInfo, fileBlocks!!)
 
             Pair.of(fileInfo, fileBlocks)
         }
