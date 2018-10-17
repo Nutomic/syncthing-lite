@@ -61,6 +61,12 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
         logger.info("pulling file = {}", fileBlocks)
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(fileBlocks.folder), { "supplied connection handler $connectionHandler will not share folder ${fileBlocks.folder}" })
 
+        // the file could have changed since the caller read it
+        // this would save the file using a wrong name, so throw here
+        if (fileBlocks.hash != fileInfo.hash) {
+            throw IllegalStateException("the current file entry hash does not match the hash of the provided one")
+        }
+
         val blockTempIdByHash = Collections.synchronizedMap(HashMap<String, String>())
 
         var status = BlockPullerStatus(
