@@ -19,6 +19,7 @@ import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.Sequencer
 import net.syncthing.java.core.interfaces.TempRepository
+import net.syncthing.java.core.utils.BlockUtils
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
 import net.syncthing.java.core.utils.submitLogging
@@ -234,6 +235,11 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             assert(fileInfo.isFile())
             val fileBlocks = indexRepository.findFileBlocks(folder, path)
             checkNotNull(fileBlocks, {"file blocks not found for file info = $fileInfo"})
+
+            if (fileInfo.hash != fileBlocks!!.hash) {
+                throw IllegalStateException("file blocks hash does not match file hash")
+            }
+
             Pair.of(fileInfo, fileBlocks)
         }
     }
