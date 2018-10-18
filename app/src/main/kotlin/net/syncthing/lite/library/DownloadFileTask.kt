@@ -65,6 +65,8 @@ class DownloadFileTask(private val fileStorageDirectory: File,
                 }
 
                 callComplete(file.targetFile)
+
+                return@launch
             }
 
             syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
