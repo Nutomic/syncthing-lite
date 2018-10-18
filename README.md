@@ -23,6 +23,9 @@ example, mobile devices with limited storage available, wishing to access a sync
 
 This project is based on [syncthing-java][3], a java implementation of Syncthing protocols.
 
+Due to the behaviour of this App and the [behaviour of the Syncthing Server](https://github.com/syncthing/syncthing/issues/5224),
+you can't reconnct for some minutes if the App was killed (due to removing from the recent App list) or the connection was interrupted.
+This does not apply to connections over an WiFi, but to connections over the internet.
 
 [<img alt="Get it on F-Droid" src="https://f-droid.org/badge/get-it-on.png" height="80">](https://f-droid.org/packages/net.syncthing.lite/)
 [<img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" height="80">](https://play.google.com/store/apps/details?id=net.syncthing.lite)

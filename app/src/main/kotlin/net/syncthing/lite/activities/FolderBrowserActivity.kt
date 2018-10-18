@@ -17,6 +17,7 @@ import net.syncthing.lite.adapters.FolderContentsAdapter
 import net.syncthing.lite.adapters.FolderContentsListener
 import net.syncthing.lite.databinding.ActivityFolderBrowserBinding
 import net.syncthing.lite.dialogs.FileUploadDialog
+import net.syncthing.lite.dialogs.ReconnectIssueDialogFragment
 import net.syncthing.lite.dialogs.downloadfile.DownloadFileDialogFragment
 import org.jetbrains.anko.custom.async
 
@@ -49,6 +50,8 @@ class FolderBrowserActivity : SyncthingActivity() {
             indexBrowser = it.indexHandler.newIndexBrowser(folder, true, true)
             indexBrowser.setOnFolderChangedListener(this::onFolderChanged)
         }
+
+        ReconnectIssueDialogFragment.showIfNeeded(this)
     }
 
     override fun onDestroy() {
