@@ -30,7 +30,7 @@ class DownloadFileTask(private val fileStorageDirectory: File,
                 syncthingClient: SyncthingClient,
                 fileInfo: FileInfo,
                 onProgress: (status: BlockPullerStatus) -> Unit
-        ) = suspendCancellableCoroutine<File> (holdCancellability = true) {
+        ) = suspendCancellableCoroutine<File> {
             continuation ->
 
             val task = DownloadFileTask(
@@ -49,8 +49,6 @@ class DownloadFileTask(private val fileStorageDirectory: File,
             continuation.invokeOnCancellation {
                 task.cancel()
             }
-
-            continuation.initCancellability()
         }
     }
 

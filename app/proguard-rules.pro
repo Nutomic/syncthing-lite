@@ -22,6 +22,12 @@
 # this library uses factories with reflection
 -keep class net.jpountz.lz4.** { *; }
 
+# from https://github.com/Kotlin/kotlinx.coroutines/blob/master/ui/kotlinx-coroutines-android/example-app/app/proguard-rules.pro
+# kotlin coroutines crash without it
+-keepclassmembernames class kotlinx.** {
+  volatile <fields>;
+}
+
 # disable warnings
 -dontwarn com.google.protobuf.UnsafeUtil
 -dontwarn com.google.protobuf.UnsafeUtil$1
