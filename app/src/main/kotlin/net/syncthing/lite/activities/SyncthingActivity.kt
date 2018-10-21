@@ -16,18 +16,6 @@ import org.jetbrains.anko.contentView
 import org.slf4j.impl.HandroidLoggerAdapter
 
 abstract class SyncthingActivity : AppCompatActivity() {
-    companion object {
-        fun checkLocalDiscoveryPort(context: Context) {
-            if (LibraryHandler.isListeningPortTaken) {
-                AlertDialog.Builder(context)
-                        .setTitle(R.string.other_syncthing_instance_title)
-                        .setMessage(R.string.other_syncthing_instance_message)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show()
-            }
-        }
-    }
-
     val libraryHandler: LibraryHandler by lazy {
         LibraryHandler(
                 context = this@SyncthingActivity,
@@ -85,6 +73,6 @@ abstract class SyncthingActivity : AppCompatActivity() {
     }
 
     open fun onLibraryLoaded() {
-        checkLocalDiscoveryPort(this)
+        // nothing to do
     }
 }

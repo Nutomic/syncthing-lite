@@ -1,5 +1,7 @@
 package net.syncthing.lite.library
 
+import android.arch.lifecycle.LiveData
+import android.arch.lifecycle.MutableLiveData
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -29,12 +31,13 @@ class LibraryHandler(context: Context,
     companion object {
         private const val TAG = "LibraryHandler"
         private val handler = Handler(Looper.getMainLooper())
-
-        var isListeningPortTaken = false    // TODO: remove this field
     }
 
     private val libraryManager = DefaultLibraryManager.with(context)
     private val isStarted = AtomicBoolean(false)
+    private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { value = false }
+
+    val isListeningPortTaken: LiveData<Boolean> = isListeningPortTakenInternal
 
     private val messageFromUnknownDeviceListeners = HashSet<(DeviceId) -> Unit>()
     private val internalMessageFromUnknownDeviceListener: (DeviceId) -> Unit = {
@@ -53,7 +56,7 @@ class LibraryHandler(context: Context,
         libraryManager.startLibraryUsage {
             libraryInstance ->
 
-            isListeningPortTaken = libraryInstance.isListeningPortTaken
+            isListeningPortTakenInternal.value = libraryInstance.isListeningPortTaken
             onLibraryLoaded(this)
 
             val client = libraryInstance.syncthingClient

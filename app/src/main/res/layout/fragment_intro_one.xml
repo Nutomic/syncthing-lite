@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+        <variable
+            name="listeningPortTaken"
+            type="Boolean" />
+
+        <import type="android.view.View" />
+    </data>
 
     <LinearLayout
         android:orientation="vertical"
@@ -35,6 +42,23 @@
                 android:textAlignment="center"
                 android:textColor="#eee"
                 android:text="@string/intro_page_one_description" />
+
+        <TextView
+            android:visibility="@{safeUnbox(listeningPortTaken) ? View.VISIBLE : View.GONE}"
+            android:textAppearance="?android:textAppearanceMedium"
+            android:textColor="#eee"
+            android:text="@string/other_syncthing_instance_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_marginBottom="48dp"
+            android:visibility="@{safeUnbox(listeningPortTaken) ? View.VISIBLE : View.GONE}"
+            android:textAppearance="?android:textAppearanceSmall"
+            android:textColor="#eee"
+            android:text="@string/other_syncthing_instance_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
 
     </LinearLayout>
 

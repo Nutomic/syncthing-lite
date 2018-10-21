@@ -8,28 +8,63 @@
             type="Boolean" />
 
         <import type="android.view.View" />
+
+        <variable
+            name="listeningPortTaken"
+            type="Boolean" />
     </data>
 
-    <FrameLayout
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <android.support.v7.widget.RecyclerView
-            app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+        <FrameLayout
+            android:layout_weight="1"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/list"
-            android:visibility="@{safeUnbox(isEmpty) ? View.GONE : View.VISIBLE}" />
+            android:layout_height="0dp">
 
-        <TextView
-            android:id="@+id/empty"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="@string/folder_list_empty_message"
-            android:textSize="20sp"
-            android:visibility="@{safeUnbox(isEmpty) ? View.VISIBLE : View.GONE}" />
+            <android.support.v7.widget.RecyclerView
+                app:layoutManager="android.support.v7.widget.LinearLayoutManager"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:id="@+id/list"
+                android:visibility="@{safeUnbox(isEmpty) ? View.GONE : View.VISIBLE}" />
 
-    </FrameLayout>
+            <TextView
+                android:id="@+id/empty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/folder_list_empty_message"
+                android:textSize="20sp"
+                android:visibility="@{safeUnbox(isEmpty) ? View.VISIBLE : View.GONE}" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:theme="@style/ThemeOverlay.AppCompat.Dark"
+            android:background="?colorPrimary"
+            android:visibility="@{safeUnbox(listeningPortTaken) ? View.VISIBLE : View.GONE}"
+            android:padding="8dp"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:textAppearance="?android:textAppearanceMedium"
+                android:text="@string/other_syncthing_instance_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:textAppearance="?android:textAppearanceSmall"
+                android:text="@string/other_syncthing_instance_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </layout>

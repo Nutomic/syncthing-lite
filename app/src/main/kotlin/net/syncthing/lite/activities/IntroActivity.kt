@@ -1,5 +1,6 @@
 package net.syncthing.lite.activities
 
+import android.arch.lifecycle.Observer
 import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
@@ -74,14 +75,17 @@ class IntroActivity : AppIntro() {
     class IntroFragmentOne : SyncthingFragment() {
 
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-            return DataBindingUtil.inflate<FragmentIntroOneBinding>(
-                    inflater, R.layout.fragment_intro_one, container, false).root
+            val binding = FragmentIntroOneBinding.inflate(inflater, container, false)
+
+            libraryHandler.isListeningPortTaken.observe(this, Observer { binding.listeningPortTaken = it })
+
+            return binding.root
         }
 
         override fun onLibraryLoaded() {
             super.onLibraryLoaded()
-            context?.let { SyncthingActivity.checkLocalDiscoveryPort(it) }
-            libraryHandler?.configuration { config ->
+
+            libraryHandler.configuration { config ->
                 config.localDeviceName = Util.getDeviceName()
                 config.persistLater()
             }

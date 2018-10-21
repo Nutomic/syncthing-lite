@@ -1,6 +1,6 @@
 package net.syncthing.lite.fragments
 
-import android.databinding.DataBindingUtil
+import android.arch.lifecycle.Observer
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -10,7 +10,6 @@ import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.async
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
-import net.syncthing.lite.R
 import net.syncthing.lite.activities.FolderBrowserActivity
 import net.syncthing.lite.adapters.FolderListAdapterListener
 import net.syncthing.lite.adapters.FoldersListAdapter
@@ -25,7 +24,10 @@ class FoldersFragment : SyncthingFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
-        binding = DataBindingUtil.inflate(layoutInflater, R.layout.fragment_folders, container, false)
+        binding = FragmentFoldersBinding.inflate(layoutInflater, container, false)
+
+        libraryHandler.isListeningPortTaken.observe(this, Observer { binding.listeningPortTaken = it })
+
         return binding.root
     }
 
