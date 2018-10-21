@@ -51,6 +51,6 @@
         Due to the behaviour of this App and the behaviour of the Syncthing Server,
         you can\'t reconnct for some minutes if the App was killed (due to removing from the recent App list)
         or the connection was interrupted.
-        This does not apply to connections over an WiFi, but to connections over the internet.
+        This does not apply to local discovery connections.
     </string>
 </resources>
