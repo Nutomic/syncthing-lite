@@ -7,6 +7,6 @@ object DownloadFileStatusFailed: DownloadFileStatus()
 data class DownloadFileStatusDone(val file: File): DownloadFileStatus()
 data class DownloadFileStatusRunning(val progress: Int): DownloadFileStatus() {
     companion object {
-        const val MAX_PROGRESS = 1000
+        const val MAX_PROGRESS = 100
     }
 }
