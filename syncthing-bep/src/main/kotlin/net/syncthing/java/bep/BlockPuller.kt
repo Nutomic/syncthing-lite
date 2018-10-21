@@ -96,7 +96,7 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                         for (block in pipe) {
                             logger.debug("request block with hash = {} from worker {}", block.hash, workerNumber)
 
-                            val blockContent = pullBlock(fileBlocks, block, 1000 * 15 /* 15 seconds timeout per block */)
+                            val blockContent = pullBlock(fileBlocks, block, 1000 * 60 /* 60 seconds timeout per block */)
 
                             blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
 
