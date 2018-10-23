@@ -33,6 +33,24 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
         }
     }
 
+    suspend fun query(deviceIds: Collection<DeviceId>): List<DeviceAddress> {
+        val discoveryServers = pickAnnounceServers()
+
+        return coroutineScope {
+            deviceIds
+                    .distinct()
+                    .map { deviceId ->
+                        async {
+                            queryAnnounceServers(
+                                    servers = discoveryServers,
+                                    deviceId = deviceId)
+                        }
+                    }
+                    .map { it.await() }
+                    .flatten()
+        }
+    }
+
     suspend fun query(deviceId: DeviceId) = queryAnnounceServers(
             servers = pickAnnounceServers(),
             deviceId = deviceId

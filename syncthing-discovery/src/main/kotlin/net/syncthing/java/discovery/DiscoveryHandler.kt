@@ -14,6 +14,7 @@
  */
 package net.syncthing.java.discovery
 
+import kotlinx.coroutines.experimental.runBlocking
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
@@ -58,8 +59,10 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
         if (shouldLoadFromGlobal) {
             shouldLoadFromGlobal = false //TODO timeout for reload
             executorService.submitLogging {
-                for (deviceId in configuration.peerIds) {
-                    globalDiscoveryHandler.query(deviceId, this::processDeviceAddressBg)
+                runBlocking {
+                    processDeviceAddressBg(
+                            globalDiscoveryHandler.query(configuration.peerIds)
+                    )
                 }
             }
         }
