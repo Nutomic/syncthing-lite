@@ -16,9 +16,9 @@ package net.syncthing.java.discovery.protocol
 
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.channels.ReceiveChannel
 import kotlinx.coroutines.experimental.channels.produce
+import kotlinx.coroutines.experimental.coroutineScope
 import kotlinx.coroutines.experimental.withContext
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
@@ -39,41 +39,47 @@ object LocalDiscoveryUtil {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun listenForAnnounceMessages(): ReceiveChannel<DeviceAddress> = GlobalScope.produce {
-        DatagramSocket(LISTENING_PORT, InetAddress.getByName("0.0.0.0")).use {
-            datagramSocket ->
+    suspend fun listenForAnnounceMessages(): ReceiveChannel<LocalDiscoveryMessage> = coroutineScope {
+        produce {
+            DatagramSocket(LISTENING_PORT, InetAddress.getByName("0.0.0.0")).use { datagramSocket ->
 
-            invokeOnClose {
-                datagramSocket.close()
-            }
+                invokeOnClose {
+                    datagramSocket.close()
+                }
 
-            withContext(Dispatchers.IO) {
-                val datagramPacket = DatagramPacket(ByteArray(INCOMING_BUFFER_SIZE), INCOMING_BUFFER_SIZE)
+                withContext(Dispatchers.IO) {
+                    val datagramPacket = DatagramPacket(ByteArray(INCOMING_BUFFER_SIZE), INCOMING_BUFFER_SIZE)
 
-                while (!isClosedForSend) {
-                    datagramSocket.receive(datagramPacket)
+                    while (!isClosedForSend) {
+                        datagramSocket.receive(datagramPacket)
 
-                    try {
-                        val sourceAddress = datagramPacket.address.hostAddress
-                        val byteBuffer = ByteBuffer.wrap(datagramPacket.data, datagramPacket.offset, datagramPacket.length)
-                        val magic = byteBuffer.int
-                        NetworkUtils.assertProtocol(magic == MAGIC, { "magic mismatch, expected ${MAGIC}, got $magic" })
-                        val announce = LocalDiscoveryProtos.Announce.parseFrom(ByteString.copyFrom(byteBuffer))
-                        val deviceId = DeviceId.fromHashData(announce.id.toByteArray())
+                        try {
+                            val sourceAddress = datagramPacket.address.hostAddress
+                            val byteBuffer = ByteBuffer.wrap(datagramPacket.data, datagramPacket.offset, datagramPacket.length)
+                            val magic = byteBuffer.int
+                            NetworkUtils.assertProtocol(magic == MAGIC, { "magic mismatch, expected ${MAGIC}, got $magic" })
+                            val announce = LocalDiscoveryProtos.Announce.parseFrom(ByteString.copyFrom(byteBuffer))
+                            val deviceId = DeviceId.fromHashData(announce.id.toByteArray())
 
-                        (announce.addressesList ?: emptyList()).map { address ->
-                            // When interpreting addresses with an unspecified address, e.g.,
-                            // tcp://0.0.0.0:22000 or tcp://:42424, the source address of the
-                            // discovery announcement is to be used.
-                            DeviceAddress.Builder()
-                                    .setAddress(address.replaceFirst("tcp://(0.0.0.0|):".toRegex(), "tcp://$sourceAddress:"))
-                                    .setDeviceId(deviceId.deviceId)
-                                    .setInstanceId(announce.instanceId)
-                                    .setProducer(DeviceAddress.AddressProducer.LOCAL_DISCOVERY)
-                                    .build()
-                        }.forEach { send(it) }
-                    } catch (ex: Exception) {
-                        logger.warn("error during handling received package", ex)
+                            val deviceAddresses = (announce.addressesList ?: emptyList()).map { address ->
+                                // When interpreting addresses with an unspecified address, e.g.,
+                                // tcp://0.0.0.0:22000 or tcp://:42424, the source address of the
+                                // discovery announcement is to be used.
+                                DeviceAddress.Builder()
+                                        .setAddress(address.replaceFirst("tcp://(0.0.0.0|):".toRegex(), "tcp://$sourceAddress:"))
+                                        .setDeviceId(deviceId.deviceId)
+                                        .setInstanceId(announce.instanceId)
+                                        .setProducer(DeviceAddress.AddressProducer.LOCAL_DISCOVERY)
+                                        .build()
+                            }
+
+                            send(LocalDiscoveryMessage(
+                                    deviceId = deviceId,
+                                    addresses = deviceAddresses
+                            ))
+                        } catch (ex: Exception) {
+                            logger.warn("error during handling received package", ex)
+                        }
                     }
                 }
             }
@@ -110,6 +116,16 @@ object LocalDiscoveryUtil {
                                 LISTENING_PORT))
                     }
                 }
+            }
+        }
+    }
+}
+
+data class LocalDiscoveryMessage(val deviceId: DeviceId, val addresses: List<DeviceAddress>) {
+    init {
+        addresses.forEach { address ->
+            if (address.deviceIdObject != deviceId) {
+                throw IllegalArgumentException()
             }
         }
     }

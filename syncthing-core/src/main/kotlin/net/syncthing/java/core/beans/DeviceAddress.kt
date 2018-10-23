@@ -13,7 +13,6 @@
  */
 package net.syncthing.java.core.beans
 
-import org.slf4j.LoggerFactory
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.UnknownHostException
@@ -28,7 +27,10 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
     val score = score ?: Integer.MAX_VALUE
     private val lastModified = lastModified ?: Date()
 
+    @Deprecated(message = "should use deviceIdObject instead")
     fun deviceId() = DeviceId(deviceId)
+
+    val deviceIdObject: DeviceId by lazy { DeviceId(deviceId) }
 
     @Throws(UnknownHostException::class)
     private fun getInetAddress(): InetAddress = InetAddress.getByName(address.replaceFirst("^[^:]+://".toRegex(), "").replaceFirst("(:[0-9]+)?(/.*)?$".toRegex(), ""))

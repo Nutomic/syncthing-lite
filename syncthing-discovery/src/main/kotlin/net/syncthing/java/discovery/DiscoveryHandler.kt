@@ -33,9 +33,9 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val globalDiscoveryHandler = GlobalDiscoveryHandler(configuration)
-    private val localDiscoveryHandler = LocalDiscoveryHandler(configuration, { _, deviceAddresses ->
+    private val localDiscoveryHandler = LocalDiscoveryHandler(configuration, { message ->
         logger.info("received device address list from local discovery")
-        processDeviceAddressBg(deviceAddresses)
+        processDeviceAddressBg(message.addresses)
     }, { deviceId ->
         onMessageFromUnknownDeviceListeners.forEach { listener -> listener(deviceId) }
     })
