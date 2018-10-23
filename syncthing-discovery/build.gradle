@@ -8,6 +8,7 @@ dependencies {
     compile "commons-cli:commons-cli:1.4"
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation "com.google.protobuf:protobuf-lite:$protobuf_lite_version"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:0.30.2'
 }
 
 run {
