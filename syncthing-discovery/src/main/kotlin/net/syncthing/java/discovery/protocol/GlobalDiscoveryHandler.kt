@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -14,49 +14,50 @@
  */
 package net.syncthing.java.discovery.protocol
 
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.coroutineScope
+import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.discovery.utils.AddressRanker
-import org.slf4j.LoggerFactory
-import java.io.Closeable
-import java.io.IOException
 
-internal class GlobalDiscoveryHandler(private val configuration: Configuration) : Closeable {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
-
-    fun query(deviceId: DeviceId, callback: (List<DeviceAddress>) -> Unit) {
-        val addresses = pickAnnounceServers()
-                .map {
-                    try {
-                        queryAnnounceServer(it, deviceId)
-                    } catch (e: IOException) {
-                        logger.warn("Failed to query $it", e)
-                        listOf<DeviceAddress>()
-                    }
-                }
-                .flatten()
-        callback(addresses)
-    }
-
-    private fun pickAnnounceServers(): List<String> {
-        val list = AddressRanker
-                .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
-        return list.map { it.deviceId }
-    }
-
-    @Throws(IOException::class)
-    private fun queryAnnounceServer(server: String, deviceId: DeviceId): List<DeviceAddress> {
-        logger.debug("querying server {} for device id {}", server, deviceId)
-
-        return runBlocking {
-            GlobalDiscoveryUtil.queryAnnounceServer(server, deviceId.deviceId).addresses.map {
-                DeviceAddress(deviceId.deviceId, it)
-            }
+internal class GlobalDiscoveryHandler(private val configuration: Configuration) {
+    @Deprecated(message = "coroutine version should be used instead of callback")
+    fun query(deviceId: DeviceId, callback: (List<DeviceAddress>) -> Unit) = GlobalScope.launch {
+        try {
+            callback(query(deviceId))
+        } catch (ex: Exception) {
+            callback(emptyList())
         }
     }
 
-    override fun close() {}
+    suspend fun query(deviceId: DeviceId) = queryAnnounceServers(
+            servers = pickAnnounceServers(),
+            deviceId = deviceId
+    )
+
+    fun pickAnnounceServers() = AddressRanker
+            .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
+            .map { it.deviceId }
+
+    companion object {
+        suspend fun queryAnnounceServers(servers: List<String>, deviceId: DeviceId) = coroutineScope {
+            servers
+                    .map { server ->
+                        async {
+                            queryAnnounceServer(server, deviceId)
+                        }
+                    }
+                    .map { it.await() }
+                    .flatten()
+            // .distinct() is not required because the device addresses contain the used discovery server
+        }
+
+        suspend fun queryAnnounceServer(server: String, deviceId: DeviceId) =
+                GlobalDiscoveryUtil
+                        .queryAnnounceServer(server, deviceId)
+                        .addresses.map { DeviceAddress(deviceId.deviceId, it) }
+    }
 }

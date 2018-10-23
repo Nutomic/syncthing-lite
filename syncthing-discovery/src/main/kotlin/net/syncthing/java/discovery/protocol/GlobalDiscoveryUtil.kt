@@ -3,6 +3,7 @@ package net.syncthing.java.discovery.protocol
 import com.google.gson.stream.JsonReader
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.withContext
+import net.syncthing.java.core.beans.DeviceId
 import org.apache.http.HttpStatus
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.HttpClients
@@ -11,9 +12,9 @@ import java.io.IOException
 import java.io.StringReader
 
 object GlobalDiscoveryUtil {
-    suspend fun queryAnnounceServer(server: String, deviceId: String): AnnouncementMessage {
+    suspend fun queryAnnounceServer(server: String, deviceId: DeviceId): AnnouncementMessage {
         return withContext(Dispatchers.IO) {
-            val httpGet = HttpGet("https://$server/v2/?device=$deviceId")
+            val httpGet = HttpGet("https://$server/v2/?device=${deviceId.deviceId}")
 
             HttpClients.createDefault().execute<AnnouncementMessage>(httpGet) { response ->
                 when (response.statusLine.statusCode) {

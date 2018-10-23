@@ -96,7 +96,6 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
         if (!isClosed) {
             isClosed = true
             localDiscoveryHandler.close()
-            globalDiscoveryHandler.close()
             executorService.shutdown()
             executorService.awaitTerminationSafe()
         }
