@@ -57,7 +57,9 @@ object LocalDiscoveryUtil {
                             val sourceAddress = datagramPacket.address.hostAddress
                             val byteBuffer = ByteBuffer.wrap(datagramPacket.data, datagramPacket.offset, datagramPacket.length)
                             val magic = byteBuffer.int
-                            NetworkUtils.assertProtocol(magic == MAGIC, { "magic mismatch, expected ${MAGIC}, got $magic" })
+                            NetworkUtils.assertProtocol(magic == MAGIC) {
+                                "magic mismatch, expected ${MAGIC}, got $magic"
+                            }
                             val announce = LocalDiscoveryProtos.Announce.parseFrom(ByteString.copyFrom(byteBuffer))
                             val deviceId = DeviceId.fromHashData(announce.id.toByteArray())
 
