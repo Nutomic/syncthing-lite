@@ -16,14 +16,12 @@ package net.syncthing.java.discovery
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
-import net.syncthing.java.core.security.KeystoreHandler
 import net.syncthing.java.discovery.protocol.GlobalDiscoveryHandler
 import net.syncthing.java.discovery.protocol.LocalDiscoveryHandler
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
-import org.apache.commons.io.FileUtils
 import java.io.File
 import java.util.concurrent.CountDownLatch
 
@@ -85,10 +83,10 @@ class Main {
     private fun queryLocalDiscovery(configuration: Configuration, deviceId: DeviceId): Collection<DeviceAddress> {
         val lock = Object()
         val discoveredAddresses = mutableListOf<DeviceAddress>()
-        val handler = LocalDiscoveryHandler(configuration, { discoveredDeviceId, deviceAddresses ->
+        val handler = LocalDiscoveryHandler(configuration, { message ->
             synchronized(lock) {
-                if (discoveredDeviceId == deviceId) {
-                    discoveredAddresses.addAll(deviceAddresses)
+                if (message.deviceId == deviceId) {
+                    discoveredAddresses.addAll(message.addresses)
                     lock.notify()
                 }
             }
