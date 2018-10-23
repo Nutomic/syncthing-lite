@@ -22,8 +22,11 @@ import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.discovery.utils.AddressRanker
+import org.slf4j.LoggerFactory
 
 internal class GlobalDiscoveryHandler(private val configuration: Configuration) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     @Deprecated(message = "coroutine version should be used instead of callback")
     fun query(deviceId: DeviceId, callback: (List<DeviceAddress>) -> Unit) = GlobalScope.launch {
         try {
@@ -60,19 +63,25 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
             .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
             .map { it.deviceId }
 
-    companion object {
-        suspend fun queryAnnounceServers(servers: List<String>, deviceId: DeviceId) = coroutineScope {
-            servers
-                    .map { server ->
-                        async {
+    suspend fun queryAnnounceServers(servers: List<String>, deviceId: DeviceId) = coroutineScope {
+        servers
+                .map { server ->
+                    async {
+                        try {
                             queryAnnounceServer(server, deviceId)
+                        } catch (ex: Exception) {
+                            logger.warn("Failed to query $server for $deviceId", ex)
+
+                            emptyList<DeviceAddress>()
                         }
                     }
-                    .map { it.await() }
-                    .flatten()
-            // .distinct() is not required because the device addresses contain the used discovery server
-        }
+                }
+                .map { it.await() }
+                .flatten()
+        // .distinct() is not required because the device addresses contain the used discovery server
+    }
 
+    companion object {
         suspend fun queryAnnounceServer(server: String, deviceId: DeviceId) =
                 GlobalDiscoveryUtil
                         .queryAnnounceServer(server, deviceId)
