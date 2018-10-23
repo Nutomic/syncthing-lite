@@ -79,8 +79,10 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
                 list.filter { deviceAddress ->
                     !peers.contains(deviceAddress.deviceId()) || deviceAddressMap.containsKey(Pair.of(DeviceId(deviceAddress.deviceId), deviceAddress.address))
                 }
-                AddressRanker.pingAddresses(list)
-                        .forEach { putDeviceAddress(it) }
+                runBlocking {
+                    AddressRanker.pingAddresses(list)
+                            .forEach { putDeviceAddress(it) }
+                }
             }
         }
     }

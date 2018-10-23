@@ -59,7 +59,7 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
             deviceId = deviceId
     )
 
-    fun pickAnnounceServers() = AddressRanker
+    suspend fun pickAnnounceServers() = AddressRanker
             .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
             .map { it.deviceId }
 
