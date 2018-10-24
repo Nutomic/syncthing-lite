@@ -18,33 +18,33 @@ import com.google.gson.stream.JsonReader
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.withContext
 import net.syncthing.java.core.beans.DeviceId
-import org.apache.http.HttpStatus
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.util.EntityUtils
+import java.io.BufferedInputStream
 import java.io.IOException
-import java.io.StringReader
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
 
 object GlobalDiscoveryUtil {
     suspend fun queryAnnounceServer(server: String, deviceId: DeviceId): AnnouncementMessage {
         return withContext(Dispatchers.IO) {
-            val httpGet = HttpGet("https://$server/v2/?device=${deviceId.deviceId}")
+            val url = URL("https://$server/v2/?device=${deviceId.deviceId}")
+            val connection = url.openConnection() as HttpURLConnection
 
-            HttpClients.createDefault().execute<AnnouncementMessage>(httpGet) { response ->
-                when (response.statusLine.statusCode) {
-                    HttpStatus.SC_OK -> {
-                        AnnouncementMessage.parse(
-                                JsonReader(
-                                        StringReader(
-                                                EntityUtils.toString(response.entity)
-                                        )
-                                )
-                        )
-                    }
-                    HttpStatus.SC_NOT_FOUND -> throw DeviceNotFoundException()
+            try {
+                connection.connect()
+
+                when (connection.responseCode) {
+                    HttpURLConnection.HTTP_NOT_FOUND -> throw DeviceNotFoundException()
                     429 -> throw TooManyRequestsException()
-                    else -> throw IOException("http error ${response.statusLine}, response ${EntityUtils.toString(response.entity)}")
+                    HttpURLConnection.HTTP_OK -> {
+                        JsonReader(InputStreamReader(BufferedInputStream(connection.inputStream))).use { reader ->
+                            AnnouncementMessage.parse(reader)
+                        }
+                    }
+                    else -> throw IOException("http error ${connection.responseCode}: ${connection.responseMessage}")
                 }
+            } finally {
+                connection.disconnect()
             }
         }
     }
@@ -52,3 +52,4 @@ object GlobalDiscoveryUtil {
 
 class DeviceNotFoundException: RuntimeException()
 class TooManyRequestsException: RuntimeException()
+// TODO: handle too many requests -> stop sending requests for some time
