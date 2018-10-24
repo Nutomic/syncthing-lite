@@ -14,10 +14,7 @@
  */
 package net.syncthing.java.discovery.utils
 
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.withContext
-import kotlinx.coroutines.experimental.withTimeout
+import kotlinx.coroutines.experimental.*
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceAddress.AddressType
 import org.slf4j.LoggerFactory
@@ -36,7 +33,7 @@ object AddressRanker {
     private val ACCEPTED_ADDRESS_TYPES = BASE_SCORE_MAP.keys
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun pingAddresses(sourceAddresses: List<DeviceAddress>) = withContext(Dispatchers.IO) {
+    suspend fun pingAddresses(sourceAddresses: List<DeviceAddress>) = coroutineScope {
         addHttpRelays(sourceAddresses)
                 .filter { ACCEPTED_ADDRESS_TYPES.contains(it.getType()) }
                 .toList()   // the following should happen parallel
@@ -45,7 +42,7 @@ object AddressRanker {
                         try {
                             withTimeout(TCP_CONNECTION_TIMEOUT * 2L) {
                                 // this nested async ensures that cancelling/ the timeout has got an effect without delay
-                                async {
+                                GlobalScope.async (Dispatchers.IO) {
                                     pingAddressSync(it)
                                 }.await()
                             }
