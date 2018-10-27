@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -14,27 +14,25 @@
  */
 package net.syncthing.java.discovery
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.CancellationException
+import kotlinx.coroutines.experimental.runBlocking
 import kotlinx.coroutines.experimental.selects.select
+import kotlinx.coroutines.experimental.withTimeout
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import org.slf4j.LoggerFactory
+import java.io.Closeable
 
-class DeviceAddressSupplier(private val peerDevices: Set<DeviceId>, private val devicesAddressesManager: DevicesAddressesManager) : Iterable<DeviceAddress?> {
-
-    private val deviceAddressListStreams = GlobalScope.async {
-        peerDevices.map { deviceId ->
-            devicesAddressesManager.getDeviceAddressManager(deviceId).streamCurrentDeviceAddresses()
-        }
+class DeviceAddressSupplier(private val peerDevices: Set<DeviceId>, private val devicesAddressesManager: DevicesAddressesManager) : Iterable<DeviceAddress?>, Closeable {
+    private val deviceAddressListStreams = peerDevices.map { deviceId ->
+        devicesAddressesManager.getDeviceAddressManager(deviceId).streamCurrentDeviceAddresses()
     }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private suspend fun getDeviceAddress(): DeviceAddress? {
-        val streams = deviceAddressListStreams.await()
-
         return select {
-            streams.forEach { stream ->
+            deviceAddressListStreams.forEach { stream ->
                 stream.onReceive { it }
             }
         }
@@ -46,6 +44,10 @@ class DeviceAddressSupplier(private val peerDevices: Set<DeviceId>, private val 
 
     suspend fun getDeviceAddressOrWait() = getDeviceAddressOrWait(5000L)
 
+    override fun close() {
+        deviceAddressListStreams.forEach { it.cancel() }
+    }
+
     @Deprecated(message = "iterator is blocking")
     override fun iterator(): Iterator<DeviceAddress?> {
         return object : Iterator<DeviceAddress?> {
@@ -55,13 +57,20 @@ class DeviceAddressSupplier(private val peerDevices: Set<DeviceId>, private val 
             override fun hasNext(): Boolean {
                 if (hasNext == null) {
                     try {
-                        next = runBlocking { getDeviceAddressOrWait() }
+                        next = runBlocking {
+                            getDeviceAddressOrWait()
+                        }
                     } catch (ex: CancellationException) {
                         logger.warn("", ex)
                     }
 
                     hasNext = next != null
                 }
+
+                if (hasNext == false) {
+                    close()
+                }
+
                 return hasNext!!
             }
 

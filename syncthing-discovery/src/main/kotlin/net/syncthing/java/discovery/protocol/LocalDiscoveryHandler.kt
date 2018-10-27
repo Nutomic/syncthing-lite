@@ -16,8 +16,8 @@ package net.syncthing.java.discovery.protocol
 
 import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.withContext
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
 import org.slf4j.LoggerFactory
@@ -40,27 +40,23 @@ internal class LocalDiscoveryHandler(private val configuration: Configuration,
     }
 
     fun startListener() {
-        GlobalScope.launch {
-            withContext(job) {
-                try {
-                    val announceMessages = LocalDiscoveryUtil.listenForAnnounceMessages()
+        GlobalScope.launch (job) {
+            try {
+                LocalDiscoveryUtil.listenForAnnounceMessages().consumeEach { message ->
+                    if (message.deviceId == configuration.localDeviceId) {
+                        // ignore announcement received from ourselves.
+                    } else if (!configuration.peerIds.contains(message.deviceId)) {
+                        logger.trace("Received local announce from ${message.deviceId} which is not a peer, ignoring")
 
-                    for (message in announceMessages) {
-                        if (message.deviceId == configuration.localDeviceId) {
-                            // ignore announcement received from ourselves.
-                        } else if (!configuration.peerIds.contains(message.deviceId)) {
-                            logger.trace("Received local announce from ${message.deviceId} which is not a peer, ignoring")
+                        onMessageFromUnknownDeviceListener(message.deviceId)
+                    } else {
+                        logger.debug("received local announce from device id = {}", message.deviceId)
 
-                            onMessageFromUnknownDeviceListener(message.deviceId)
-                        } else {
-                            logger.debug("received local announce from device id = {}", message.deviceId)
-
-                            onMessageReceivedListener(message)
-                        }
+                        onMessageReceivedListener(message)
                     }
-                } catch (ex: Exception) {
-                    logger.warn("Failed to listen for announcement messages", ex)
                 }
+            } catch (ex: Exception) {
+                logger.warn("Failed to listen for announcement messages", ex)
             }
         }
     }

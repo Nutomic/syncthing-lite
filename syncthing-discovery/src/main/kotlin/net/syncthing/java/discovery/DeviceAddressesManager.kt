@@ -15,8 +15,6 @@ package net.syncthing.java.discovery
 
 import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.channels.ReceiveChannel
-import kotlinx.coroutines.experimental.channels.produce
-import kotlinx.coroutines.experimental.coroutineScope
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 
@@ -32,7 +30,6 @@ class DeviceAddressesManager (val deviceId: DeviceId) {
 
         synchronized(lock) {
             deviceAddressesCache.add(address)
-
             listeners.forEach { it(address) }
         }
     }
@@ -54,20 +51,18 @@ class DeviceAddressesManager (val deviceId: DeviceId) {
         deviceAddressesCache.toList()
     }
 
-    suspend fun streamCurrentDeviceAddresses(): ReceiveChannel<DeviceAddress> {
-        return coroutineScope {
-            produce<DeviceAddress> (capacity = Channel.UNLIMITED) {
-                val listener: (DeviceAddress) -> Unit = { offer(it) }
+    fun streamCurrentDeviceAddresses(): ReceiveChannel<DeviceAddress> = Channel<DeviceAddress>(capacity = Channel.UNLIMITED).apply {
+        val listener: (DeviceAddress) -> Unit = {
+            offer(it)
+        }
 
-                invokeOnClose {
-                    removeListener(listener)
-                }
+        invokeOnClose {
+            removeListener(listener)
+        }
 
-                synchronized(lock) {
-                    addListener(listener)
-                    deviceAddressesCache.forEach { offer(it) }
-                }
-            }
+        synchronized(lock) {
+            addListener(listener)
+            deviceAddressesCache.forEach { listener(it) }
         }
     }
 }
