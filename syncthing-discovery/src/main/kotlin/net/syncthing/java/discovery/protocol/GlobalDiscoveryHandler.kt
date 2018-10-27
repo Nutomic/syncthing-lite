@@ -46,7 +46,8 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
                         async {
                             queryAnnounceServers(
                                     servers = discoveryServers,
-                                    deviceId = deviceId)
+                                    deviceId = deviceId
+                            )
                         }
                     }
                     .map { it.await() }
