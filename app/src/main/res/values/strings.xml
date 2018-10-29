@@ -49,7 +49,7 @@
     <string name="settings_shutdown_delay_5_minutes">5 minutes</string>
     <string name="dialog_warning_reconnect_problem">
         Due to the behaviour of this App and the behaviour of the Syncthing Server,
-        you can\'t reconnct for some minutes if the App was killed (due to removing from the recent App list)
+        you can\'t reconnect for some minutes if the App was killed (due to removing from the recent App list)
         or the connection was interrupted.
         This does not apply to local discovery connections.
     </string>
