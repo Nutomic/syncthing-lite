@@ -91,8 +91,6 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
         assert(!isConnected, {"already connected!"})
         logger.info("connecting to {}", address.address)
 
-        val keystoreHandler = KeystoreHandler.Loader().loadKeystore(configuration)
-
         val socket = OpenConnection.openSocketConnection(
                 address = address,
                 configuration = configuration
@@ -106,7 +104,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
         receiveHelloMessage()
         try {
-            keystoreHandler.checkSocketCertificate(socket, address.deviceId())
+            KeystoreHandler.assertSocketCertificateValid(socket, address.deviceIdObject)
         } catch (e: CertificateException) {
             throw IOException(e)
         }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.coroutineScope
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.security.KeystoreHandler
 import java.io.DataInputStream
 import java.io.DataOutputStream
 
@@ -40,8 +41,10 @@ object ConnectionActor {
                     async { HelloMessageHandler.receiveHelloMessage(inputStream) }.await()
                 }
 
+                // the hello message exchange should happen before the certificate validation
+                KeystoreHandler.assertSocketCertificateValid(socket, address.deviceIdObject)
+
                 // TODO: handle hello message content
-                // TODO: check socket certificate - this happens after the hello message exchange
                 // TODO: cluster config exchange
                 // TODO: index message exchange
 
