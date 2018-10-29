@@ -20,6 +20,7 @@ import net.syncthing.java.bep.BlockExchangeProtos.*
 import net.syncthing.java.bep.connectionactor.ClusterConfigHandler
 import net.syncthing.java.bep.connectionactor.HelloMessageHandler
 import net.syncthing.java.bep.connectionactor.OpenConnection
+import net.syncthing.java.bep.connectionactor.PostAuthenticationMessageHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
@@ -221,25 +222,14 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
     internal fun sendMessage(message: MessageLite): Future<*> {
         checkNotClosed()
-        val messageTypeInfo = messageTypesByJavaClass[message.javaClass]
-        messageTypeInfo!!
-        val header = BlockExchangeProtos.Header.newBuilder()
-                .setCompression(BlockExchangeProtos.MessageCompression.NONE)
-                // invert map
-                .setType(messageTypeInfo.protoMessageType)
-                .build()
-        val headerData = header.toByteArray()
-        val messageData = message.toByteArray() //TODO compression
+
         return outExecutorService.submit<Any> {
             try {
-                logger.debug("sending message type = {} {}", header.type, getIdForMessage(message))
-                markActivityOnSocket()
-                outputStream!!.writeShort(headerData.size)
-                outputStream!!.write(headerData)
-                outputStream!!.writeInt(messageData.size)//with compression, check this
-                outputStream!!.write(messageData)
-                outputStream!!.flush()
-                markActivityOnSocket()
+                PostAuthenticationMessageHandler.sendMessage(
+                        outputStream = outputStream!!,
+                        markActivityOnSocket = this::markActivityOnSocket,
+                        message = message
+                )
             } catch (ex: IOException) {
                 if (!outExecutorService.isShutdown) {
                     logger.error("error writing to output stream", ex)
@@ -401,10 +391,8 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
     }
 
     companion object {
-
-        const val MAGIC = 0x2EA7D90B
-
-        private val messageTypes = listOf(
+        // TODO: move these fields somewhere else
+        val messageTypes = listOf(
                 MessageTypeInfo(MessageType.CLOSE, Close::class.java) { Close.parseFrom(it) },
                 MessageTypeInfo(MessageType.CLUSTER_CONFIG, ClusterConfig::class.java) { ClusterConfig.parseFrom(it) },
                 MessageTypeInfo(MessageType.DOWNLOAD_PROGRESS, DownloadProgress::class.java) { DownloadProgress.parseFrom(it) },
@@ -415,16 +403,17 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                 MessageTypeInfo(MessageType.RESPONSE, Response::class.java) { Response.parseFrom(it) }
         )
 
-        private val messageTypesByProtoMessageType = messageTypes.map { it.protoMessageType to it }.toMap()
-        private val messageTypesByJavaClass = messageTypes.map { it.javaClass to it }.toMap()
+        val messageTypesByProtoMessageType = messageTypes.map { it.protoMessageType to it }.toMap()
+        val messageTypesByJavaClass = messageTypes.map { it.javaClass to it }.toMap()
 
+        // TODO: move this somewhere else
         /**
          * get id for message bean/instance, for log tracking
          *
          * @param message
          * @return id for message bean
          */
-        private fun getIdForMessage(message: MessageLite): String {
+        fun getIdForMessage(message: MessageLite): String {
             return when (message) {
                 is Request -> Integer.toString(message.id)
                 is Response -> Integer.toString(message.id)

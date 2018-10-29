@@ -14,12 +14,15 @@
  */
 package net.syncthing.java.bep.connectionactor
 
+import com.google.protobuf.MessageLite
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.channels.actor
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.coroutineScope
+import kotlinx.coroutines.experimental.sync.Mutex
+import kotlinx.coroutines.experimental.sync.withLock
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
@@ -49,8 +52,17 @@ object ConnectionActor {
                 // now (after the validation) use the content of the hello message
                 HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
 
-                // TODO: send cluster config
-                val clusterConfig = ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject)
+                // helper to send messages
+                val sendPostAuthMessageLock = Mutex()
+
+                suspend fun sendPostAuthMessage(message: MessageLite) {
+                    sendPostAuthMessageLock.withLock {
+                        PostAuthenticationMessageHandler.sendMessage(outputStream, message, markActivityOnSocket = {})
+                    }
+                }
+
+                // cluster config exchange
+                sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject))
 
                 // TODO: receive cluster config
                 // TODO: index message exchange
