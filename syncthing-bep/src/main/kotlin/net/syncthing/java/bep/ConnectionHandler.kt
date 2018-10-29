@@ -14,10 +14,10 @@
  */
 package net.syncthing.java.bep
 
-import com.google.protobuf.ByteString
 import com.google.protobuf.MessageLite
 import net.jpountz.lz4.LZ4Factory
 import net.syncthing.java.bep.BlockExchangeProtos.*
+import net.syncthing.java.bep.connectionactor.ClusterConfigHandler
 import net.syncthing.java.bep.connectionactor.HelloMessageHandler
 import net.syncthing.java.bep.connectionactor.OpenConnection
 import net.syncthing.java.core.beans.DeviceAddress
@@ -108,41 +108,8 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
             throw IOException(e)
         }
 
-        run {
-            val clusterConfigBuilder = ClusterConfig.newBuilder()
-            for (folder in configuration.folders) {
-                val folderBuilder = Folder.newBuilder()
-                        .setId(folder.folderId)
-                        .setLabel(folder.label)
-                run {
-                    //our device
-                    val deviceBuilder = Device.newBuilder()
-                            .setId(ByteString.copyFrom(configuration.localDeviceId.toHashData()))
-                            .setIndexId(indexHandler.sequencer().indexId())
-                            .setMaxSequence(indexHandler.sequencer().currentSequence())
-                    folderBuilder.addDevices(deviceBuilder)
-                }
-                run {
-                    //other device
-                    val deviceBuilder = Device.newBuilder()
-                            .setId(ByteString.copyFrom(DeviceId(address.deviceId).toHashData()))
-                    val indexSequenceInfo = indexHandler.indexRepository.findIndexInfoByDeviceAndFolder(address.deviceId(), folder.folderId)
-                    indexSequenceInfo?.let {
-                        deviceBuilder
-                                .setIndexId(indexSequenceInfo.indexId)
-                                .setMaxSequence(indexSequenceInfo.localSequence)
-                        logger.info("send delta index info device = {} index = {} max (local) sequence = {}",
-                                indexSequenceInfo.deviceId,
-                                indexSequenceInfo.indexId,
-                                indexSequenceInfo.localSequence)
-                    }
-                    folderBuilder.addDevices(deviceBuilder)
-                }
-                clusterConfigBuilder.addFolders(folderBuilder)
-                //TODO other devices??
-            }
-            sendMessage(clusterConfigBuilder.build())
-        }
+        sendMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, deviceId()))
+
         synchronized(clusterConfigWaitingLock) {
             startMessageListenerService()
             while (clusterConfigInfo == null && !isClosed) {

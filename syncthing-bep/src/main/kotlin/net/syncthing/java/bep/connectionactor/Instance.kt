@@ -20,6 +20,7 @@ import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.channels.actor
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.coroutineScope
+import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.security.KeystoreHandler
@@ -29,7 +30,8 @@ import java.io.DataOutputStream
 object ConnectionActor {
     fun createInstance(
             address: DeviceAddress,
-            configuration: Configuration
+            configuration: Configuration,
+            indexHandler: IndexHandler
     ) {
         GlobalScope.actor<ConnectionAction>(Dispatchers.IO) {
             OpenConnection.openSocketConnection(address, configuration).use { socket ->
@@ -47,7 +49,10 @@ object ConnectionActor {
                 // now (after the validation) use the content of the hello message
                 HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
 
-                // TODO: cluster config exchange
+                // TODO: send cluster config
+                val clusterConfig = ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject)
+
+                // TODO: receive cluster config
                 // TODO: index message exchange
 
                 consumeEach { action ->
