@@ -18,7 +18,7 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.MessageLite
 import net.jpountz.lz4.LZ4Factory
 import net.syncthing.java.bep.BlockExchangeProtos.*
-import net.syncthing.java.client.protocol.rp.RelayClient
+import net.syncthing.java.bep.connectionactor.OpenConnection
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
@@ -28,7 +28,6 @@ import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.security.KeystoreHandler
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.submitLogging
-import net.syncthing.java.httprelay.HttpRelayClient
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
@@ -93,21 +92,11 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
         val keystoreHandler = KeystoreHandler.Loader().loadKeystore(configuration)
 
-        socket = when (address.getType()) {
-            DeviceAddress.AddressType.TCP -> {
-                logger.debug("opening tcp ssl connection")
-                keystoreHandler.createSocket(address.getSocketAddress(), KeystoreHandler.BEP)
-            }
-            DeviceAddress.AddressType.RELAY -> {
-                logger.debug("opening relay connection")
-                keystoreHandler.wrapSocket(RelayClient(configuration).openRelayConnection(address), KeystoreHandler.BEP)
-            }
-            DeviceAddress.AddressType.HTTP_RELAY, DeviceAddress.AddressType.HTTPS_RELAY -> {
-                logger.debug("opening http relay connection")
-                keystoreHandler.wrapSocket(HttpRelayClient().openRelayConnection(address), KeystoreHandler.BEP)
-            }
-            else -> throw UnsupportedOperationException("unsupported address type = " + address.getType())
-        }
+        val socket = OpenConnection.openSocketConnection(
+                address = address,
+                configuration = configuration
+        )
+
         inputStream = DataInputStream(socket.inputStream)
         outputStream = DataOutputStream(socket.outputStream)
 
