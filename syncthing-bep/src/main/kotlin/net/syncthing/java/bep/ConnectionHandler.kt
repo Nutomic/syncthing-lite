@@ -51,8 +51,6 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                         private val onNewFolderSharedListener: (ConnectionHandler, FolderInfo) -> Unit,
                         private val onConnectionChangedListener: (ConnectionHandler) -> Unit) : Closeable {
 
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     private val outExecutorService = Executors.newSingleThreadExecutor()
     private val inExecutorService = Executors.newSingleThreadExecutor()
     private val messageProcessingService = Executors.newCachedThreadPool()
@@ -258,31 +256,26 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
     @Throws(IOException::class)
     private fun receiveMessage(): Pair<BlockExchangeProtos.MessageType, MessageLite> {
-        var headerLength = inputStream!!.readShort().toInt()
-        while (headerLength == 0) {
-            logger.warn("got headerLength == 0, skipping short")
-            headerLength = inputStream!!.readShort().toInt()
-        }
-        markActivityOnSocket()
-        NetworkUtils.assertProtocol(headerLength > 0, {"invalid lenght, must be >0, got $headerLength"})
-        val headerBuffer = ByteArray(headerLength)
-        inputStream!!.readFully(headerBuffer)
-        val header = BlockExchangeProtos.Header.parseFrom(headerBuffer)
-        var messageLength = 0
-        while (messageLength == 0) {
-            logger.warn("received readInt() == 0, expecting 'bep message header length' (int >0), ignoring (keepalive?)")
-            messageLength = inputStream!!.readInt()
-        }
-        NetworkUtils.assertProtocol(messageLength >= 0, {"invalid lenght, must be >=0, got $messageLength"})
-        var messageBuffer = ByteArray(messageLength)
-        inputStream!!.readFully(messageBuffer)
-        markActivityOnSocket()
+        val header = BlockExchangeProtos.Header.parseFrom(readHeader(
+                inputStream = inputStream!!,
+                retryReadingLength = true,
+                markActivityOnSocket = this::markActivityOnSocket
+        ))
+
+        var messageBuffer = readMessage(
+                inputStream = inputStream!!,
+                retryReadingLength = true,
+                markActivityOnSocket = this::markActivityOnSocket
+        )
+
         if (header.compression == BlockExchangeProtos.MessageCompression.LZ4) {
             val uncompressedLength = ByteBuffer.wrap(messageBuffer).int
             messageBuffer = LZ4Factory.fastestInstance().fastDecompressor().decompress(messageBuffer, 4, uncompressedLength)
         }
+
         val messageTypeInfo = messageTypesByProtoMessageType[header.type]
-        NetworkUtils.assertProtocol(messageTypeInfo != null, {"unsupported message type = ${header.type}"})
+        NetworkUtils.assertProtocol(messageTypeInfo != null) {"unsupported message type = ${header.type}"}
+
         try {
             val message = messageTypeInfo!!.parseFrom(messageBuffer)
             return Pair.of(header.type, message)
@@ -506,6 +499,56 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                 is Response -> Integer.toString(message.id)
                 else -> Integer.toString(Math.abs(message.hashCode()))
             }
+        }
+
+        private val logger = LoggerFactory.getLogger(ConnectionHandler::class.java)
+
+        private fun readHeader(
+                inputStream: DataInputStream,
+                markActivityOnSocket: () -> Unit,
+                retryReadingLength: Boolean
+        ): ByteArray {
+            var headerLength = inputStream.readShort().toInt()
+
+            // TODO: what is this good for?
+            if (retryReadingLength) {
+                while (headerLength == 0) {
+                    logger.warn("got headerLength == 0, skipping short")
+                    headerLength = inputStream.readShort().toInt()
+                }
+            }
+
+            markActivityOnSocket()
+
+            NetworkUtils.assertProtocol(headerLength > 0) {"invalid length, must be > 0, got $headerLength"}
+
+            return ByteArray(headerLength).apply {
+                inputStream.readFully(this)
+            }
+        }
+
+        private fun readMessage(
+                inputStream: DataInputStream,
+                markActivityOnSocket: () -> Unit,
+                retryReadingLength: Boolean
+        ): ByteArray {
+            var messageLength = inputStream.readInt()
+
+            // TODO: what is this good for?
+            if (retryReadingLength) {
+                while (messageLength == 0) {
+                    logger.warn("received readInt() == 0, expecting 'bep message header length' (int >0), ignoring (keepalive?)")
+                    messageLength = inputStream.readInt()
+                }
+            }
+
+            NetworkUtils.assertProtocol(messageLength >= 0, {"invalid lenght, must be >=0, got $messageLength"})
+
+            val messageBuffer = ByteArray(messageLength)
+            inputStream.readFully(messageBuffer)
+            markActivityOnSocket()
+
+            return messageBuffer
         }
     }
 
