@@ -15,6 +15,8 @@
 package net.syncthing.java.bep.connectionactor
 
 import net.syncthing.java.bep.BlockExchangeProtos
+import net.syncthing.java.core.beans.DeviceId
+import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.utils.NetworkUtils
 import org.slf4j.LoggerFactory
@@ -69,5 +71,25 @@ object HelloMessageHandler {
                     inputStream.readFully(this)
                 }
         )
+    }
+
+    fun processHelloMessage(
+            hello: BlockExchangeProtos.Hello,
+            configuration: Configuration,
+            deviceId: DeviceId
+    ) {
+        logger.info("Received hello message, deviceName=${hello.deviceName}, clientName=${hello.clientName}, clientVersion=${hello.clientVersion}")
+
+        // update the local device name
+        // TODO: this could need some locking
+        configuration.peers = configuration.peers.map { peer ->
+            if (peer.deviceId == deviceId) {
+                DeviceInfo(deviceId, hello.deviceName)
+            } else {
+                peer
+            }
+        }.toSet()
+
+        configuration.persistLater()
     }
 }

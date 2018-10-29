@@ -22,7 +22,6 @@ import net.syncthing.java.bep.connectionactor.HelloMessageHandler
 import net.syncthing.java.bep.connectionactor.OpenConnection
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
-import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.TempRepository
@@ -194,15 +193,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
     private fun receiveHelloMessage() {
         val hello = HelloMessageHandler.receiveHelloMessage(inputStream!!)
 
-        logger.info("Received hello message, deviceName=${hello.deviceName}, clientName=${hello.clientName}, clientVersion=${hello.clientVersion}")
-        configuration.peers = configuration.peers.map { peer ->
-                if (peer.deviceId == deviceId()) {
-                    DeviceInfo(deviceId(), hello.deviceName)
-                } else {
-                    peer
-                }
-            }.toSet()
-        configuration.persistLater()
+        HelloMessageHandler.processHelloMessage(hello, configuration, deviceId())
     }
 
     private fun sendHelloMessageInBackground(): Future<*> {

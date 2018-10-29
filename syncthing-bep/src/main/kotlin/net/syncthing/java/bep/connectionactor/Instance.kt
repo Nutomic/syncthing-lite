@@ -44,7 +44,9 @@ object ConnectionActor {
                 // the hello message exchange should happen before the certificate validation
                 KeystoreHandler.assertSocketCertificateValid(socket, address.deviceIdObject)
 
-                // TODO: handle hello message content
+                // now (after the validation) use the content of the hello message
+                HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
+
                 // TODO: cluster config exchange
                 // TODO: index message exchange
 
