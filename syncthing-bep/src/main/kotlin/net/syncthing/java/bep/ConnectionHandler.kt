@@ -18,6 +18,7 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.MessageLite
 import net.jpountz.lz4.LZ4Factory
 import net.syncthing.java.bep.BlockExchangeProtos.*
+import net.syncthing.java.bep.connectionactor.HelloMessageHandler
 import net.syncthing.java.bep.connectionactor.OpenConnection
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
@@ -100,11 +101,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
         inputStream = DataInputStream(socket.inputStream)
         outputStream = DataOutputStream(socket.outputStream)
 
-        sendHelloMessage(BlockExchangeProtos.Hello.newBuilder()
-                .setClientName(configuration.clientName)
-                .setClientVersion(configuration.clientVersion)
-                .setDeviceName(configuration.localDeviceName)
-                .build().toByteArray())
+        HelloMessageHandler.sendHelloMessage(configuration, outputStream!!)
         markActivityOnSocket()
 
         receiveHelloMessage()
@@ -213,26 +210,6 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                 }
             }.toSet()
         configuration.persistLater()
-    }
-
-    private fun sendHelloMessage(payload: ByteArray): Future<*> {
-        return outExecutorService.submitLogging {
-            try {
-                logger.debug("Sending hello message")
-                val header = ByteBuffer.allocate(6)
-                header.putInt(MAGIC)
-                header.putShort(payload.size.toShort())
-                outputStream!!.write(header.array())
-                outputStream!!.write(payload)
-                outputStream!!.flush()
-            } catch (ex: IOException) {
-                if (outExecutorService.isShutdown) {
-                    return@submitLogging
-                }
-                logger.error("error writing to output stream", ex)
-                closeBg()
-            }
-        }
     }
 
     private fun sendPing(): Future<*> {
@@ -460,7 +437,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
     companion object {
 
-        private const val MAGIC = 0x2EA7D90B
+        const val MAGIC = 0x2EA7D90B
 
         private val messageTypes = listOf(
                 MessageTypeInfo(MessageType.CLOSE, Close::class.java) { Close.parseFrom(it) },
