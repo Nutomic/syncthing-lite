@@ -31,9 +31,12 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
 object GlobalDiscoveryUtil {
+    private fun queryAnnounceServerUrl(server: String, deviceId: DeviceId) =
+            "https://$server/v2/?device=${deviceId.deviceId}"
+
     suspend fun queryAnnounceServer(server: String, deviceId: DeviceId): AnnouncementMessage {
         return withContext(Dispatchers.IO) {
-            val url = URL("https://$server/v2/?device=${deviceId.deviceId}")
+            val url = URL(queryAnnounceServerUrl(server, deviceId))
             val connection = (url.openConnection() as HttpsURLConnection).apply {
                 hostnameVerifier = HostnameVerifier { _, _ -> true }
                 sslSocketFactory = SSLContext.getInstance("SSL").apply {

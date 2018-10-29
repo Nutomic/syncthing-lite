@@ -26,6 +26,7 @@ import net.syncthing.java.core.utils.NetworkUtils
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
+import java.io.IOException
 import java.net.*
 import java.nio.ByteBuffer
 
@@ -88,7 +89,7 @@ object LocalDiscoveryUtil {
                         )
 
                         send(message)
-                    } catch (ex: Exception) {
+                    } catch (ex: IOException) {
                         logger.warn("error during handling received package", ex)
                     }
                 }

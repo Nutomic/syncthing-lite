@@ -23,6 +23,7 @@ import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.discovery.utils.AddressRanker
 import org.slf4j.LoggerFactory
+import java.io.IOException
 
 internal class GlobalDiscoveryHandler(private val configuration: Configuration) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -72,6 +73,13 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
                             queryAnnounceServer(server, deviceId)
                         } catch (ex: Exception) {
                             logger.warn("Failed to query $server for $deviceId", ex)
+
+                            when (ex) {
+                                is IOException -> { /* ignore */ }
+                                is DeviceNotFoundException -> { /* ignore */ }
+                                is TooManyRequestsException -> { /* ignore */ }
+                                else -> throw ex
+                            }
 
                             emptyList<DeviceAddress>()
                         }
