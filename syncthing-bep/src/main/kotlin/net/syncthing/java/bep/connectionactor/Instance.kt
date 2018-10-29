@@ -16,8 +16,10 @@ package net.syncthing.java.bep.connectionactor
 
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.channels.actor
 import kotlinx.coroutines.experimental.channels.consumeEach
+import kotlinx.coroutines.experimental.coroutineScope
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
 import java.io.DataInputStream
@@ -33,9 +35,11 @@ object ConnectionActor {
                 val inputStream = DataInputStream(socket.inputStream)
                 val outputStream = DataOutputStream(socket.outputStream)
 
-                HelloMessageHandler.sendHelloMessage(configuration, outputStream)
-                val helloMessage = HelloMessageHandler.receiveHelloMessage(inputStream)
-                // TODO: hello messages are exchanged parallel
+                val helloMessage = coroutineScope {
+                    async { HelloMessageHandler.sendHelloMessage(configuration, outputStream) }
+                    async { HelloMessageHandler.receiveHelloMessage(inputStream) }.await()
+                }
+
                 // TODO: handle hello message content
                 // TODO: check socket certificate - this happens after the hello message exchange
                 // TODO: cluster config exchange

@@ -101,7 +101,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
         inputStream = DataInputStream(socket.inputStream)
         outputStream = DataOutputStream(socket.outputStream)
 
-        HelloMessageHandler.sendHelloMessage(configuration, outputStream!!)
+        sendHelloMessageInBackground()
         markActivityOnSocket()
 
         receiveHelloMessage()
@@ -205,6 +205,20 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                 }
             }.toSet()
         configuration.persistLater()
+    }
+
+    private fun sendHelloMessageInBackground(): Future<*> {
+        return outExecutorService.submitLogging {
+            try {
+                HelloMessageHandler.sendHelloMessage(configuration, outputStream!!)
+            } catch (ex: IOException) {
+                if (outExecutorService.isShutdown) {
+                    return@submitLogging
+                }
+                logger.error("error writing to output stream", ex)
+                closeBg()
+            }
+        }
     }
 
     private fun sendPing(): Future<*> {
