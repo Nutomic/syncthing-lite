@@ -22,6 +22,7 @@ import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
 import org.slf4j.LoggerFactory
 import java.io.Closeable
+import java.io.IOException
 
 internal class LocalDiscoveryHandler(private val configuration: Configuration,
                                      private val onMessageReceivedListener: (LocalDiscoveryMessage) -> Unit,
@@ -55,7 +56,7 @@ internal class LocalDiscoveryHandler(private val configuration: Configuration,
                         onMessageReceivedListener(message)
                     }
                 }
-            } catch (ex: Exception) {
+            } catch (ex: IOException) {
                 logger.warn("Failed to listen for announcement messages", ex)
             }
         }
