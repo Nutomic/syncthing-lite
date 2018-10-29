@@ -194,13 +194,8 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
      */
     @Throws(IOException::class)
     private fun receiveHelloMessage() {
-        val magic = inputStream!!.readInt()
-        NetworkUtils.assertProtocol(magic == MAGIC, {"magic mismatch, expected $MAGIC, got $magic"})
-        val length = inputStream!!.readShort().toInt()
-        NetworkUtils.assertProtocol(length > 0, {"invalid lenght, must be >0, got $length"})
-        val buffer = ByteArray(length)
-        inputStream!!.readFully(buffer)
-        val hello = BlockExchangeProtos.Hello.parseFrom(buffer)
+        val hello = HelloMessageHandler.receiveHelloMessage(inputStream!!)
+
         logger.info("Received hello message, deviceName=${hello.deviceName}, clientName=${hello.clientName}, clientVersion=${hello.clientVersion}")
         configuration.peers = configuration.peers.map { peer ->
                 if (peer.deviceId == deviceId()) {
