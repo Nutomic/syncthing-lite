@@ -23,12 +23,14 @@ import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.coroutineScope
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
+import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.security.KeystoreHandler
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.IOException
 
 object ConnectionActor {
     fun createInstance(
@@ -65,9 +67,23 @@ object ConnectionActor {
                 }
 
                 // cluster config exchange
-                sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject))
+                val clusterConfig = coroutineScope {
+                    async { sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject)) }
+                    async { receivePostAuthMessage() }.await()
+                }.second
 
-                // TODO: receive cluster config
+                if (!(clusterConfig is BlockExchangeProtos.ClusterConfig)) {
+                    throw IOException("first message was not a cluster config message")
+                }
+
+                ClusterConfigHandler.handleReceivedClusterConfig(
+                        clusterConfig = clusterConfig,
+                        configuration = configuration,
+                        otherDeviceId = address.deviceIdObject,
+                        indexHandler = indexHandler,
+                        onNewFolderSharedListener = {/* ignore it */}
+                )
+
                 // TODO: index message exchange
 
                 consumeEach { action ->

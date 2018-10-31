@@ -16,10 +16,13 @@ package net.syncthing.java.bep.connectionactor
 
 import com.google.protobuf.ByteString
 import net.syncthing.java.bep.BlockExchangeProtos
+import net.syncthing.java.bep.ClusterConfigFolderInfo
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceId
+import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.configuration.Configuration
 import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 
 object ClusterConfigHandler {
     private val logger = LoggerFactory.getLogger(ClusterConfigHandler::class.java)
@@ -69,5 +72,57 @@ object ClusterConfigHandler {
         }
 
         return builder.build()
+    }
+
+    // TODO: understand this
+    internal fun handleReceivedClusterConfig(
+            clusterConfig: BlockExchangeProtos.ClusterConfig,
+            configuration: Configuration,
+            otherDeviceId: DeviceId,
+            indexHandler: IndexHandler,
+            onNewFolderSharedListener: (FolderInfo) -> Unit
+    ): ClusterConfigInfo {
+        val clusterConfigInfo = ClusterConfigInfo()
+
+        for (folder in clusterConfig.foldersList ?: emptyList()) {
+            val folderInfo = ClusterConfigFolderInfo(folder.id, folder.label)
+            val devicesById = (folder.devicesList ?: emptyList())
+                    .associateBy { input ->
+                        DeviceId.fromHashData(input.id!!.toByteArray())
+                    }
+            val otherDevice = devicesById[otherDeviceId]
+            val ourDevice = devicesById[configuration.localDeviceId]
+            if (otherDevice != null) {
+                folderInfo.isAnnounced = true
+            }
+            if (ourDevice != null) {
+                folderInfo.isShared = true
+                logger.info("folder shared from device = {} folder = {}", otherDeviceId, folderInfo)
+                val folderIds = configuration.folders.map { it.folderId }
+                if (!folderIds.contains(folderInfo.folderId)) {
+                    val fi = FolderInfo(folderInfo.folderId, folderInfo.label)
+                    configuration.folders = configuration.folders + fi
+                    onNewFolderSharedListener(fi)
+                    logger.info("new folder shared = {}", folderInfo)
+                }
+            } else {
+                logger.info("folder not shared from device = {} folder = {}", otherDeviceId, folderInfo)
+            }
+            clusterConfigInfo.putFolderInfo(folderInfo)
+        }
+        configuration.persistLater()
+        indexHandler.handleClusterConfigMessageProcessedEvent(clusterConfig)
+
+        return clusterConfigInfo
+    }
+}
+
+internal class ClusterConfigInfo {
+    private val folderInfoById = ConcurrentHashMap<String, ClusterConfigFolderInfo>()
+
+    fun getSharedFolders(): Set<String> = folderInfoById.values.filter { it.isShared }.map { it.folderId }.toSet()
+
+    fun putFolderInfo(folderInfo: ClusterConfigFolderInfo) {
+        folderInfoById[folderInfo.folderId] = folderInfo
     }
 }

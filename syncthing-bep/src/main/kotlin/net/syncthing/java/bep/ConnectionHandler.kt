@@ -16,10 +16,7 @@ package net.syncthing.java.bep
 
 import com.google.protobuf.MessageLite
 import net.syncthing.java.bep.BlockExchangeProtos.*
-import net.syncthing.java.bep.connectionactor.ClusterConfigHandler
-import net.syncthing.java.bep.connectionactor.HelloMessageHandler
-import net.syncthing.java.bep.connectionactor.OpenConnection
-import net.syncthing.java.bep.connectionactor.PostAuthenticationMessageHandler
+import net.syncthing.java.bep.connectionactor.*
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
@@ -35,7 +32,6 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
 import java.security.cert.CertificateException
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -290,36 +286,16 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                             }
                             BlockExchangeProtos.MessageType.CLUSTER_CONFIG -> {
                                 NetworkUtils.assertProtocol(clusterConfigInfo == null, {"received cluster config message twice!"})
-                                clusterConfigInfo = ClusterConfigInfo()
                                 val clusterConfig = message.second as ClusterConfig
-                                for (folder in clusterConfig.foldersList ?: emptyList()) {
-                                    val folderInfo = ClusterConfigFolderInfo(folder.id, folder.label)
-                                    val devicesById = (folder.devicesList ?: emptyList())
-                                            .associateBy { input ->
-                                                DeviceId.fromHashData(input.id!!.toByteArray())
-                                            }
-                                    val otherDevice = devicesById[address.deviceId()]
-                                    val ourDevice = devicesById[configuration.localDeviceId]
-                                    if (otherDevice != null) {
-                                        folderInfo.isAnnounced = true
-                                    }
-                                    if (ourDevice != null) {
-                                        folderInfo.isShared = true
-                                        logger.info("folder shared from device = {} folder = {}", address.deviceId, folderInfo)
-                                        val folderIds = configuration.folders.map { it.folderId }
-                                        if (!folderIds.contains(folderInfo.folderId)) {
-                                            val fi = FolderInfo(folderInfo.folderId, folderInfo.label)
-                                            configuration.folders = configuration.folders + fi
-                                            onNewFolderSharedListener(this, fi)
-                                            logger.info("new folder shared = {}", folderInfo)
-                                        }
-                                    } else {
-                                        logger.info("folder not shared from device = {} folder = {}", address.deviceId, folderInfo)
-                                    }
-                                    clusterConfigInfo!!.putFolderInfo(folderInfo)
-                                }
-                                configuration.persistLater()
-                                indexHandler.handleClusterConfigMessageProcessedEvent(clusterConfig)
+
+                                clusterConfigInfo = ClusterConfigHandler.handleReceivedClusterConfig(
+                                        clusterConfig = clusterConfig,
+                                        configuration = configuration,
+                                        otherDeviceId = deviceId(),
+                                        onNewFolderSharedListener = { onNewFolderSharedListener(this, it) },
+                                        indexHandler = indexHandler
+                                )
+
                                 synchronized(clusterConfigWaitingLock) {
                                     clusterConfigWaitingLock.notifyAll()
                                 }
@@ -339,18 +315,6 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
     override fun toString(): String {
         return "ConnectionHandler{" + "address=" + address + ", lastActive=" + getLastActive() / 1000.0 + "secs ago}"
-    }
-
-    internal inner class ClusterConfigInfo {
-
-        private val folderInfoById = ConcurrentHashMap<String, ClusterConfigFolderInfo>()
-
-        fun getSharedFolders(): Set<String> = folderInfoById.values.filter { it.isShared }.map { it.folderId }.toSet()
-
-        fun putFolderInfo(folderInfo: ClusterConfigFolderInfo) {
-            folderInfoById[folderInfo.folderId] = folderInfo
-        }
-
     }
 
     fun hasFolder(folder: String): Boolean {
