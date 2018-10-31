@@ -15,12 +15,9 @@
 package net.syncthing.java.bep.connectionactor
 
 import com.google.protobuf.MessageLite
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.actor
 import kotlinx.coroutines.experimental.channels.consumeEach
-import kotlinx.coroutines.experimental.coroutineScope
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
 import net.syncthing.java.bep.BlockExchangeProtos
@@ -31,12 +28,14 @@ import net.syncthing.java.core.security.KeystoreHandler
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
+import java.util.*
 
 object ConnectionActor {
     fun createInstance(
             address: DeviceAddress,
             configuration: Configuration,
-            indexHandler: IndexHandler
+            indexHandler: IndexHandler,
+            requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
     ) {
         GlobalScope.actor<ConnectionAction>(Dispatchers.IO) {
             OpenConnection.openSocketConnection(address, configuration).use { socket ->
@@ -84,10 +83,86 @@ object ConnectionActor {
                         onNewFolderSharedListener = {/* ignore it */}
                 )
 
-                // TODO: index message exchange
+                val messageListeners = Collections.synchronizedMap(mapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
 
-                consumeEach { action ->
-                    TODO()
+                try {
+                    // TODO: index message exchange
+
+                    async {
+                        while (true) {
+                            val message = receivePostAuthMessage().second
+
+                            when (message) {
+                                is BlockExchangeProtos.Response -> {
+                                    val listener = messageListeners.remove(message.id)
+                                    listener ?: throw IOException("got response ${message.id} but there is no response listener")
+                                    listener.complete(message)
+                                }
+                                is BlockExchangeProtos.Index -> {
+                                    TODO()
+                                }
+                                is BlockExchangeProtos.IndexUpdate -> {
+                                    TODO()
+                                }
+                                is BlockExchangeProtos.Request -> {
+                                    async {
+                                        val response = try {
+                                            requestHandler(message).await()
+                                        } catch (ex: Exception) {
+                                            // TODO: log this somehow
+
+                                            BlockExchangeProtos.Response.newBuilder()
+                                                    .setId(message.id)
+                                                    .setCode(BlockExchangeProtos.ErrorCode.GENERIC)
+                                                    .build()
+                                        }
+
+                                        sendPostAuthMessage(response)
+                                    }
+                                }
+                                is BlockExchangeProtos.Ping -> { /* nothing to do */ }
+                                is BlockExchangeProtos.ClusterConfig -> throw IOException("received cluster config twice")
+                                is BlockExchangeProtos.Close -> socket.close()
+                                else -> throw IOException("unsupported message type ${message.javaClass}")
+                            }
+                        }
+                    }
+
+                    var nextRequestId = 0
+
+                    consumeEach { action ->
+                        when (action) {
+                            CloseConnectionAction -> throw InterruptedException()
+                            is SendRequestConnectionAction -> {
+                                val requestId = nextRequestId++
+
+                                messageListeners[requestId] = action.completableDeferred
+
+                                // async to allow handling the next action faster
+                                async {
+                                    try {
+                                        sendPostAuthMessage(
+                                                action.request.toBuilder()
+                                                        .setId(requestId)
+                                                        .build()
+                                        )
+                                    } catch (ex: Exception) {
+                                        action.completableDeferred.cancel(ex)
+                                    }
+                                }
+                            }
+                        }.let { /* prevents compiling if one action is not handled */ }
+                    }
+                } finally {
+                    // send close message
+                    withContext(NonCancellable) {
+                        if (socket.isConnected) {
+                            sendPostAuthMessage(BlockExchangeProtos.Close.getDefaultInstance())
+                        }
+                    }
+
+                    // cancel all pending listeners
+                    messageListeners.values.forEach { it.cancel() }
                 }
             }
         }

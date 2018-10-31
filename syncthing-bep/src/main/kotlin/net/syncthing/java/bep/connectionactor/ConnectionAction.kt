@@ -13,4 +13,12 @@
  */
 package net.syncthing.java.bep.connectionactor
 
+import kotlinx.coroutines.experimental.CompletableDeferred
+import net.syncthing.java.bep.BlockExchangeProtos
+
 sealed class ConnectionAction
+object CloseConnectionAction: ConnectionAction()
+class SendRequestConnectionAction(
+        val request: BlockExchangeProtos.Request,
+        val completableDeferred: CompletableDeferred<BlockExchangeProtos.Response>
+): ConnectionAction()
