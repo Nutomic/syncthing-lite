@@ -183,6 +183,13 @@ object ConnectionActor {
                                     }
                                 }
                             }
+                            is ConfirmIsConnectedAction -> {
+                                action.completableDeferred.complete(null)
+
+                                // otherwise, Kotlin would warn that the return
+                                // type does not match to the other branches
+                                null
+                            }
                         }.let { /* prevents compiling if one action is not handled */ }
                     }
                 } finally {

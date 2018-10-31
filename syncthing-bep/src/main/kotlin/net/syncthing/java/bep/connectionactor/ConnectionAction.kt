@@ -22,3 +22,4 @@ class SendRequestConnectionAction(
         val request: BlockExchangeProtos.Request,
         val completableDeferred: CompletableDeferred<BlockExchangeProtos.Response>
 ): ConnectionAction()
+class ConfirmIsConnectedAction(val completableDeferred: CompletableDeferred<Unit?>): ConnectionAction()
