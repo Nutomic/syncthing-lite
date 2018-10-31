@@ -138,8 +138,8 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, connectionHandler: ConnectionHandler) {
-        indexMessageProcessor.handleIndexMessageReceivedEvent(folderId, filesList, connectionHandler)
+    internal fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
+        indexMessageProcessor.handleIndexMessageReceivedEvent(folderId, filesList, clusterConfigInfo, peerDeviceId)
     }
 
     fun pushRecord(folder: String, bepFileInfo: BlockExchangeProtos.FileInfo): FileInfo? {
@@ -293,11 +293,9 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         //        private final int MIN_DELAY = 0, MAX_DELAY = 5000, MAX_RECORD_PER_PROCESS = 16, DELAY_FACTOR = 1;
         private var startTime: Long? = null
 
-        fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, connectionHandler: ConnectionHandler) {
+        fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
             logger.info("received index message event, preparing (queued records = {} event record count = {})", queuedRecords, filesList.size)
             markActive()
-            val clusterConfigInfo = connectionHandler.clusterConfigInfo
-            val peerDeviceId = connectionHandler.deviceId()
             //            List<BlockExchangeProtos.FileInfo> fileList = event.getFilesList();
             //            for (int index = 0; index < fileList.size(); index += MAX_RECORD_PER_PROCESS) {
             //                BlockExchangeProtos.IndexUpdate data = BlockExchangeProtos.IndexUpdate.newBuilder()

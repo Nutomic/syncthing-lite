@@ -75,7 +75,7 @@ object ConnectionActor {
                     throw IOException("first message was not a cluster config message")
                 }
 
-                ClusterConfigHandler.handleReceivedClusterConfig(
+                val clusterConfigInfo = ClusterConfigHandler.handleReceivedClusterConfig(
                         clusterConfig = clusterConfig,
                         configuration = configuration,
                         otherDeviceId = address.deviceIdObject,
@@ -99,10 +99,20 @@ object ConnectionActor {
                                     listener.complete(message)
                                 }
                                 is BlockExchangeProtos.Index -> {
-                                    TODO()
+                                    indexHandler.handleIndexMessageReceivedEvent(
+                                            folderId = message.folder,
+                                            filesList = message.filesList,
+                                            clusterConfigInfo = clusterConfigInfo,
+                                            peerDeviceId = address.deviceIdObject
+                                    )
                                 }
                                 is BlockExchangeProtos.IndexUpdate -> {
-                                    TODO()
+                                    indexHandler.handleIndexMessageReceivedEvent(
+                                            folderId = message.folder,
+                                            filesList = message.filesList,
+                                            clusterConfigInfo = clusterConfigInfo,
+                                            peerDeviceId = address.deviceIdObject
+                                    )
                                 }
                                 is BlockExchangeProtos.Request -> {
                                     async {

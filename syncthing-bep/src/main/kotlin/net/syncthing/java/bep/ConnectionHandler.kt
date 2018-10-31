@@ -266,11 +266,11 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                         when (message.first) {
                             BlockExchangeProtos.MessageType.INDEX -> {
                                 val index = message.second as Index
-                                indexHandler.handleIndexMessageReceivedEvent(index.folder, index.filesList, this)
+                                indexHandler.handleIndexMessageReceivedEvent(index.folder, index.filesList, clusterConfigInfo!!, deviceId())
                             }
                             BlockExchangeProtos.MessageType.INDEX_UPDATE -> {
                                 val update = message.second as IndexUpdate
-                                indexHandler.handleIndexMessageReceivedEvent(update.folder, update.filesList, this)
+                                indexHandler.handleIndexMessageReceivedEvent(update.folder, update.filesList, clusterConfigInfo!!, deviceId())
                             }
                             BlockExchangeProtos.MessageType.REQUEST -> {
                                 onRequestMessageReceivedListeners.forEach { it(message.second as Request) }
