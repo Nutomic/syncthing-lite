@@ -52,13 +52,16 @@ object ConnectionActor {
                 // now (after the validation) use the content of the hello message
                 HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
 
-                // helper to send messages
+                // helpers for messages
                 val sendPostAuthMessageLock = Mutex()
+                val receivePostAuthMessageLock = Mutex()
 
-                suspend fun sendPostAuthMessage(message: MessageLite) {
-                    sendPostAuthMessageLock.withLock {
-                        PostAuthenticationMessageHandler.sendMessage(outputStream, message, markActivityOnSocket = {})
-                    }
+                suspend fun sendPostAuthMessage(message: MessageLite) = sendPostAuthMessageLock.withLock {
+                    PostAuthenticationMessageHandler.sendMessage(outputStream, message, markActivityOnSocket = {})
+                }
+
+                suspend fun receivePostAuthMessage() = receivePostAuthMessageLock.withLock {
+                    PostAuthenticationMessageHandler.receiveMessage(inputStream, markActivityOnSocket = {})
                 }
 
                 // cluster config exchange

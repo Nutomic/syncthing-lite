@@ -15,7 +15,6 @@
 package net.syncthing.java.bep
 
 import com.google.protobuf.MessageLite
-import net.jpountz.lz4.LZ4Factory
 import net.syncthing.java.bep.BlockExchangeProtos.*
 import net.syncthing.java.bep.connectionactor.ClusterConfigHandler
 import net.syncthing.java.bep.connectionactor.HelloMessageHandler
@@ -30,14 +29,11 @@ import net.syncthing.java.core.security.KeystoreHandler
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.submitLogging
 import org.apache.commons.io.IOUtils
-import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
-import java.lang.reflect.InvocationTargetException
-import java.nio.ByteBuffer
 import java.security.cert.CertificateException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -186,39 +182,10 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
         lastActive = System.currentTimeMillis()
     }
 
-    @Throws(IOException::class)
-    private fun receiveMessage(): Pair<BlockExchangeProtos.MessageType, MessageLite> {
-        val header = BlockExchangeProtos.Header.parseFrom(readHeader(
-                inputStream = inputStream!!,
-                retryReadingLength = true,
-                markActivityOnSocket = this::markActivityOnSocket
-        ))
-
-        var messageBuffer = readMessage(
-                inputStream = inputStream!!,
-                retryReadingLength = true,
-                markActivityOnSocket = this::markActivityOnSocket
-        )
-
-        if (header.compression == BlockExchangeProtos.MessageCompression.LZ4) {
-            val uncompressedLength = ByteBuffer.wrap(messageBuffer).int
-            messageBuffer = LZ4Factory.fastestInstance().fastDecompressor().decompress(messageBuffer, 4, uncompressedLength)
-        }
-
-        val messageTypeInfo = messageTypesByProtoMessageType[header.type]
-        NetworkUtils.assertProtocol(messageTypeInfo != null) {"unsupported message type = ${header.type}"}
-
-        try {
-            val message = messageTypeInfo!!.parseFrom(messageBuffer)
-            return Pair.of(header.type, message)
-        } catch (e: Exception) {
-            when (e) {
-                is IllegalAccessException, is IllegalArgumentException, is InvocationTargetException, is NoSuchMethodException, is SecurityException ->
-                    throw IOException(e)
-                else -> throw e
-            }
-        }
-    }
+    private fun receiveMessage() = PostAuthenticationMessageHandler.receiveMessage(
+            inputStream = inputStream!!,
+            markActivityOnSocket = this::markActivityOnSocket
+    )
 
     internal fun sendMessage(message: MessageLite): Future<*> {
         checkNotClosed()
@@ -299,32 +266,32 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                 while (!Thread.interrupted()) {
                     val message = receiveMessage()
                     messageProcessingService.submitLogging {
-                        logger.debug("received message type = {} {}", message.left, getIdForMessage(message.right))
-                        when (message.left) {
+                        logger.debug("received message type = {} {}", message.first, getIdForMessage(message.second))
+                        when (message.first) {
                             BlockExchangeProtos.MessageType.INDEX -> {
-                                val index = message.value as Index
+                                val index = message.second as Index
                                 indexHandler.handleIndexMessageReceivedEvent(index.folder, index.filesList, this)
                             }
                             BlockExchangeProtos.MessageType.INDEX_UPDATE -> {
-                                val update = message.value as IndexUpdate
+                                val update = message.second as IndexUpdate
                                 indexHandler.handleIndexMessageReceivedEvent(update.folder, update.filesList, this)
                             }
                             BlockExchangeProtos.MessageType.REQUEST -> {
-                                onRequestMessageReceivedListeners.forEach { it(message.value as Request) }
+                                onRequestMessageReceivedListeners.forEach { it(message.second as Request) }
                             }
                             BlockExchangeProtos.MessageType.RESPONSE -> {
-                                responseHandler.handleResponse(message.value as Response)
+                                responseHandler.handleResponse(message.second as Response)
                             }
                             BlockExchangeProtos.MessageType.PING -> logger.debug("ping message received")
                             BlockExchangeProtos.MessageType.CLOSE -> {
-                                val close = message.value as BlockExchangeProtos.Close
+                                val close = message.second as BlockExchangeProtos.Close
                                 logger.info("received close message, reason=${close.reason}")
                                 closeBg()
                             }
                             BlockExchangeProtos.MessageType.CLUSTER_CONFIG -> {
                                 NetworkUtils.assertProtocol(clusterConfigInfo == null, {"received cluster config message twice!"})
                                 clusterConfigInfo = ClusterConfigInfo()
-                                val clusterConfig = message.value as ClusterConfig
+                                val clusterConfig = message.second as ClusterConfig
                                 for (folder in clusterConfig.foldersList ?: emptyList()) {
                                     val folderInfo = ClusterConfigFolderInfo(folder.id, folder.label)
                                     val devicesById = (folder.devicesList ?: emptyList())
@@ -391,21 +358,6 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
     }
 
     companion object {
-        // TODO: move these fields somewhere else
-        val messageTypes = listOf(
-                MessageTypeInfo(MessageType.CLOSE, Close::class.java) { Close.parseFrom(it) },
-                MessageTypeInfo(MessageType.CLUSTER_CONFIG, ClusterConfig::class.java) { ClusterConfig.parseFrom(it) },
-                MessageTypeInfo(MessageType.DOWNLOAD_PROGRESS, DownloadProgress::class.java) { DownloadProgress.parseFrom(it) },
-                MessageTypeInfo(MessageType.INDEX, Index::class.java) { Index.parseFrom(it) },
-                MessageTypeInfo(MessageType.INDEX_UPDATE, IndexUpdate::class.java) { IndexUpdate.parseFrom(it) },
-                MessageTypeInfo(MessageType.PING, Ping::class.java) { Ping.parseFrom(it) },
-                MessageTypeInfo(MessageType.REQUEST, Request::class.java) { Request.parseFrom(it) },
-                MessageTypeInfo(MessageType.RESPONSE, Response::class.java) { Response.parseFrom(it) }
-        )
-
-        val messageTypesByProtoMessageType = messageTypes.map { it.protoMessageType to it }.toMap()
-        val messageTypesByJavaClass = messageTypes.map { it.javaClass to it }.toMap()
-
         // TODO: move this somewhere else
         /**
          * get id for message bean/instance, for log tracking
@@ -423,53 +375,6 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
         private val logger = LoggerFactory.getLogger(ConnectionHandler::class.java)
 
-        private fun readHeader(
-                inputStream: DataInputStream,
-                markActivityOnSocket: () -> Unit,
-                retryReadingLength: Boolean
-        ): ByteArray {
-            var headerLength = inputStream.readShort().toInt()
-
-            // TODO: what is this good for?
-            if (retryReadingLength) {
-                while (headerLength == 0) {
-                    logger.warn("got headerLength == 0, skipping short")
-                    headerLength = inputStream.readShort().toInt()
-                }
-            }
-
-            markActivityOnSocket()
-
-            NetworkUtils.assertProtocol(headerLength > 0) {"invalid length, must be > 0, got $headerLength"}
-
-            return ByteArray(headerLength).apply {
-                inputStream.readFully(this)
-            }
-        }
-
-        private fun readMessage(
-                inputStream: DataInputStream,
-                markActivityOnSocket: () -> Unit,
-                retryReadingLength: Boolean
-        ): ByteArray {
-            var messageLength = inputStream.readInt()
-
-            // TODO: what is this good for?
-            if (retryReadingLength) {
-                while (messageLength == 0) {
-                    logger.warn("received readInt() == 0, expecting 'bep message header length' (int >0), ignoring (keepalive?)")
-                    messageLength = inputStream.readInt()
-                }
-            }
-
-            NetworkUtils.assertProtocol(messageLength >= 0, {"invalid lenght, must be >=0, got $messageLength"})
-
-            val messageBuffer = ByteArray(messageLength)
-            inputStream.readFully(messageBuffer)
-            markActivityOnSocket()
-
-            return messageBuffer
-        }
     }
 
     data class MessageTypeInfo(
