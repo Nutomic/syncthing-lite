@@ -83,11 +83,11 @@ object ConnectionActor {
                         onNewFolderSharedListener = {/* ignore it */}
                 )
 
+                fun hasFolder(folder: String) = clusterConfigInfo.getSharedFolders().contains(folder)
+
                 val messageListeners = Collections.synchronizedMap(mapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
 
                 try {
-                    // TODO: index message exchange
-
                     async {
                         while (true) {
                             val message = receivePostAuthMessage().second
@@ -135,6 +135,17 @@ object ConnectionActor {
                                 is BlockExchangeProtos.Close -> socket.close()
                                 else -> throw IOException("unsupported message type ${message.javaClass}")
                             }
+                        }
+                    }
+
+                    // send index messages - TODO: Why?
+                    for (folder in configuration.folders) {
+                        if (hasFolder(folder.folderId)) {
+                            sendPostAuthMessage(
+                                    BlockExchangeProtos.Index.newBuilder()
+                                            .setFolder(folder.folderId)
+                                            .build()
+                            )
                         }
                     }
 
