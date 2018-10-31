@@ -89,7 +89,7 @@ object ConnectionActor {
 
                 try {
                     async {
-                        while (true) {
+                        while (isActive) {
                             val message = receivePostAuthMessage().second
 
                             when (message) {
@@ -146,6 +146,17 @@ object ConnectionActor {
                                             .setFolder(folder.folderId)
                                             .build()
                             )
+                        }
+                    }
+
+                    async {
+                        // send ping all 90 seconds
+                        // TODO: only send when there were no messages for 90 seconds
+
+                        while (isActive) {
+                            delay(90 * 1000)
+
+                            async { sendPostAuthMessage(BlockExchangeProtos.Ping.getDefaultInstance()) }
                         }
                     }
 
