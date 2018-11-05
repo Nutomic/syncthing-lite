@@ -115,19 +115,14 @@ object ConnectionActor {
                                 )
                             }
                             is BlockExchangeProtos.Request -> {
-                                async {
-                                    val response = try {
-                                        requestHandler(message).await()
-                                    } catch (ex: Exception) {
-                                        // TODO: log this somehow
+                                launch {
+                                    val response = requestHandler(message).await()
 
-                                        BlockExchangeProtos.Response.newBuilder()
-                                                .setId(message.id)
-                                                .setCode(BlockExchangeProtos.ErrorCode.GENERIC)
-                                                .build()
+                                    try {
+                                        sendPostAuthMessage(response)
+                                    } catch (ex: IOException) {
+                                        // the connection was closed in the time between - ignore it
                                     }
-
-                                    sendPostAuthMessage(response)
                                 }
                             }
                             is BlockExchangeProtos.Ping -> { /* nothing to do */ }

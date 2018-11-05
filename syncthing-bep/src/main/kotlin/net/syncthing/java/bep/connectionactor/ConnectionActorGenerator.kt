@@ -23,6 +23,7 @@ import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
 import org.slf4j.LoggerFactory
+import java.io.IOException
 
 object ConnectionActorGenerator {
     private val closed = Channel<ConnectionAction>().apply { cancel() }
@@ -134,8 +135,13 @@ object ConnectionActorGenerator {
                     val clusterConfig = try {
                         ConnectionActorUtil.waitUntilConnected(newActor)
                     } catch (ex: Exception) {
-                        // TODO: catch more specific
                         logger.warn("failed to connect to $deviceAddress", ex)
+
+                        when (ex) {
+                            is IOException -> {/* expected -> ignore */}
+                            is InterruptedException -> {/* expected -> ignore */}
+                            else -> throw ex
+                        }
 
                         continue
                     }
