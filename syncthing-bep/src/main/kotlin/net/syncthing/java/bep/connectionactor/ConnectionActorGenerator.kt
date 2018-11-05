@@ -22,9 +22,11 @@ import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
+import org.slf4j.LoggerFactory
 
 object ConnectionActorGenerator {
     private val closed = Channel<ConnectionAction>().apply { cancel() }
+    private val logger = LoggerFactory.getLogger(ConnectionActorGenerator::class.java)
 
     fun deviceAddressesGenerator(deviceAddress: ReceiveChannel<DeviceAddress>) = GlobalScope.produce<List<DeviceAddress>> (capacity = Channel.CONFLATED) {
         val addresses = mutableMapOf<String, DeviceAddress>()
@@ -47,9 +49,14 @@ object ConnectionActorGenerator {
     fun <T> waitForFirstValue(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce<T> {
         invokeOnClose { source.cancel() }
 
-        delay(time)
+        var isFirst = true
 
         source.consumeEach {
+            if (isFirst) {
+                isFirst = false
+                delay(time)
+            }
+
             offer(it)
         }
     }
@@ -105,6 +112,8 @@ object ConnectionActorGenerator {
         }
 
         deviceAddressSource.consumeEach { deviceAddresses ->
+            logger.debug("try $deviceAddresses")
+
             if (deviceAddresses.isEmpty()) {
                 closeCurrent()
             } else {
@@ -125,9 +134,11 @@ object ConnectionActorGenerator {
 
                     try {
                         ConnectionActorUtil.waitUntilConnected(newActor)
+
+                        logger.debug("connected to $deviceAddress")
                     } catch (ex: Exception) {
                         // TODO: catch more specific
-                        // TODO: log exception?
+                        logger.warn("failed to connect to $deviceAddress", ex)
 
                         continue
                     }
