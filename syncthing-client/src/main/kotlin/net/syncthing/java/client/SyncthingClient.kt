@@ -15,6 +15,7 @@ package net.syncthing.java.client
 
 import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.runBlocking
 import net.syncthing.java.bep.*
 import net.syncthing.java.bep.connectionactor.ConnectionActorGenerator
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
@@ -243,11 +244,7 @@ class SyncthingClient(
             tempRepository = tempRepository
     )
 
-    fun getBlockPuller(folderId: String, listener: (BlockPuller) -> Unit, errorListener: () -> Unit) {
-        getConnectionForFolder(folderId, { connection ->
-            listener(connection.getBlockPuller())
-        }, errorListener)
-    }
+    fun pullFileSync(fileInfo: FileInfo) = runBlocking { pullFile(fileInfo) }
 
     fun getBlockPusher(folderId: String, listener: (BlockPusher) -> Unit, errorListener: () -> Unit) {
         getConnectionForFolder(folderId, { connection ->

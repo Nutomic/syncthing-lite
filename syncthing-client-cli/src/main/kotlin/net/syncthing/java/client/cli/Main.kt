@@ -13,12 +13,12 @@
  */
 package net.syncthing.java.client.cli
 
+import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.repository.repo.SqlRepository
-import net.syncthing.java.client.SyncthingClient
 import org.apache.commons.cli.*
 import org.apache.commons.io.FileUtils
 import org.slf4j.LoggerFactory
@@ -91,28 +91,23 @@ class Main(private val commandLine: CommandLine) {
                 System.out.println("file path = $folderAndPath")
                 val folder = folderAndPath.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[0]
                 val path = folderAndPath.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[1]
-                val latch = CountDownLatch(1)
                 val fileInfo = FileInfo(folder = folder, path = path, type = FileInfo.FileType.FILE)
-                syncthingClient.getBlockPuller(folder, { blockPuller ->
-                    try {
-                        val inputStream = blockPuller.pullFileSync(fileInfo)
-                        val fileName = syncthingClient.indexHandler.getFileInfoByPath(folder, path)!!.fileName
-                        val file  =
-                                if (commandLine.hasOption("o")) {
-                                    val param = File(commandLine.getOptionValue("o"))
-                                    if (param.isDirectory) File(param, fileName) else param
-                                } else {
-                                    File(fileName)
-                                }
-                        FileUtils.copyInputStreamToFile(inputStream, file)
-                        System.out.println("saved file to = $file.absolutePath")
-                    } catch (e: InterruptedException) {
-                        logger.warn("", e)
-                    } catch (e: IOException) {
-                        logger.warn("", e)
+                try {
+                    val inputStream = syncthingClient.pullFileSync(fileInfo)
+                    val fileName = syncthingClient.indexHandler.getFileInfoByPath(folder, path)!!.fileName
+                    val file = if (commandLine.hasOption("o")) {
+                        val param = File(commandLine.getOptionValue("o"))
+                        if (param.isDirectory) File(param, fileName) else param
+                    } else {
+                        File(fileName)
                     }
-                }, { logger.warn("Failed to pull file") })
-                latch.await()
+                    FileUtils.copyInputStreamToFile(inputStream, file)
+                    System.out.println("saved file to = $file.absolutePath")
+                } catch (e: InterruptedException) {
+                    logger.warn("", e)
+                } catch (e: IOException) {
+                    logger.warn("", e)
+                }
             }
             "P" -> {
                 var path = option.value
