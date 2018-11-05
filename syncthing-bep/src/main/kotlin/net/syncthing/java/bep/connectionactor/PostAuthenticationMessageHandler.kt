@@ -17,7 +17,6 @@ package net.syncthing.java.bep.connectionactor
 import com.google.protobuf.MessageLite
 import net.jpountz.lz4.LZ4Factory
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.ConnectionHandler
 import net.syncthing.java.core.utils.NetworkUtils
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
@@ -42,7 +41,7 @@ object PostAuthenticationMessageHandler {
         val headerData = header.toByteArray()
         val messageData = message.toByteArray() //TODO support compression
 
-        logger.debug("sending message type = {} {}", header.type, ConnectionHandler.getIdForMessage(message))
+        logger.debug("sending message type = {} {}", header.type, MessageTypes.getIdForMessage(message))
         markActivityOnSocket()
 
         outputStream.apply {

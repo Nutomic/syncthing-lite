@@ -14,7 +14,6 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import net.syncthing.java.bep.ConnectionHandler
 import net.syncthing.java.client.protocol.rp.RelayClient
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
@@ -24,7 +23,7 @@ import java.io.IOException
 import javax.net.ssl.SSLSocket
 
 object OpenConnection {
-    private val logger = LoggerFactory.getLogger(ConnectionHandler::class.java)
+    private val logger = LoggerFactory.getLogger(OpenConnection::class.java)
 
     fun openSocketConnection(
             address: DeviceAddress,

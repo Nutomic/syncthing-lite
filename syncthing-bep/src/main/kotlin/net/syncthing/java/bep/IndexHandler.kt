@@ -108,20 +108,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     }
 
     @Throws(InterruptedException::class)
-    fun waitForRemoteIndexAcquired(connectionHandler: ConnectionHandler, timeoutSecs: Long? = null): IndexHandler {
-        val timeoutMillis = (timeoutSecs ?: DEFAULT_INDEX_TIMEOUT) * 1000
-        synchronized(indexWaitLock) {
-            while (!isRemoteIndexAcquired(connectionHandler.clusterConfigInfo!!, connectionHandler.deviceId())) {
-                indexWaitLock.wait(timeoutMillis)
-                NetworkUtils.assertProtocol(connectionHandler.getLastActive() < timeoutMillis || lastActive() < timeoutMillis,
-                        {"unable to acquire index from connection $connectionHandler, timeout reached!"})
-            }
-        }
-        logger.debug("acquired all indexes on connection {}", connectionHandler)
-        return this
-    }
-
-    @Throws(InterruptedException::class)
     fun waitForRemoteIndexAcquired(connectionHandler: ConnectionActorWrapper, timeoutSecs: Long? = null): IndexHandler {
         val timeoutMillis = (timeoutSecs ?: DEFAULT_INDEX_TIMEOUT) * 1000
         synchronized(indexWaitLock) {

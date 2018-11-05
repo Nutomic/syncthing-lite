@@ -14,21 +14,33 @@
  */
 package net.syncthing.java.bep.connectionactor
 
+import com.google.protobuf.MessageLite
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.ConnectionHandler
 
 object MessageTypes {
     val messageTypes = listOf(
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.CLOSE, BlockExchangeProtos.Close::class.java) { BlockExchangeProtos.Close.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.CLUSTER_CONFIG, BlockExchangeProtos.ClusterConfig::class.java) { BlockExchangeProtos.ClusterConfig.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.DOWNLOAD_PROGRESS, BlockExchangeProtos.DownloadProgress::class.java) { BlockExchangeProtos.DownloadProgress.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.INDEX, BlockExchangeProtos.Index::class.java) { BlockExchangeProtos.Index.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.INDEX_UPDATE, BlockExchangeProtos.IndexUpdate::class.java) { BlockExchangeProtos.IndexUpdate.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.PING, BlockExchangeProtos.Ping::class.java) { BlockExchangeProtos.Ping.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.REQUEST, BlockExchangeProtos.Request::class.java) { BlockExchangeProtos.Request.parseFrom(it) },
-            ConnectionHandler.MessageTypeInfo(BlockExchangeProtos.MessageType.RESPONSE, BlockExchangeProtos.Response::class.java) { BlockExchangeProtos.Response.parseFrom(it) }
+            MessageTypeInfo(BlockExchangeProtos.MessageType.CLOSE, BlockExchangeProtos.Close::class.java) { BlockExchangeProtos.Close.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.CLUSTER_CONFIG, BlockExchangeProtos.ClusterConfig::class.java) { BlockExchangeProtos.ClusterConfig.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.DOWNLOAD_PROGRESS, BlockExchangeProtos.DownloadProgress::class.java) { BlockExchangeProtos.DownloadProgress.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.INDEX, BlockExchangeProtos.Index::class.java) { BlockExchangeProtos.Index.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.INDEX_UPDATE, BlockExchangeProtos.IndexUpdate::class.java) { BlockExchangeProtos.IndexUpdate.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.PING, BlockExchangeProtos.Ping::class.java) { BlockExchangeProtos.Ping.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.REQUEST, BlockExchangeProtos.Request::class.java) { BlockExchangeProtos.Request.parseFrom(it) },
+            MessageTypeInfo(BlockExchangeProtos.MessageType.RESPONSE, BlockExchangeProtos.Response::class.java) { BlockExchangeProtos.Response.parseFrom(it) }
     )
 
     val messageTypesByProtoMessageType = messageTypes.map { it.protoMessageType to it }.toMap()
     val messageTypesByJavaClass = messageTypes.map { it.javaClass to it }.toMap()
+
+    fun getIdForMessage(message: MessageLite) = when (message) {
+        is BlockExchangeProtos.Request -> Integer.toString(message.id)
+        is BlockExchangeProtos.Response -> Integer.toString(message.id)
+        else -> Integer.toString(Math.abs(message.hashCode()))
+    }
 }
+
+data class MessageTypeInfo(
+        val protoMessageType: BlockExchangeProtos.MessageType,
+        val javaClass: Class<out MessageLite>,
+        val parseFrom: (data: ByteArray) -> MessageLite
+)
