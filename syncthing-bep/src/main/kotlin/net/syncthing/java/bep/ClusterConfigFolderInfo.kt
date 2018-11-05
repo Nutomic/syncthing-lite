@@ -13,7 +13,7 @@
  */
 package net.syncthing.java.bep
 
-internal data class ClusterConfigFolderInfo(val folderId: String, var label: String = folderId,
+data class ClusterConfigFolderInfo(val folderId: String, var label: String = folderId,
                                             var isAnnounced: Boolean = false, var isShared: Boolean = false) {
 
     init {

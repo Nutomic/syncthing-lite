@@ -88,7 +88,6 @@ object ConnectionActorGenerator {
             requestHandler = requestHandler
     )
 
-
     fun generateConnectionActors2(
             deviceAddressSource: ReceiveChannel<List<DeviceAddress>>,
             configuration: Configuration,
@@ -132,10 +131,8 @@ object ConnectionActorGenerator {
 
                     val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
 
-                    try {
+                    val clusterConfig = try {
                         ConnectionActorUtil.waitUntilConnected(newActor)
-
-                        logger.debug("connected to $deviceAddress")
                     } catch (ex: Exception) {
                         // TODO: catch more specific
                         logger.warn("failed to connect to $deviceAddress", ex)
@@ -143,10 +140,12 @@ object ConnectionActorGenerator {
                         continue
                     }
 
+                    logger.debug("connected to $deviceAddress")
+
                     currentActor = newActor
                     currentDeviceAddress = deviceAddress
 
-                    send(newActor)
+                    send(newActor to clusterConfig)
 
                     break   // don't try the other addresses
                 }

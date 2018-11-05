@@ -18,13 +18,13 @@ import kotlinx.coroutines.experimental.channels.SendChannel
 import net.syncthing.java.bep.BlockExchangeProtos
 
 object ConnectionActorUtil {
-    suspend fun waitUntilConnected(actor: SendChannel<ConnectionAction>) {
-        val deferred = CompletableDeferred<Unit?>()
+    suspend fun waitUntilConnected(actor: SendChannel<ConnectionAction>): ClusterConfigInfo {
+        val deferred = CompletableDeferred<ClusterConfigInfo>()
 
         actor.send(ConfirmIsConnectedAction(deferred))
         actor.invokeOnClose { deferred.cancel() }
 
-        deferred.await()
+        return deferred.await()
     }
 
     suspend fun sendRequest(request: BlockExchangeProtos.Request, actor: SendChannel<ConnectionAction>): BlockExchangeProtos.Response {

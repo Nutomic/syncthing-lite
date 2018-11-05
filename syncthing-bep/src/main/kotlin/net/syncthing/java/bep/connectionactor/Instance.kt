@@ -184,7 +184,7 @@ object ConnectionActor {
                             }
                         }
                         is ConfirmIsConnectedAction -> {
-                            action.completableDeferred.complete(null)
+                            action.completableDeferred.complete(clusterConfigInfo)
 
                             // otherwise, Kotlin would warn that the return
                             // type does not match to the other branches

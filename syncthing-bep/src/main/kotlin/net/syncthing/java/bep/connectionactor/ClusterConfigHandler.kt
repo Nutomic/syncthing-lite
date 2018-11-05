@@ -117,7 +117,7 @@ object ClusterConfigHandler {
     }
 }
 
-internal class ClusterConfigInfo {
+class ClusterConfigInfo {
     private val folderInfoById = ConcurrentHashMap<String, ClusterConfigFolderInfo>()
 
     fun getSharedFolders(): Set<String> = folderInfoById.values.filter { it.isShared }.map { it.folderId }.toSet()

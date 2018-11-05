@@ -22,18 +22,20 @@ import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.bep.BlockExchangeProtos
 import java.io.IOException
 
-class ConnectionActorWrapper (private val source: ReceiveChannel<SendChannel<ConnectionAction>>) {
+class ConnectionActorWrapper (private val source: ReceiveChannel<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>>) {
     private val job = Job()
 
     private var currentConnectionActor: SendChannel<ConnectionAction>? = null
+    private var clusterConfigInfo: ClusterConfigInfo? = null
 
     var isConnected = false
         get() = currentConnectionActor?.isClosedForSend == false
 
     init {
         GlobalScope.launch (job) {
-            source.consumeEach { connectionActor ->
+            source.consumeEach { (connectionActor, clusterConfig) ->
                 currentConnectionActor = connectionActor
+                clusterConfigInfo = clusterConfig
             }
         }
     }
@@ -42,6 +44,8 @@ class ConnectionActorWrapper (private val source: ReceiveChannel<SendChannel<Con
             request,
             currentConnectionActor ?: throw IOException("not connected")
     )
+
+    fun hasFolder(folderId: String) = clusterConfigInfo?.getSharedFolders()?.contains(folderId) ?: false
 
     fun shutdown() {
         job.cancel()
