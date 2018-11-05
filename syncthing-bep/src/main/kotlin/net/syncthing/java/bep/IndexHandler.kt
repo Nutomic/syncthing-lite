@@ -25,7 +25,6 @@ import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
 import net.syncthing.java.core.utils.submitLogging
 import org.apache.commons.lang3.tuple.Pair
-import org.apache.http.util.TextUtils
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -259,7 +258,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     private fun updateFolderInfo(folder: String, label: String?): FolderInfo {
         var folderInfo: FolderInfo? = folderInfoByFolder[folder]
-        if (folderInfo == null || !TextUtils.isEmpty(label)) {
+        if (folderInfo == null || label.isNullOrEmpty()) {
             folderInfo = FolderInfo(folder, label)
             folderInfoByFolder.put(folderInfo.folderId, folderInfo)
         }

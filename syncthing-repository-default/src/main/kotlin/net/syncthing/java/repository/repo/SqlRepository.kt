@@ -26,7 +26,6 @@ import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.Sequencer
 import net.syncthing.java.core.interfaces.TempRepository
 import org.apache.commons.lang3.tuple.Pair
-import org.apache.http.util.TextUtils.isBlank
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -412,7 +411,7 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
 
     @Throws(SQLException::class)
     override fun findFileInfoBySearchTerm(query: String): List<FileInfo> {
-        assert(!isBlank(query))
+        assert(query.isNotBlank())
         //        checkArgument(maxResult > 0);
         //        try (Connection connection = getConnection(); PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM file_info WHERE LOWER(file_name) LIKE ? AND is_deleted=FALSE LIMIT ?")) {
             getConnection().use { connection ->
@@ -433,7 +432,7 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
 
     @Throws(SQLException::class)
     override fun countFileInfoBySearchTerm(query: String): Long {
-        assert(!isBlank(query))
+        assert(query.isNotBlank())
         getConnection().use { connection ->
             connection.prepareStatement("SELECT COUNT(*) FROM file_info WHERE LOWER(file_name) REGEXP ? AND is_deleted=FALSE").use { preparedStatement ->
                 //        try (Connection connection = getConnection(); PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM file_info")) {
