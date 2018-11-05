@@ -66,14 +66,18 @@ class SyncthingClient(
         connectDevicesScheduler.scheduleAtFixedRate(this::updateIndexFromPeers, 0, 15, TimeUnit.SECONDS)
     }
 
+    private val blockPusher = NewBlockPusher()
     private val newConnections = Connections(
-            generate = {
+            generate = { deviceId ->
                 ConnectionActorWrapper(
                         source = ConnectionActorGenerator.generateConnectionActors(
-                                deviceAddress = discoveryHandler.devicesAddressesManager.getDeviceAddressManager(it).streamCurrentDeviceAddresses(),
-                                requestHandler = {
+                                deviceAddress = discoveryHandler.devicesAddressesManager.getDeviceAddressManager(deviceId).streamCurrentDeviceAddresses(),
+                                requestHandler = { request ->
                                     GlobalScope.async {
-                                        throw IOException()
+                                        blockPusher.handleRequest(
+                                                source = deviceId,
+                                                request = request
+                                        )
                                     }
                                 },
                                 indexHandler = indexHandler,
@@ -236,7 +240,7 @@ class SyncthingClient(
     suspend fun pullFile(
             fileInfo: FileInfo,
             progressListener: (status: BlockPullerStatus) -> Unit = {  }
-    ): InputStream = NewBlockPuller.pullFile(
+    ): InputStream = BlockPuller.pullFile(
             fileInfo = fileInfo,
             progressListener = progressListener,
             connections = getConnections(),

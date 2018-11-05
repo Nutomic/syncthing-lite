@@ -32,7 +32,7 @@ import java.io.*
 import java.security.MessageDigest
 import java.util.*
 
-object NewBlockPuller {
+object BlockPuller {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     suspend fun pullFile(
