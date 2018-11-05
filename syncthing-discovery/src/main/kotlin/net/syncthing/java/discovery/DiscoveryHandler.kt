@@ -39,7 +39,7 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
     }, { deviceId ->
         onMessageFromUnknownDeviceListeners.forEach { listener -> listener(deviceId) }
     })
-    private val devicesAddressesManager = DevicesAddressesManager()
+    val devicesAddressesManager = DevicesAddressesManager()
     private var isClosed = false
     private val onMessageFromUnknownDeviceListeners = Collections.synchronizedSet(HashSet<(DeviceId) -> Unit>())
 

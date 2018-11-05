@@ -13,10 +13,14 @@
  */
 package net.syncthing.java.client
 
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.async
 import net.syncthing.java.bep.BlockPuller
 import net.syncthing.java.bep.BlockPusher
 import net.syncthing.java.bep.ConnectionHandler
 import net.syncthing.java.bep.IndexHandler
+import net.syncthing.java.bep.connectionactor.ConnectionActorGenerator
+import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
@@ -35,6 +39,21 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.List
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.distinctBy
+import kotlin.collections.emptySet
+import kotlin.collections.filterNot
+import kotlin.collections.filterNotNull
+import kotlin.collections.find
+import kotlin.collections.forEach
+import kotlin.collections.groupBy
+import kotlin.collections.map
+import kotlin.collections.mutableListOf
+import kotlin.collections.set
+import kotlin.collections.takeWhile
 
 class SyncthingClient(
         private val configuration: Configuration,
@@ -58,6 +77,23 @@ class SyncthingClient(
         connectDevicesScheduler.scheduleAtFixedRate(this::updateIndexFromPeers, 0, 15, TimeUnit.SECONDS)
     }
 
+    private val newConnections = Connections(
+            generate = {
+                ConnectionActorWrapper(
+                        source = ConnectionActorGenerator.generateConnectionActors(
+                                deviceAddress = discoveryHandler.devicesAddressesManager.getDeviceAddressManager(it).streamCurrentDeviceAddresses(),
+                                requestHandler = {
+                                    GlobalScope.async {
+                                        throw IOException()
+                                    }
+                                },
+                                indexHandler = indexHandler,
+                                configuration = configuration
+                        )
+                )
+            }
+    )
+
     fun clearCacheAndIndex() {
         indexHandler.clearIndex()
         configuration.folders = emptySet()
@@ -72,6 +108,12 @@ class SyncthingClient(
     fun removeOnConnectionChangedListener(listener: (DeviceId) -> Unit) {
         assert(onConnectionChangedListeners.contains(listener))
         onConnectionChangedListeners.remove(listener)
+    }
+
+    private fun getConnections() = configuration.peerIds.map { newConnections.getByDeviceId(it) }
+
+    init {
+        getConnections()
     }
 
     @Throws(IOException::class, KeystoreHandler.CryptoException::class)
@@ -108,6 +150,9 @@ class SyncthingClient(
      * We need to make sure that we are only connecting once to each device.
      */
     private fun getPeerConnections(listener: (connection: ConnectionHandler) -> Unit, completeListener: () -> Unit) {
+        completeListener()
+        return
+
         // create an copy to prevent dispatching an action two times
         val connectionsWhichWereDispatched = createConnectionsSet()
 
@@ -225,6 +270,7 @@ class SyncthingClient(
         indexHandler.close()
         repository.close()
         tempRepository.close()
+        newConnections.shutdown()
         assert(onConnectionChangedListeners.isEmpty())
     }
 
