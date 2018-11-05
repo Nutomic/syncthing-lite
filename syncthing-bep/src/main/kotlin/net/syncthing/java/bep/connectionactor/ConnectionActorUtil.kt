@@ -34,4 +34,12 @@ object ConnectionActorUtil {
 
         return deferred.await()
     }
+
+    suspend fun sendIndexUpdate(update: BlockExchangeProtos.IndexUpdate, actor: SendChannel<ConnectionAction>) {
+        val deferred = CompletableDeferred<Unit?>()
+
+        actor.send(SendIndexUpdateAction(update, deferred))
+
+        deferred.await()
+    }
 }

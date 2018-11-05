@@ -63,7 +63,7 @@ object BlockPuller {
         )
 
         suspend fun pullBlock(fileBlocks: FileBlocks, block: BlockInfo, timeoutInMillis: Long, connectionActorWrapper: ConnectionActorWrapper): ByteArray {
-            logger.debug("sent request for block, hash = {}", block.hash)
+            logger.debug("sent message for block, hash = {}", block.hash)
 
             val response =
                     withTimeout(timeoutInMillis) {
@@ -122,7 +122,7 @@ object BlockPuller {
                 repeat(4 /* 4 blocks per time */) { workerNumber ->
                     async {
                         for (block in pipe) {
-                            logger.debug("request block with hash = {} from worker {}", block.hash, workerNumber)
+                            logger.debug("message block with hash = {} from worker {}", block.hash, workerNumber)
 
                             // TODO: retry a few times with a small delay in between
                             val blockContent = pullBlock(fileBlocks, block, 1000 * 60 /* 60 seconds timeout per block */, connectionHelper.pickConnection())

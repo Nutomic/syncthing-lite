@@ -14,6 +14,7 @@
 package net.syncthing.java.bep
 
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
+import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.beans.FileInfo.Version
 import net.syncthing.java.core.configuration.Configuration
@@ -114,6 +115,20 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             while (!isRemoteIndexAcquired(connectionHandler.clusterConfigInfo!!, connectionHandler.deviceId())) {
                 indexWaitLock.wait(timeoutMillis)
                 NetworkUtils.assertProtocol(connectionHandler.getLastActive() < timeoutMillis || lastActive() < timeoutMillis,
+                        {"unable to acquire index from connection $connectionHandler, timeout reached!"})
+            }
+        }
+        logger.debug("acquired all indexes on connection {}", connectionHandler)
+        return this
+    }
+
+    @Throws(InterruptedException::class)
+    fun waitForRemoteIndexAcquired(connectionHandler: ConnectionActorWrapper, timeoutSecs: Long? = null): IndexHandler {
+        val timeoutMillis = (timeoutSecs ?: DEFAULT_INDEX_TIMEOUT) * 1000
+        synchronized(indexWaitLock) {
+            while (!isRemoteIndexAcquired(connectionHandler.getClusterConfig(), connectionHandler.deviceId)) {
+                indexWaitLock.wait(timeoutMillis)
+                NetworkUtils.assertProtocol(/* TODO connectionHandler.getLastActive() < timeoutMillis || */ lastActive() < timeoutMillis,
                         {"unable to acquire index from connection $connectionHandler, timeout reached!"})
             }
         }

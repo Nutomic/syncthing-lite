@@ -37,7 +37,6 @@ import java.util.Collections
 import java.util.TreeSet
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.component1
@@ -66,7 +65,7 @@ class SyncthingClient(
         connectDevicesScheduler.scheduleAtFixedRate(this::updateIndexFromPeers, 0, 15, TimeUnit.SECONDS)
     }
 
-    private val blockPusher = NewBlockPusher()
+    private val requestHandlerRegistry = RequestHandlerRegistry()
     private val newConnections = Connections(
             generate = { deviceId ->
                 ConnectionActorWrapper(
@@ -74,7 +73,7 @@ class SyncthingClient(
                                 deviceAddress = discoveryHandler.devicesAddressesManager.getDeviceAddressManager(deviceId).streamCurrentDeviceAddresses(),
                                 requestHandler = { request ->
                                     GlobalScope.async {
-                                        blockPusher.handleRequest(
+                                        requestHandlerRegistry.handleRequest(
                                                 source = deviceId,
                                                 request = request
                                         )
@@ -82,7 +81,8 @@ class SyncthingClient(
                                 },
                                 indexHandler = indexHandler,
                                 configuration = configuration
-                        )
+                        ),
+                        deviceId = deviceId
                 )
             }
     )
@@ -222,20 +222,9 @@ class SyncthingClient(
         }, {})
     }
 
-    private fun getConnectionForFolder(folder: String, listener: (connection: ConnectionHandler) -> Unit,
-                                       errorListener: () -> Unit) {
-        val isConnected = AtomicBoolean(false)
-        getPeerConnections({ connection ->
-            if (connection.hasFolder(folder) && !isConnected.get()) {
-                listener(connection)
-                isConnected.set(true)
-            }
-        }, {
-            if (!isConnected.get()) {
-                errorListener()
-            }
-        })
-    }
+    fun getActiveConnectionsForFolder(folderId: String) = configuration.peerIds
+            .map { newConnections.getByDeviceId(it) }
+            .filter { it.isConnected && it.hasFolder(folderId) }
 
     suspend fun pullFile(
             fileInfo: FileInfo,
@@ -250,10 +239,15 @@ class SyncthingClient(
 
     fun pullFileSync(fileInfo: FileInfo) = runBlocking { pullFile(fileInfo) }
 
-    fun getBlockPusher(folderId: String, listener: (BlockPusher) -> Unit, errorListener: () -> Unit) {
-        getConnectionForFolder(folderId, { connection ->
-            listener(connection.getBlockPusher())
-        }, errorListener)
+    fun getBlockPusher(folderId: String): BlockPusher {
+        val connection = getActiveConnectionsForFolder(folderId).first()
+
+        return BlockPusher(
+                localDeviceId = connection.deviceId,
+                connectionHandler = connection,
+                indexHandler = indexHandler,
+                requestHandlerRegistry = requestHandlerRegistry
+        )
     }
 
     fun getPeerStatus(): List<DeviceInfo> {

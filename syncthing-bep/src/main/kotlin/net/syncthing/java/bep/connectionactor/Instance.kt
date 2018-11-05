@@ -190,6 +190,15 @@ object ConnectionActor {
                             // type does not match to the other branches
                             null
                         }
+                        is SendIndexUpdateAction -> {
+                            async {
+                                try {
+                                    sendPostAuthMessage(action.message)
+                                } catch (ex: Exception) {
+                                    action.completableDeferred.cancel(ex)
+                                }
+                            }
+                        }
                     }.let { /* prevents compiling if one action is not handled */ }
                 }
             } finally {

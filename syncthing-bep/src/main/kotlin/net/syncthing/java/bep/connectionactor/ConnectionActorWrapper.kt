@@ -20,9 +20,13 @@ import kotlinx.coroutines.experimental.channels.SendChannel
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.bep.BlockExchangeProtos
+import net.syncthing.java.core.beans.DeviceId
 import java.io.IOException
 
-class ConnectionActorWrapper (private val source: ReceiveChannel<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>>) {
+class ConnectionActorWrapper (
+        private val source: ReceiveChannel<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>>,
+        val deviceId: DeviceId
+) {
     private val job = Job()
 
     private var currentConnectionActor: SendChannel<ConnectionAction>? = null
@@ -45,7 +49,14 @@ class ConnectionActorWrapper (private val source: ReceiveChannel<Pair<SendChanne
             currentConnectionActor ?: throw IOException("not connected")
     )
 
+    suspend fun sendIndexUpdate(update: BlockExchangeProtos.IndexUpdate) = ConnectionActorUtil.sendIndexUpdate(
+            update,
+            currentConnectionActor ?: throw IOException("not connected")
+    )
+
     fun hasFolder(folderId: String) = clusterConfigInfo?.sharedFolderIds?.contains(folderId) ?: false
+
+    fun getClusterConfig() = clusterConfigInfo ?: throw IOException("not connected")
 
     fun shutdown() {
         job.cancel()

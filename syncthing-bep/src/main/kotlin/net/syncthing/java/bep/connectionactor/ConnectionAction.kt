@@ -23,3 +23,7 @@ class SendRequestConnectionAction(
         val completableDeferred: CompletableDeferred<BlockExchangeProtos.Response>
 ): ConnectionAction()
 class ConfirmIsConnectedAction(val completableDeferred: CompletableDeferred<ClusterConfigInfo>): ConnectionAction()
+class SendIndexUpdateAction(
+        val message: BlockExchangeProtos.IndexUpdate,
+        val completableDeferred: CompletableDeferred<Unit?>
+): ConnectionAction()
