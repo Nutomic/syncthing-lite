@@ -15,7 +15,7 @@
     <string name="index_update_progress_label">Index Aktualisierung für Ordner %1$s, %2$d %% synchronisiert</string>
     <string name="loading_config_starting_syncthing_client">Konfiguartion wird geladen, Syncthing wird gestartet...</string>
     <string name="last_modified_time">Zuletzt modifiziert: %1$s</string>
-    <string name="remove_device_title">Gerät entfernen:</string>
+    <string name="remove_device_title">Gerät %1$s entfernen?</string>
     <string name="remove_device_message">Gerät %1$s von der Liste der bekannten Geräte entfernen?</string>
     <string name="device_import_success">Gerät %1$s erfolgreich importiert</string>
     <string name="device_already_known">Gerät ist bereits bekannt $1%s</string>
