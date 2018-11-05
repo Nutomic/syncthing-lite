@@ -17,7 +17,7 @@ package net.syncthing.java.bep.connectionactor
 import com.google.protobuf.MessageLite
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.actor
+import kotlinx.coroutines.experimental.channels.SendChannel
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.sync.Mutex
 import kotlinx.coroutines.experimental.sync.withLock
@@ -37,176 +37,190 @@ object ConnectionActor {
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
-    ) = GlobalScope.actor<ConnectionAction>(Dispatchers.IO, capacity = Channel.RENDEZVOUS) {
-        OpenConnection.openSocketConnection(address, configuration).use { socket ->
-            val inputStream = DataInputStream(socket.inputStream)
-            val outputStream = DataOutputStream(socket.outputStream)
+    ): SendChannel<ConnectionAction> {
+        val channel = Channel<ConnectionAction>(Channel.RENDEZVOUS)
 
-            val helloMessage = coroutineScope {
-                async { HelloMessageHandler.sendHelloMessage(configuration, outputStream) }
-                async { HelloMessageHandler.receiveHelloMessage(inputStream) }.await()
-            }
+        GlobalScope.async {
+            OpenConnection.openSocketConnection(address, configuration).use { socket ->
+                val inputStream = DataInputStream(socket.inputStream)
+                val outputStream = DataOutputStream(socket.outputStream)
 
-            // the hello message exchange should happen before the certificate validation
-            KeystoreHandler.assertSocketCertificateValid(socket, address.deviceIdObject)
+                val helloMessage = coroutineScope {
+                    async { HelloMessageHandler.sendHelloMessage(configuration, outputStream) }
+                    async { HelloMessageHandler.receiveHelloMessage(inputStream) }.await()
+                }
 
-            // now (after the validation) use the content of the hello message
-            HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
+                // the hello message exchange should happen before the certificate validation
+                KeystoreHandler.assertSocketCertificateValid(socket, address.deviceIdObject)
 
-            // helpers for messages
-            val sendPostAuthMessageLock = Mutex()
-            val receivePostAuthMessageLock = Mutex()
+                // now (after the validation) use the content of the hello message
+                HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
 
-            suspend fun sendPostAuthMessage(message: MessageLite) = sendPostAuthMessageLock.withLock {
-                PostAuthenticationMessageHandler.sendMessage(outputStream, message, markActivityOnSocket = {})
-            }
+                // helpers for messages
+                val sendPostAuthMessageLock = Mutex()
+                val receivePostAuthMessageLock = Mutex()
 
-            suspend fun receivePostAuthMessage() = receivePostAuthMessageLock.withLock {
-                PostAuthenticationMessageHandler.receiveMessage(inputStream, markActivityOnSocket = {})
-            }
+                suspend fun sendPostAuthMessage(message: MessageLite) = sendPostAuthMessageLock.withLock {
+                    PostAuthenticationMessageHandler.sendMessage(outputStream, message, markActivityOnSocket = {})
+                }
 
-            // cluster config exchange
-            val clusterConfig = coroutineScope {
-                async { sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject)) }
-                async { receivePostAuthMessage() }.await()
-            }.second
+                suspend fun receivePostAuthMessage() = receivePostAuthMessageLock.withLock {
+                    PostAuthenticationMessageHandler.receiveMessage(inputStream, markActivityOnSocket = {})
+                }
 
-            if (!(clusterConfig is BlockExchangeProtos.ClusterConfig)) {
-                throw IOException("first message was not a cluster config message")
-            }
+                // cluster config exchange
+                val clusterConfig = coroutineScope {
+                    launch { sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject)) }
+                    async { receivePostAuthMessage() }.await()
+                }.second
 
-            val clusterConfigInfo = ClusterConfigHandler.handleReceivedClusterConfig(
-                    clusterConfig = clusterConfig,
-                    configuration = configuration,
-                    otherDeviceId = address.deviceIdObject,
-                    indexHandler = indexHandler,
-                    onNewFolderSharedListener = {/* ignore it */}
-            )
+                if (!(clusterConfig is BlockExchangeProtos.ClusterConfig)) {
+                    throw IOException("first message was not a cluster config message")
+                }
 
-            fun hasFolder(folder: String) = clusterConfigInfo.sharedFolderIds.contains(folder)
+                val clusterConfigInfo = ClusterConfigHandler.handleReceivedClusterConfig(
+                        clusterConfig = clusterConfig,
+                        configuration = configuration,
+                        otherDeviceId = address.deviceIdObject,
+                        indexHandler = indexHandler,
+                        onNewFolderSharedListener = { /* ignore it */ }
+                )
 
-            val messageListeners = Collections.synchronizedMap(mutableMapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
+                fun hasFolder(folder: String) = clusterConfigInfo.sharedFolderIds.contains(folder)
 
-            try {
-                async {
-                    while (isActive) {
-                        val message = receivePostAuthMessage().second
+                val messageListeners = Collections.synchronizedMap(mutableMapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
 
-                        when (message) {
-                            is BlockExchangeProtos.Response -> {
-                                val listener = messageListeners.remove(message.id)
-                                listener ?: throw IOException("got response ${message.id} but there is no response listener")
-                                listener.complete(message)
+                try {
+                    launch {
+                        while (isActive) {
+                            val message = receivePostAuthMessage().second
+
+                            when (message) {
+                                is BlockExchangeProtos.Response -> {
+                                    val listener = messageListeners.remove(message.id)
+                                    listener
+                                            ?: throw IOException("got response ${message.id} but there is no response listener")
+                                    listener.complete(message)
+                                }
+                                is BlockExchangeProtos.Index -> {
+                                    indexHandler.handleIndexMessageReceivedEvent(
+                                            folderId = message.folder,
+                                            filesList = message.filesList,
+                                            clusterConfigInfo = clusterConfigInfo,
+                                            peerDeviceId = address.deviceIdObject
+                                    )
+                                }
+                                is BlockExchangeProtos.IndexUpdate -> {
+                                    indexHandler.handleIndexMessageReceivedEvent(
+                                            folderId = message.folder,
+                                            filesList = message.filesList,
+                                            clusterConfigInfo = clusterConfigInfo,
+                                            peerDeviceId = address.deviceIdObject
+                                    )
+                                }
+                                is BlockExchangeProtos.Request -> {
+                                    launch {
+                                        val response = requestHandler(message).await()
+
+                                        try {
+                                            sendPostAuthMessage(response)
+                                        } catch (ex: IOException) {
+                                            // the connection was closed in the time between - ignore it
+                                        }
+                                    }
+                                }
+                                is BlockExchangeProtos.Ping -> { /* nothing to do */
+                                }
+                                is BlockExchangeProtos.ClusterConfig -> throw IOException("received cluster config twice")
+                                is BlockExchangeProtos.Close -> socket.close()
+                                else -> throw IOException("unsupported message type ${message.javaClass}")
                             }
-                            is BlockExchangeProtos.Index -> {
-                                indexHandler.handleIndexMessageReceivedEvent(
-                                        folderId = message.folder,
-                                        filesList = message.filesList,
-                                        clusterConfigInfo = clusterConfigInfo,
-                                        peerDeviceId = address.deviceIdObject
-                                )
-                            }
-                            is BlockExchangeProtos.IndexUpdate -> {
-                                indexHandler.handleIndexMessageReceivedEvent(
-                                        folderId = message.folder,
-                                        filesList = message.filesList,
-                                        clusterConfigInfo = clusterConfigInfo,
-                                        peerDeviceId = address.deviceIdObject
-                                )
-                            }
-                            is BlockExchangeProtos.Request -> {
-                                launch {
-                                    val response = requestHandler(message).await()
+                        }
+                    }
 
+                    // send index messages - TODO: Why?
+                    for (folder in configuration.folders) {
+                        if (hasFolder(folder.folderId)) {
+                            sendPostAuthMessage(
+                                    BlockExchangeProtos.Index.newBuilder()
+                                            .setFolder(folder.folderId)
+                                            .build()
+                            )
+                        }
+                    }
+
+                    launch {
+                        // send ping all 90 seconds
+                        // TODO: only send when there were no messages for 90 seconds
+
+                        while (isActive) {
+                            delay(90 * 1000)
+
+                            launch { sendPostAuthMessage(BlockExchangeProtos.Ping.getDefaultInstance()) }
+                        }
+                    }
+
+                    var nextRequestId = 0
+
+                    channel.consumeEach { action ->
+                        when (action) {
+                            CloseConnectionAction -> throw InterruptedException()
+                            is SendRequestConnectionAction -> {
+                                val requestId = nextRequestId++
+
+                                messageListeners[requestId] = action.completableDeferred
+
+                                // async to allow handling the next action faster
+                                async {
                                     try {
-                                        sendPostAuthMessage(response)
-                                    } catch (ex: IOException) {
-                                        // the connection was closed in the time between - ignore it
+                                        sendPostAuthMessage(
+                                                action.request.toBuilder()
+                                                        .setId(requestId)
+                                                        .build()
+                                        )
+                                    } catch (ex: Exception) {
+                                        action.completableDeferred.cancel(ex)
                                     }
                                 }
                             }
-                            is BlockExchangeProtos.Ping -> { /* nothing to do */ }
-                            is BlockExchangeProtos.ClusterConfig -> throw IOException("received cluster config twice")
-                            is BlockExchangeProtos.Close -> socket.close()
-                            else -> throw IOException("unsupported message type ${message.javaClass}")
-                        }
-                    }
-                }
+                            is ConfirmIsConnectedAction -> {
+                                action.completableDeferred.complete(clusterConfigInfo)
 
-                // send index messages - TODO: Why?
-                for (folder in configuration.folders) {
-                    if (hasFolder(folder.folderId)) {
-                        sendPostAuthMessage(
-                                BlockExchangeProtos.Index.newBuilder()
-                                        .setFolder(folder.folderId)
-                                        .build()
-                        )
-                    }
-                }
-
-                async {
-                    // send ping all 90 seconds
-                    // TODO: only send when there were no messages for 90 seconds
-
-                    while (isActive) {
-                        delay(90 * 1000)
-
-                        async { sendPostAuthMessage(BlockExchangeProtos.Ping.getDefaultInstance()) }
-                    }
-                }
-
-                var nextRequestId = 0
-
-                consumeEach { action ->
-                    when (action) {
-                        CloseConnectionAction -> throw InterruptedException()
-                        is SendRequestConnectionAction -> {
-                            val requestId = nextRequestId++
-
-                            messageListeners[requestId] = action.completableDeferred
-
-                            // async to allow handling the next action faster
-                            async {
-                                try {
-                                    sendPostAuthMessage(
-                                            action.request.toBuilder()
-                                                    .setId(requestId)
-                                                    .build()
-                                    )
-                                } catch (ex: Exception) {
-                                    action.completableDeferred.cancel(ex)
+                                // otherwise, Kotlin would warn that the return
+                                // type does not match to the other branches
+                                null
+                            }
+                            is SendIndexUpdateAction -> {
+                                async {
+                                    try {
+                                        sendPostAuthMessage(action.message)
+                                    } catch (ex: Exception) {
+                                        action.completableDeferred.cancel(ex)
+                                    }
                                 }
                             }
-                        }
-                        is ConfirmIsConnectedAction -> {
-                            action.completableDeferred.complete(clusterConfigInfo)
-
-                            // otherwise, Kotlin would warn that the return
-                            // type does not match to the other branches
-                            null
-                        }
-                        is SendIndexUpdateAction -> {
-                            async {
-                                try {
-                                    sendPostAuthMessage(action.message)
-                                } catch (ex: Exception) {
-                                    action.completableDeferred.cancel(ex)
-                                }
-                            }
-                        }
-                    }.let { /* prevents compiling if one action is not handled */ }
-                }
-            } finally {
-                // send close message
-                withContext(NonCancellable) {
-                    if (socket.isConnected) {
-                        sendPostAuthMessage(BlockExchangeProtos.Close.getDefaultInstance())
+                        }.let { /* prevents compiling if one action is not handled */ }
                     }
-                }
+                } finally {
+                    // send close message
+                    withContext(NonCancellable) {
+                        if (socket.isConnected) {
+                            sendPostAuthMessage(BlockExchangeProtos.Close.getDefaultInstance())
+                        }
+                    }
 
-                // cancel all pending listeners
-                messageListeners.values.forEach { it.cancel() }
+                    // cancel all pending listeners
+                    messageListeners.values.forEach { it.cancel() }
+                }
+            }
+        }.invokeOnCompletion { ex ->
+            if (ex != null) {
+                channel.cancel(ex)
+            } else {
+                channel.cancel()
             }
         }
+
+        return channel
     }
 }
