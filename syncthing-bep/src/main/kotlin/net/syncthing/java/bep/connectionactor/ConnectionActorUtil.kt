@@ -31,7 +31,6 @@ object ConnectionActorUtil {
         val deferred = CompletableDeferred<BlockExchangeProtos.Response>()
 
         actor.send(SendRequestConnectionAction(request, deferred))
-        actor.invokeOnClose { deferred.cancel() }
 
         return deferred.await()
     }

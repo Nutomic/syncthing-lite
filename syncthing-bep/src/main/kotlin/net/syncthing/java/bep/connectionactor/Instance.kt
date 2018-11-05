@@ -16,6 +16,7 @@ package net.syncthing.java.bep.connectionactor
 
 import com.google.protobuf.MessageLite
 import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.channels.actor
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.sync.Mutex
@@ -36,7 +37,7 @@ object ConnectionActor {
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
-    ) = GlobalScope.actor<ConnectionAction>(Dispatchers.IO) {
+    ) = GlobalScope.actor<ConnectionAction>(Dispatchers.IO, capacity = Channel.RENDEZVOUS) {
         OpenConnection.openSocketConnection(address, configuration).use { socket ->
             val inputStream = DataInputStream(socket.inputStream)
             val outputStream = DataOutputStream(socket.outputStream)
@@ -84,7 +85,7 @@ object ConnectionActor {
 
             fun hasFolder(folder: String) = clusterConfigInfo.getSharedFolders().contains(folder)
 
-            val messageListeners = Collections.synchronizedMap(mapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
+            val messageListeners = Collections.synchronizedMap(mutableMapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
 
             try {
                 async {

@@ -19,6 +19,8 @@ import kotlinx.coroutines.experimental.channels.ReceiveChannel
 import kotlinx.coroutines.experimental.channels.SendChannel
 import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.launch
+import net.syncthing.java.bep.BlockExchangeProtos
+import java.io.IOException
 
 class ConnectionActorWrapper (private val source: ReceiveChannel<SendChannel<ConnectionAction>>) {
     private val job = Job()
@@ -36,9 +38,10 @@ class ConnectionActorWrapper (private val source: ReceiveChannel<SendChannel<Con
         }
     }
 
-    fun isConnected() {
-        currentConnectionActor != null
-    }
+    suspend fun sendRequest(request: BlockExchangeProtos.Request) = ConnectionActorUtil.sendRequest(
+            request,
+            currentConnectionActor ?: throw IOException("not connected")
+    )
 
     fun shutdown() {
         job.cancel()

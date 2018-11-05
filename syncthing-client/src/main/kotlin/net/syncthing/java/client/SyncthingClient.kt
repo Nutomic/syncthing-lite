@@ -15,15 +15,13 @@ package net.syncthing.java.client
 
 import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.async
-import net.syncthing.java.bep.BlockPuller
-import net.syncthing.java.bep.BlockPusher
-import net.syncthing.java.bep.ConnectionHandler
-import net.syncthing.java.bep.IndexHandler
+import net.syncthing.java.bep.*
 import net.syncthing.java.bep.connectionactor.ConnectionActorGenerator
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
+import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.TempRepository
@@ -33,6 +31,7 @@ import net.syncthing.java.discovery.DiscoveryHandler
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
+import java.io.InputStream
 import java.util.Collections
 import java.util.TreeSet
 import java.util.concurrent.Executors
@@ -232,6 +231,17 @@ class SyncthingClient(
             }
         })
     }
+
+    suspend fun pullFile(
+            fileInfo: FileInfo,
+            progressListener: (status: BlockPullerStatus) -> Unit = {  }
+    ): InputStream = NewBlockPuller.pullFile(
+            fileInfo = fileInfo,
+            progressListener = progressListener,
+            connections = getConnections(),
+            indexHandler = indexHandler,
+            tempRepository = tempRepository
+    )
 
     fun getBlockPuller(folderId: String, listener: (BlockPuller) -> Unit, errorListener: () -> Unit) {
         getConnectionForFolder(folderId, { connection ->
