@@ -42,9 +42,12 @@ object BlockPuller {
             indexHandler: IndexHandler,
             tempRepository: TempRepository
     ): InputStream {
-        val connectionHelper = MultiConnectionHelper(connections)
+        val connectionHelper = MultiConnectionHelper(connections) {
+            it.hasFolder(fileInfo.folder)
+        }
 
-        // TODO: wait for index update
+        // fail early if there is no matching connection
+        connectionHelper.pickConnection()
 
         val (newFileInfo, fileBlocks) = indexHandler.getFileInfoAndBlocksByPath(fileInfo.folder, fileInfo.path) ?: throw FileNotFoundException()
 

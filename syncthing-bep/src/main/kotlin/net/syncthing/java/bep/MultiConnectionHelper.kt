@@ -17,7 +17,10 @@ import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import java.io.IOException
 import java.util.*
 
-class MultiConnectionHelper (val initialConnections: List<ConnectionActorWrapper>) {
+class MultiConnectionHelper (
+        initialConnections: List<ConnectionActorWrapper>,
+        private val connectionFilter: (ConnectionActorWrapper) -> Boolean
+) {
     companion object {
         private val random = Random()
     }
@@ -26,7 +29,7 @@ class MultiConnectionHelper (val initialConnections: List<ConnectionActorWrapper
 
     fun pickConnection(): ConnectionActorWrapper {
         val possibleConnections = synchronized(usableConnections) {
-            usableConnections.filter { it.isConnected }
+            usableConnections.filter { it.isConnected and connectionFilter(it) }
         }
 
         if (possibleConnections.isEmpty()) {
