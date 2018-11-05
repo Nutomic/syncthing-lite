@@ -12,32 +12,58 @@ object ConnectionActorGenerator {
     private val closed = Channel<ConnectionAction>().apply { cancel() }
 
     fun generateConnectionActors(
-            deviceAddressSource: ReceiveChannel<DeviceAddress?>,
+            deviceAddressSource: ReceiveChannel<List<DeviceAddress>>,
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
     ) = GlobalScope.produce {
         var currentActor: SendChannel<ConnectionAction> = closed
+        var currentDeviceAddress: DeviceAddress? = null
 
-        invokeOnClose { currentActor.close() }
-
-        deviceAddressSource.consumeEach { deviceAddress ->
+        suspend fun closeCurrent() {
             if (currentActor != closed) {
+                currentActor.close()
                 currentActor = closed
                 send(currentActor)
             }
+        }
 
-            if (deviceAddress != null) {
-                val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
+        invokeOnClose { currentActor.close() }
 
-                try {
-                    ConnectionActorUtil.waitUntilConnected(newActor)
+        deviceAddressSource.consumeEach { deviceAddresses ->
+            if (deviceAddresses.isEmpty()) {
+                closeCurrent()
+            } else {
+                if (currentDeviceAddress == deviceAddresses.first() && (!currentActor.isClosedForSend)) {
+                    // don't reconnect
+                    return@consumeEach
+                }
+
+                for (deviceAddress in deviceAddresses) {
+                    closeCurrent()
+
+                    if (!deviceAddressSource.isEmpty) {
+                        // time to consume the next value
+                        break
+                    }
+
+                    val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
+
+                    try {
+                        ConnectionActorUtil.waitUntilConnected(newActor)
+                    } catch (ex: Exception) {
+                        // TODO: catch more specific
+                        // TODO: log exception?
+
+                        continue
+                    }
 
                     currentActor = newActor
+                    currentDeviceAddress = deviceAddress
+
                     send(newActor)
-                } catch (ex: Exception) {
-                    // TODO: log exception
-                    // TODO: try other device address?
+
+                    break   // don't try the other addresses
                 }
             }
         }
