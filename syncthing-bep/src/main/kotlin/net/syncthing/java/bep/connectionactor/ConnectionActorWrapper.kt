@@ -45,7 +45,7 @@ class ConnectionActorWrapper (private val source: ReceiveChannel<Pair<SendChanne
             currentConnectionActor ?: throw IOException("not connected")
     )
 
-    fun hasFolder(folderId: String) = clusterConfigInfo?.getSharedFolders()?.contains(folderId) ?: false
+    fun hasFolder(folderId: String) = clusterConfigInfo?.sharedFolderIds?.contains(folderId) ?: false
 
     fun shutdown() {
         job.cancel()

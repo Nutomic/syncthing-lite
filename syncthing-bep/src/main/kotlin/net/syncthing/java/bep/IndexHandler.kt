@@ -97,7 +97,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     internal fun isRemoteIndexAcquired(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
         var ready = true
-        for (folder in clusterConfigInfo.getSharedFolders()) {
+        for (folder in clusterConfigInfo.sharedFolderIds) {
             val indexSequenceInfo = indexRepository.findIndexInfoByDeviceAndFolder(peerDeviceId, folder)
             if (indexSequenceInfo == null || indexSequenceInfo.localSequence < indexSequenceInfo.maxSequence) {
                 logger.debug("waiting for index on folder = {} sequenceInfo = {}", folder, indexSequenceInfo)

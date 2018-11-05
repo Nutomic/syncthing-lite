@@ -313,7 +313,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
     }
 
     fun hasFolder(folder: String): Boolean {
-        return clusterConfigInfo!!.getSharedFolders().contains(folder)
+        return clusterConfigInfo!!.sharedFolderIds.contains(folder)
     }
 
     companion object {

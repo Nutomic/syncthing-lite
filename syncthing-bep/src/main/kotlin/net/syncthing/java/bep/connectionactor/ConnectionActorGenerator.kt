@@ -93,7 +93,7 @@ object ConnectionActorGenerator {
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
-    ) = GlobalScope.produce {
+    ) = GlobalScope.produce<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>> {
         var currentActor: SendChannel<ConnectionAction> = closed
         var currentDeviceAddress: DeviceAddress? = null
 
@@ -101,7 +101,7 @@ object ConnectionActorGenerator {
             if (currentActor != closed) {
                 currentActor.close()
                 currentActor = closed
-                send(currentActor)
+                send(currentActor to ClusterConfigInfo.dummy)
             }
         }
 

@@ -83,7 +83,7 @@ object ConnectionActor {
                     onNewFolderSharedListener = {/* ignore it */}
             )
 
-            fun hasFolder(folder: String) = clusterConfigInfo.getSharedFolders().contains(folder)
+            fun hasFolder(folder: String) = clusterConfigInfo.sharedFolderIds.contains(folder)
 
             val messageListeners = Collections.synchronizedMap(mutableMapOf<Int, CompletableDeferred<BlockExchangeProtos.Response>>())
 
