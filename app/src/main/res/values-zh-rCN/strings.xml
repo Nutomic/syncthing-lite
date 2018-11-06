@@ -13,9 +13,9 @@
     <string name="clear_cache_and_index_title">确定清除本地缓存和索引？</string>
     <string name="clear_cache_and_index_body">确定清除全部本地缓存数据和索引数据？</string>
     <string name="loading_config_starting_syncthing_client">载入配置，正在启动 syncthing 客户端</string>
-    <string name="remove_device_title">移除设备:</string>
-    <string name="device_import_success">成功导入的设备:</string>
-    <string name="device_already_known">已经存在的设备:</string>
+    <string name="remove_device_title">移除设备: %1$s</string>
+    <string name="device_import_success">成功导入的设备: %1$s</string>
+    <string name="device_already_known">已经存在的设备: %1$s</string>
     <string name="folders_label">文件夹</string>
     <string name="devices_label">设备</string>
     <string name="show_device_id">显示设备 ID</string>
