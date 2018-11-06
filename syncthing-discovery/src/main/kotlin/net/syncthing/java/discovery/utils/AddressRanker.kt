@@ -31,15 +31,13 @@ object AddressRanker {
     private const val TCP_CONNECTION_TIMEOUT = 5000
     private val BASE_SCORE_MAP = mapOf(
             AddressType.TCP to 0,
-            AddressType.RELAY to 2000,
-            AddressType.HTTP_RELAY to 1000 * 2000,
-            AddressType.HTTPS_RELAY to 1000 * 2000
+            AddressType.RELAY to 2000
     )
     private val ACCEPTED_ADDRESS_TYPES = BASE_SCORE_MAP.keys
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun pingAddressesChannel(sourceAddresses: List<DeviceAddress>) = GlobalScope.produce<DeviceAddress> {
-        addHttpRelays(sourceAddresses)
+        sourceAddresses
                 .filter { ACCEPTED_ADDRESS_TYPES.contains(it.type) }
                 .toList()
                 .map { address ->
@@ -74,18 +72,6 @@ object AddressRanker {
     suspend fun pingAddressesReturnAllResultsAtOnce(sourceAddresses: List<DeviceAddress>) = pingAddressesChannel(sourceAddresses)
             .toList()
             .sortedBy { it.score }
-
-    private fun getHttpRelays(list: List<DeviceAddress>) = list
-            .asSequence()
-            .filter { address ->
-                address.type == AddressType.RELAY && address.containsUriParamValue("httpUrl")
-            }
-            .map { address ->
-                val httpUrl = address.getUriParam("httpUrl")
-                address.copyBuilder().setAddress("relay-" + httpUrl!!).build()
-            }
-
-    private fun addHttpRelays(list: List<DeviceAddress>) = getHttpRelays(list) + list
 
     private fun pingAddressSync(deviceAddress: DeviceAddress): DeviceAddress? {
         val startTime = System.currentTimeMillis()

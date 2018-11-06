@@ -19,7 +19,6 @@ import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.security.KeystoreHandler
 import org.slf4j.LoggerFactory
-import java.io.IOException
 import javax.net.ssl.SSLSocket
 
 object OpenConnection {
@@ -39,14 +38,6 @@ object OpenConnection {
             DeviceAddress.AddressType.RELAY -> {
                 logger.debug("opening relay connection")
                 keystoreHandler.wrapSocket(RelayClient(configuration).openRelayConnection(address), KeystoreHandler.BEP)
-            }
-            DeviceAddress.AddressType.HTTP_RELAY, DeviceAddress.AddressType.HTTPS_RELAY -> {
-                logger.debug("opening http relay connection")
-
-                throw IOException("http relay support is disabled")
-                // This is not documented anywhere (https://forum.syncthing.net/t/http-relays/12367) so it's disabled
-                // it's still kept because it is eventually useful in the future
-                // keystoreHandler.wrapSocket(HttpRelayClient().openRelayConnection(address), KeystoreHandler.BEP)
             }
             else -> throw UnsupportedOperationException("unsupported address type ${address.type}")
         }

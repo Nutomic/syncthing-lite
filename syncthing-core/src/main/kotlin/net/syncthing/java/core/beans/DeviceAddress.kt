@@ -48,8 +48,6 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
             address.isEmpty() -> AddressType.NULL
             address.startsWith("tcp://") -> AddressType.TCP
             address.startsWith("relay://") -> AddressType.RELAY
-            address.startsWith("relay-http://") -> AddressType.HTTP_RELAY
-            address.startsWith("relay-https://") -> AddressType.HTTPS_RELAY
             else -> AddressType.OTHER
         }
     }
@@ -83,7 +81,7 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
     }
 
     enum class AddressType {
-        TCP, RELAY, OTHER, NULL, HTTP_RELAY, HTTPS_RELAY
+        TCP, RELAY, OTHER, NULL
     }
 
     enum class AddressProducer {
@@ -204,8 +202,7 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
     companion object {
         private val DEFAULT_PORT_BY_PROTOCOL = mapOf(
                 AddressType.TCP to 22000,
-                AddressType.RELAY to 22067,
-                AddressType.HTTP_RELAY to 80,
-                AddressType.HTTPS_RELAY to 443)
+                AddressType.RELAY to 22067
+        )
     }
 }
