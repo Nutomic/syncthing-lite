@@ -28,17 +28,12 @@ The project is translated on [Transifex](https://www.transifex.com/syncthing/syn
 ## Building
 
 The project uses a standard Android build, and requires the Android SDK. The easiest option is to
-install [Android Studio][4] and import the project.
-
-To compile with a development version of the [syncthing-java][3] library, you have to install it to
-the local maven repository. To do this, clone the repo and run `gradle install` in the
-syncthing-java project folder.
+install [Android Studio][3] and import the project.
 
 ## License
-All code is licensed under the [MPLv2 License][5].
+All code is licensed under the [MPLv2 License][4].
 
 [1]: https://syncthing.net/
 [2]: https://github.com/syncthing/syncthing-android
-[3]: https://github.com/Nutomic/syncthing-java
-[4]: https://developer.android.com/studio/index.html
-[5]: LICENSE
+[3]: https://developer.android.com/studio/index.html
+[4]: LICENSE
