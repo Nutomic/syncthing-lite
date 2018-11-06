@@ -4,8 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.lite.R
@@ -47,12 +48,12 @@ object Util {
             if (!configuration.peerIds.contains(deviceId2)) {
                 configuration.peers = configuration.peers + DeviceInfo(deviceId2, null)
                 configuration.persistLater()
-                async(UI) {
+                GlobalScope.launch (Dispatchers.Main) {
                     context?.toast(context.getString(R.string.device_import_success, deviceId2.shortId))
                     onComplete()
                 }
             } else {
-                async(UI) {
+                GlobalScope.launch (Dispatchers.Main) {
                     context?.toast(context.getString(R.string.device_already_known, deviceId2.shortId))
                 }
             }

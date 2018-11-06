@@ -8,8 +8,9 @@ import android.support.v4.app.Fragment
 import android.support.v7.app.ActionBarDrawerToggle
 import android.view.Gravity
 import android.view.MenuItem
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.lite.R
 import net.syncthing.lite.databinding.ActivityMainBinding
 import net.syncthing.lite.dialogs.DeviceIdDialogFragment
@@ -101,7 +102,7 @@ class MainActivity : SyncthingActivity() {
     }
 
     private fun cleanCacheAndIndex() {
-        async(UI) {
+        GlobalScope.launch (Dispatchers.Main) {
             libraryHandler.syncthingClient { it.clearCacheAndIndex() }
             recreate()
         }
