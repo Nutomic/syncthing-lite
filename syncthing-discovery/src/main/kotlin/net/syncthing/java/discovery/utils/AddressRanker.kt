@@ -41,7 +41,8 @@ object AddressRanker {
     fun pingAddressesChannel(sourceAddresses: List<DeviceAddress>) = GlobalScope.produce<DeviceAddress> {
         addHttpRelays(sourceAddresses)
                 .filter { ACCEPTED_ADDRESS_TYPES.contains(it.type) }
-                .forEach { address ->
+                .toList()
+                .map { address ->
                     async {
                         try {
                             val addressWithScore = withTimeout(TCP_CONNECTION_TIMEOUT * 2L) {
@@ -61,6 +62,9 @@ object AddressRanker {
                         null
                     }
                 }
+                .map { it.await() }
+
+        close()
     }
 
     @Deprecated(
