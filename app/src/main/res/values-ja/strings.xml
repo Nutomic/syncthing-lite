@@ -3,7 +3,7 @@
     <string name="folder_list_empty_message">フォルダーがありません</string>
     <string name="clear_local_cache_index_label">ローカルキャッシュ/索引をクリア</string>
     <string name="devices_list_view_empty_message">デバイスがありません</string>
-    <string name="device_id_dialog_title">デバイス ID を入力</string>
+    <string name="invalid_device_id">エラー: デバイス ID が無効です</string>
     <string name="dialog_downloading_file">ファイル %1$s のダウンロード中</string>
     <string name="toast_file_download_failed">ファイルのダウンロードに失敗しました</string>
     <string name="toast_open_file_failed">利用できるアプリが見つかりません</string>
@@ -13,8 +13,10 @@
     <string name="clear_cache_and_index_title">ローカルキャッシュと索引をクリアしますか?</string>
     <string name="clear_cache_and_index_body">すべてのローカルキャッシュデータと索引データをクリアしますか?</string>
     <string name="index_update_progress_label">フォルダー %1$s の索引を更新しました。 %2$d%% 同期しました</string>
+    <string name="loading_config_starting_syncthing_client">設定の読み込み中、syncthing クライアントの開始中…</string>
     <string name="last_modified_time">最終更新: %1$s</string>
     <string name="remove_device_title">デバイス %1$sを削除しますか?</string>
+    <string name="remove_device_message">既存のデバイスのリストから %1$s を削除しますか?</string>
     <string name="device_import_success">デバイス %1$s のインポートに成功しました</string>
     <string name="device_already_known">デバイスは既に存在します %1$s</string>
     <string name="folders_label">フォルダー</string>
@@ -22,4 +24,21 @@
     <string name="folder_label_format">%1$s (%2$s)</string>
     <string name="folder_content_info">%1$s, %2$d ファイル, %3$d ディレクトリー</string>
     <string name="file_info">%1$s, 最終更新 %2$s</string>
+    <string name="show_device_id">デバイス ID を表示</string>
+    <string name="device_id">デバイス ID</string>
+    <string name="device_id_copied">デバイス ID をクリップボードにコピーしました</string>
+    <string name="share_device_id_chooser">次とデバイス ID を共有</string>
+    <string name="other_syncthing_instance_title">別の Syncthing インスタンスが実行中です</string>
+    <string name="other_syncthing_instance_message">ローカルの探索は動作しません。他の Syncthing インスタンスを停止して、ローカルの探索を有効にしてください。</string>
+    <string name="intro_page_one_title">Syncthing Lite へようこそ</string>
+    <string name="intro_page_one_description">Syncthing は、プロプライエタリな同期およびクラウドサービスを、オープンで信頼性があり、分散化されたものに置き換えます。 あなたのデータはあなただけのものであり、それが第三者と共有され、インターネット経由で送信される場合、保存される場所を選択する必要があります。</string>
+    <string name="intro_page_two_title">デバイスを追加</string>
+    <string name="intro_page_three_title">フォルダーを共有</string>
+    <string name="intro_page_two_description">Syncthing デバイス ID を入力、または QR コードからデバイス ID をスキャンしてください</string>
+    <string name="intro_page_three_description">ID %1$s のデバイスを承認して、フォルダーを共有しました。デバイスが接続されるまで数分かかることがあります。</string>
+    <string name="settings">設定</string>
+    <string name="settings_app_version_title">アプリバージョン</string>
+    <string name="settings_local_device_name">ローカルのデバイス名</string>
+    <string name="settings_local_device_summary">他のデバイスがこのデバイスを表示する名前</string>
+    <string name="device_id_dialog_title">デバイス ID を入力</string>
     </resources>

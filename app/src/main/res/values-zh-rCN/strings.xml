@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_name">Syncthing Lite</string>
+    <string name="folder_list_empty_message">没有可用的文件夹</string>
+    <string name="clear_local_cache_index_label">清除本地缓存/索引</string>
+    <string name="devices_list_view_empty_message">没有可用的设备</string>
+    <string name="invalid_device_id">无效的设备 ID</string>
+    <string name="dialog_downloading_file">正下载文件 %1$s</string>
+    <string name="toast_file_download_failed">下载文件失败</string>
+    <string name="toast_open_file_failed">没有找到兼容的程序</string>
+    <string name="toast_file_upload_failed">上传文件失败</string>
+    <string name="toast_upload_complete">文件上传完成</string>
+    <string name="dialog_uploading_file">正上传文件 %1$s</string>
+    <string name="clear_cache_and_index_title">确定清除本地缓存和索引？</string>
+    <string name="clear_cache_and_index_body">确定清除全部本地缓存数据和索引数据？</string>
+    <string name="loading_config_starting_syncthing_client">载入配置，正在启动 syncthing 客户端</string>
+    <string name="remove_device_title">移除设备: %1$s</string>
+    <string name="device_import_success">成功导入的设备: %1$s</string>
+    <string name="device_already_known">已经存在的设备: %1$s</string>
+    <string name="folders_label">文件夹</string>
+    <string name="devices_label">设备</string>
+    <string name="show_device_id">显示设备 ID</string>
+    <string name="device_id">设备 ID</string>
+    <string name="device_id_copied">设备 ID 已复制到剪贴板</string>
+    <string name="share_device_id_chooser">分享设备 ID 于</string>
+    <string name="other_syncthing_instance_title">另一个 Syncthing 实例正在运行</string>
+    <string name="intro_page_one_title">欢迎使用 Syncthing Lite</string>
+    <string name="intro_page_two_title">添加一个设备</string>
+    <string name="intro_page_three_title">分享您的文件夹</string>
+    <string name="intro_page_two_description">输入一个 Syncthing 设备 ID，或者通过 QR 码扫描一个设备 ID</string>
+    <string name="settings">设定</string>
+    <string name="settings_app_version_title">应用版本</string>
+    <string name="settings_local_device_name">本地设备名称</string>
+    <string name="settings_local_device_summary">其他设备将会看到这台设备的名字</string>
+    <string name="device_id_dialog_title">输入设备 ID</string>
+    </resources>
