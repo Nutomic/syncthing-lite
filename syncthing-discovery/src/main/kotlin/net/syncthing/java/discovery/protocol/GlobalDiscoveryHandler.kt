@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -14,125 +14,86 @@
  */
 package net.syncthing.java.discovery.protocol
 
-import com.google.gson.stream.JsonReader
-import com.google.gson.stream.JsonToken
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.coroutineScope
+import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.discovery.utils.AddressRanker
-import org.apache.http.HttpStatus
-import org.apache.http.client.methods.HttpGet
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory
-import org.apache.http.conn.ssl.SSLContextBuilder
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy
-import org.apache.http.impl.client.HttpClients
-import org.apache.http.util.EntityUtils
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.io.IOException
-import java.io.StringReader
-import java.security.KeyManagementException
-import java.security.KeyStoreException
-import java.security.NoSuchAlgorithmException
-import java.util.*
 
-internal class GlobalDiscoveryHandler(private val configuration: Configuration) : Closeable {
-
+internal class GlobalDiscoveryHandler(private val configuration: Configuration) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun query(deviceId: DeviceId, callback: (List<DeviceAddress>) -> Unit) {
-        val addresses = pickAnnounceServers()
-                .map {
-                    try {
-                        queryAnnounceServer(it, deviceId)
-                    } catch (e: IOException) {
-                        logger.warn("Failed to query $it", e)
-                        listOf<DeviceAddress>()
-                    }
-                }
-                .flatten()
-        callback(addresses)
-    }
-
-    private fun pickAnnounceServers(): List<String> {
-        val list = AddressRanker
-                .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
-        return list.map { it.deviceId }
-    }
-
-    @Throws(IOException::class)
-    private fun queryAnnounceServer(server: String, deviceId: DeviceId): List<DeviceAddress> {
+    @Deprecated(message = "coroutine version should be used instead of callback")
+    fun query(deviceId: DeviceId, callback: (List<DeviceAddress>) -> Unit) = GlobalScope.launch {
         try {
-            logger.debug("querying server {} for device id {}", server, deviceId)
-            val httpClient = HttpClients.custom()
-                    .setSSLSocketFactory(SSLConnectionSocketFactory(SSLContextBuilder().loadTrustMaterial(null, TrustSelfSignedStrategy()).build(), SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER))
-                    .build()
-            val httpGet = HttpGet("https://$server/v2/?device=${deviceId.deviceId}")
-            return httpClient.execute<List<DeviceAddress>>(httpGet) { response ->
-                when (response.statusLine.statusCode) {
-                    HttpStatus.SC_NOT_FOUND -> {
-                        logger.debug("device not found: {}", deviceId)
-                        return@execute emptyList()
-                    }
-                    HttpStatus.SC_OK -> {
-                        val announcementMessage = AnnouncementMessage.parse(
-                                JsonReader(
-                                        StringReader(
-                                                EntityUtils.toString(response.entity)
-                                        )
-                                )
-                        )
-                        return@execute (announcementMessage.addresses)
-                                .map { DeviceAddress(deviceId.deviceId, it) }
-                    }
-                    else -> {
-                        throw IOException("http error ${response.statusLine}, response ${EntityUtils.toString(response.entity)}")
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            when (e) {
-                is IOException, is NoSuchAlgorithmException, is KeyStoreException, is KeyManagementException ->
-                    throw IOException(e)
-                else -> throw e
-            }
+            callback(query(deviceId))
+        } catch (ex: Exception) {
+            callback(emptyList())
         }
     }
 
-    override fun close() {}
+    suspend fun query(deviceIds: Collection<DeviceId>): List<DeviceAddress> {
+        val discoveryServers = pickAnnounceServers()
 
-    private data class AnnouncementMessage(val addresses: List<String>) {
-        companion object {
-            private const val ADDRESSES = "addresses"
+        return coroutineScope {
+            deviceIds
+                    .distinct()
+                    .map { deviceId ->
+                        async {
+                            queryAnnounceServers(
+                                    servers = discoveryServers,
+                                    deviceId = deviceId
+                            )
+                        }
+                    }
+                    .map { it.await() }
+                    .flatten()
+        }
+    }
 
-            fun parse(reader: JsonReader): AnnouncementMessage {
-                var addresses = listOf<String>()
+    suspend fun query(deviceId: DeviceId) = queryAnnounceServers(
+            servers = pickAnnounceServers(),
+            deviceId = deviceId
+    )
 
-                reader.beginObject()
-                while (reader.hasNext()) {
-                    when (reader.nextName()) {
-                        ADDRESSES -> {
-                            val newAddresses = ArrayList<String>()
+    suspend fun pickAnnounceServers() = AddressRanker
+            .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
+            .map { it.deviceId }
 
-                            if (reader.peek() == JsonToken.NULL) {
-                                reader.skipValue()
-                            } else {
-                                reader.beginArray()
-                                while (reader.hasNext()) {
-                                    newAddresses.add(reader.nextString())
-                                }
-                                reader.endArray()
+    suspend fun queryAnnounceServers(servers: List<String>, deviceId: DeviceId) = coroutineScope {
+        servers
+                .map { server ->
+                    async {
+                        try {
+                            queryAnnounceServer(server, deviceId)
+                        } catch (ex: Exception) {
+                            logger.warn("Failed to query $server for $deviceId", ex)
+
+                            when (ex) {
+                                is IOException -> { /* ignore */ }
+                                is DeviceNotFoundException -> { /* ignore */ }
+                                is TooManyRequestsException -> { /* ignore */ }
+                                else -> throw ex
                             }
 
-                            addresses = Collections.unmodifiableList(newAddresses)
+                            emptyList<DeviceAddress>()
                         }
-                        else -> reader.skipValue()
                     }
                 }
-                reader.endObject()
+                .map { it.await() }
+                .flatten()
+        // .distinct() is not required because the device addresses contain the used discovery server
+    }
 
-                return AnnouncementMessage(addresses)
-            }
-        }
+    companion object {
+        suspend fun queryAnnounceServer(server: String, deviceId: DeviceId) =
+                GlobalDiscoveryUtil
+                        .queryAnnounceServer(server, deviceId)
+                        .addresses.map { DeviceAddress(deviceId.deviceId, it) }
     }
 }

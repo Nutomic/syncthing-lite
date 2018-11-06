@@ -1,5 +1,6 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,66 +14,63 @@
  */
 package net.syncthing.java.discovery
 
+import kotlinx.coroutines.experimental.CancellationException
+import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.experimental.selects.select
+import kotlinx.coroutines.experimental.withTimeout
 import net.syncthing.java.core.beans.DeviceAddress
+import net.syncthing.java.core.beans.DeviceId
 import org.slf4j.LoggerFactory
-import java.util.*
+import java.io.Closeable
 
-class DeviceAddressSupplier(private val discoveryHandler: DiscoveryHandler) : Iterable<DeviceAddress?> {
+class DeviceAddressSupplier(private val peerDevices: Set<DeviceId>, private val devicesAddressesManager: DevicesAddressesManager) : Iterable<DeviceAddress?>, Closeable {
+    private val deviceAddressListStreams = peerDevices.map { deviceId ->
+        devicesAddressesManager.getDeviceAddressManager(deviceId).streamCurrentDeviceAddresses()
+    }
 
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val deviceAddressQueue = PriorityQueue<DeviceAddress>(11, compareBy { it.score })
-    private val queueLock = Object()
 
-    private fun getDeviceAddress(): DeviceAddress? {
-        synchronized(queueLock) {
-            return deviceAddressQueue.poll()
-        }
-    }
-
-    internal fun onNewDeviceAddressAcquired(address: DeviceAddress) {
-        if (address.isWorking()) {
-            synchronized(queueLock) {
-                deviceAddressQueue.add(address)
-                queueLock.notify()
+    private suspend fun getDeviceAddress(): DeviceAddress? {
+        return select {
+            deviceAddressListStreams.forEach { stream ->
+                stream.onReceive { it }
             }
         }
     }
 
-    @Throws(InterruptedException::class)
-    fun getDeviceAddressOrWait(): DeviceAddress? = getDeviceAddressOrWait(5000)
-
-    init {
-        synchronized(queueLock) {
-            deviceAddressQueue.addAll(discoveryHandler.getAllWorkingDeviceAddresses())// note: slight risk of duplicate address loading
-        }
+    suspend fun getDeviceAddressOrWait(timeout: Long) = withTimeout(timeout) {
+        getDeviceAddress()
     }
 
-    @Throws(InterruptedException::class)
-    private fun getDeviceAddressOrWait(timeout: Long): DeviceAddress? {
-        synchronized(queueLock) {
-            if (deviceAddressQueue.isEmpty()) {
-                queueLock.wait(timeout)
-            }
-            return getDeviceAddress()
-        }
+    suspend fun getDeviceAddressOrWait() = getDeviceAddressOrWait(5000L)
+
+    override fun close() {
+        deviceAddressListStreams.forEach { it.cancel() }
     }
 
+    @Deprecated(message = "iterator is blocking")
     override fun iterator(): Iterator<DeviceAddress?> {
         return object : Iterator<DeviceAddress?> {
-
             private var hasNext: Boolean? = null
             private var next: DeviceAddress? = null
 
             override fun hasNext(): Boolean {
                 if (hasNext == null) {
                     try {
-                        next = getDeviceAddressOrWait()
-                    } catch (ex: InterruptedException) {
+                        next = runBlocking {
+                            getDeviceAddressOrWait()
+                        }
+                    } catch (ex: CancellationException) {
                         logger.warn("", ex)
                     }
 
                     hasNext = next != null
                 }
+
+                if (hasNext == false) {
+                    close()
+                }
+
                 return hasNext!!
             }
 

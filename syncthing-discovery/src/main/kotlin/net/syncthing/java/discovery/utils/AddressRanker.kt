@@ -1,5 +1,6 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,69 +14,65 @@
  */
 package net.syncthing.java.discovery.utils
 
+import kotlinx.coroutines.experimental.*
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceAddress.AddressType
-import net.syncthing.java.core.utils.submitLogging
 import org.slf4j.LoggerFactory
-import java.io.Closeable
 import java.io.IOException
 import java.net.Socket
-import java.util.concurrent.*
 
-internal class AddressRanker private constructor(private val sourceAddresses: List<DeviceAddress>) : Closeable {
+object AddressRanker {
 
-    companion object {
-
-        private const val TCP_CONNECTION_TIMEOUT = 5000
-        private val BASE_SCORE_MAP = mapOf(
-                AddressType.TCP to 0,
-                AddressType.RELAY to 2000,
-                AddressType.HTTP_RELAY to 1000 * 2000,
-                AddressType.HTTPS_RELAY to 1000 * 2000)
-        private val ACCEPTED_ADDRESS_TYPES = BASE_SCORE_MAP.keys
-
-        fun pingAddresses(list: List<DeviceAddress>): List<DeviceAddress> {
-            AddressRanker(list).use { addressRanker ->
-                return addressRanker.testAndRankAndWait()
-            }
-        }
-    }
-
+    private const val TCP_CONNECTION_TIMEOUT = 5000
+    private val BASE_SCORE_MAP = mapOf(
+            AddressType.TCP to 0,
+            AddressType.RELAY to 2000,
+            AddressType.HTTP_RELAY to 1000 * 2000,
+            AddressType.HTTPS_RELAY to 1000 * 2000
+    )
+    private val ACCEPTED_ADDRESS_TYPES = BASE_SCORE_MAP.keys
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val executorService = Executors.newCachedThreadPool()
 
-    private fun addHttpRelays(list: List<DeviceAddress>): List<DeviceAddress> {
-        val httpRelays = list
-                .filter { address ->
-                    address.getType() == AddressType.RELAY && address.containsUriParamValue("httpUrl")
-                }
-                .map { address ->
-                    val httpUrl = address.getUriParam("httpUrl")
-                    address.copyBuilder().setAddress("relay-" + httpUrl!!).build()
-                }
-        return httpRelays + list
-    }
-
-    private fun testAndRankAndWait(): List<DeviceAddress> {
-        return addHttpRelays(sourceAddresses)
+    suspend fun pingAddresses(sourceAddresses: List<DeviceAddress>) = coroutineScope {
+        addHttpRelays(sourceAddresses)
                 .filter { ACCEPTED_ADDRESS_TYPES.contains(it.getType()) }
-                .map { executorService.submitLogging<DeviceAddress?> { pingAddresses(it) } }
-                .mapNotNull { future ->
-                    try {
-                        future.get((TCP_CONNECTION_TIMEOUT * 2).toLong(), TimeUnit.MILLISECONDS)
-                    } catch (e: ExecutionException) {
-                        logger.warn("Failed to ping device", e)
-                        null
-                    } catch (e: InterruptedException) {
-                        logger.warn("Failed to ping device", e)
-                        null
+                .toList()   // the following should happen parallel
+                .map {
+                    async {
+                        try {
+                            withTimeout(TCP_CONNECTION_TIMEOUT * 2L) {
+                                // this nested async ensures that cancelling/ the timeout has got an effect without delay
+                                GlobalScope.async (Dispatchers.IO) {
+                                    pingAddressSync(it)
+                                }.await()
+                            }
+                        } catch (ex: Exception) {
+                            logger.warn("Failed to ping device", ex)
+
+                            null
+                        }
                     }
                 }
+                .map { it.await() }
+                .filterNotNull()
                 .sortedBy { it.score }
     }
 
-    private fun pingAddresses(deviceAddress: DeviceAddress): DeviceAddress? {
+    private fun getHttpRelays(list: List<DeviceAddress>) = list
+            .asSequence()
+            .filter { address ->
+                address.getType() == AddressType.RELAY && address.containsUriParamValue("httpUrl")
+            }
+            .map { address ->
+                val httpUrl = address.getUriParam("httpUrl")
+                address.copyBuilder().setAddress("relay-" + httpUrl!!).build()
+            }
+
+    private fun addHttpRelays(list: List<DeviceAddress>) = getHttpRelays(list) + list
+
+    private fun pingAddressSync(deviceAddress: DeviceAddress): DeviceAddress? {
         val startTime = System.currentTimeMillis()
+
         try {
             Socket().use { socket ->
                 socket.soTimeout = TCP_CONNECTION_TIMEOUT
@@ -85,18 +82,10 @@ internal class AddressRanker private constructor(private val sourceAddresses: Li
             logger.debug("address unreacheable = $deviceAddress, ${ex.message}")
             return null
         }
+
         val ping = (System.currentTimeMillis() - startTime).toInt()
-
         val baseScore = BASE_SCORE_MAP[deviceAddress.getType()] ?: 0
-        return deviceAddress.copyBuilder().setScore(ping + baseScore).build()
-    }
 
-    override fun close() {
-        executorService.shutdown()
-        try {
-            executorService.awaitTermination(2, TimeUnit.SECONDS)
-        } catch (ex: InterruptedException) {
-            logger.warn("", ex)
-        }
+        return deviceAddress.copyBuilder().setScore(ping + baseScore).build()
     }
 }

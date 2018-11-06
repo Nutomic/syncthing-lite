@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -14,91 +14,98 @@
  */
 package net.syncthing.java.discovery
 
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
-import net.syncthing.java.core.utils.awaitTerminationSafe
-import net.syncthing.java.core.utils.submitLogging
 import net.syncthing.java.discovery.protocol.GlobalDiscoveryHandler
 import net.syncthing.java.discovery.protocol.LocalDiscoveryHandler
 import net.syncthing.java.discovery.utils.AddressRanker
-import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.*
-import java.util.concurrent.Executors
 
 class DiscoveryHandler(private val configuration: Configuration) : Closeable {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val globalDiscoveryHandler = GlobalDiscoveryHandler(configuration)
-    private val localDiscoveryHandler = LocalDiscoveryHandler(configuration, { _, deviceAddresses ->
+    private val localDiscoveryHandler = LocalDiscoveryHandler(configuration, { message ->
         logger.info("received device address list from local discovery")
-        processDeviceAddressBg(deviceAddresses)
+
+        GlobalScope.launch {
+            processDeviceAddressBg(message.addresses)
+        }
     }, { deviceId ->
         onMessageFromUnknownDeviceListeners.forEach { listener -> listener(deviceId) }
     })
-    private val executorService = Executors.newCachedThreadPool()
-    private val deviceAddressMap = Collections.synchronizedMap(hashMapOf<Pair<DeviceId, String>, DeviceAddress>())
-    private val deviceAddressSupplier = DeviceAddressSupplier(this)
+    private val devicesAddressesManager = DevicesAddressesManager()
     private var isClosed = false
     private val onMessageFromUnknownDeviceListeners = Collections.synchronizedSet(HashSet<(DeviceId) -> Unit>())
 
     private var shouldLoadFromGlobal = true
     private var shouldStartLocalDiscovery = true
 
-    fun getAllWorkingDeviceAddresses() = deviceAddressMap.values.filter { it.isWorking() }
+    private fun doGlobalDiscoveryIfNotYetDone() {
+        // TODO: timeout for reload
+        // TODO: retry if connectivity changed
 
-    private fun updateAddressesBg() {
+        if (shouldLoadFromGlobal) {
+            shouldLoadFromGlobal = false
+            GlobalScope.launch {
+                processDeviceAddressBg(globalDiscoveryHandler.query(configuration.peerIds))
+            }
+        }
+    }
+
+    private fun initLocalDiscoveryIfNotYetDone() {
         if (shouldStartLocalDiscovery) {
             shouldStartLocalDiscovery = false
             localDiscoveryHandler.startListener()
             localDiscoveryHandler.sendAnnounceMessage()
         }
-        if (shouldLoadFromGlobal) {
-            shouldLoadFromGlobal = false //TODO timeout for reload
-            executorService.submitLogging {
-                for (deviceId in configuration.peerIds) {
-                    globalDiscoveryHandler.query(deviceId, this::processDeviceAddressBg)
-                }
-            }
-        }
     }
 
-    private fun processDeviceAddressBg(deviceAddresses: Iterable<DeviceAddress>) {
+    private suspend fun processDeviceAddressBg(deviceAddresses: Iterable<DeviceAddress>) {
         if (isClosed) {
             logger.debug("discarding device addresses, discovery handler already closed")
         } else {
-            executorService.submitLogging {
-                val list = deviceAddresses.toList()
-                val peers = configuration.peerIds
-                //do not process address already processed
-                list.filter { deviceAddress ->
-                    !peers.contains(deviceAddress.deviceId()) || deviceAddressMap.containsKey(Pair.of(DeviceId(deviceAddress.deviceId), deviceAddress.address))
-                }
-                AddressRanker.pingAddresses(list)
-                        .forEach { putDeviceAddress(it) }
+            val list = deviceAddresses.toList()
+            val peers = configuration.peerIds
+            //do not process address already processed
+            list.filter { deviceAddress ->
+                !peers.contains(deviceAddress.deviceIdObject)
             }
+
+            AddressRanker.pingAddresses(list)
+                    .forEach { putDeviceAddress(it) }
         }
     }
 
     private fun putDeviceAddress(deviceAddress: DeviceAddress) {
-        deviceAddressMap[Pair.of(DeviceId(deviceAddress.deviceId), deviceAddress.address)] = deviceAddress
-        deviceAddressSupplier.onNewDeviceAddressAcquired(deviceAddress)
+        devicesAddressesManager.getDeviceAddressManager(
+                deviceId = deviceAddress.deviceIdObject
+        ).putAddress(deviceAddress)
     }
 
     fun newDeviceAddressSupplier(): DeviceAddressSupplier {
-        updateAddressesBg()
-        return deviceAddressSupplier
+        if (isClosed) {
+            throw IllegalStateException()
+        }
+
+        doGlobalDiscoveryIfNotYetDone()
+        initLocalDiscoveryIfNotYetDone()
+
+        return DeviceAddressSupplier(
+                peerDevices = configuration.peerIds,
+                devicesAddressesManager = devicesAddressesManager
+        )
     }
 
     override fun close() {
         if (!isClosed) {
             isClosed = true
             localDiscoveryHandler.close()
-            globalDiscoveryHandler.close()
-            executorService.shutdown()
-            executorService.awaitTerminationSafe()
         }
     }
 
