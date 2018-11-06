@@ -38,7 +38,6 @@ class SyncthingClient(
     val indexHandler = IndexHandler(configuration, repository, tempRepository)
     val discoveryHandler = DiscoveryHandler(configuration)
 
-    // TODO: call these listeners
     private val onConnectionChangedListeners = Collections.synchronizedList(mutableListOf<(DeviceId) -> Unit>())
 
     private val requestHandlerRegistry = RequestHandlerRegistry()
@@ -58,7 +57,12 @@ class SyncthingClient(
                                 indexHandler = indexHandler,
                                 configuration = configuration
                         ),
-                        deviceId = deviceId
+                        deviceId = deviceId,
+                        connectivityChangeListener = {
+                            synchronized(onConnectionChangedListeners) {
+                                onConnectionChangedListeners.forEach { it(deviceId) }
+                            }
+                        }
                 )
             }
     )

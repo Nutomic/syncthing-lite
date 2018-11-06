@@ -13,19 +13,18 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.ReceiveChannel
 import kotlinx.coroutines.experimental.channels.SendChannel
 import kotlinx.coroutines.experimental.channels.consumeEach
-import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.core.beans.DeviceId
 import java.io.IOException
 
 class ConnectionActorWrapper (
         private val source: ReceiveChannel<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>>,
-        val deviceId: DeviceId
+        val deviceId: DeviceId,
+        val connectivityChangeListener: () -> Unit
 ) {
     private val job = Job()
 
@@ -40,6 +39,23 @@ class ConnectionActorWrapper (
             source.consumeEach { (connectionActor, clusterConfig) ->
                 currentConnectionActor = connectionActor
                 clusterConfigInfo = clusterConfig
+            }
+        }
+
+        // this is a very simple solution but it does its job
+        GlobalScope.launch (job) {
+            var previousConnected = false
+
+            while (isActive) {
+                val nowConnected = isConnected
+
+                if (previousConnected != nowConnected) {
+                    previousConnected = nowConnected
+
+                    connectivityChangeListener()
+                }
+
+                delay(200)
             }
         }
     }
