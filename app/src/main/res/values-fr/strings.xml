@@ -25,9 +25,9 @@
     <string name="folder_content_info">%1$s, %2$d fichiers, %3$d dossiers</string>
     <string name="file_info">%1$s, dernière modification %2$s</string>
     <string name="show_device_id">Afficher l\'ID de l\'appareil</string>
-    <string name="device_id">ID de l\\'appareil</string>
+    <string name="device_id">ID de l\'appareil</string>
     <string name="device_id_copied">ID de l\'appareil copié dans le presse-papier</string>
-    <string name="share_device_id_chooser">Partager l\'ID de l\\'appareil avec</string>
+    <string name="share_device_id_chooser">Partager l\'ID de l\'appareil avec</string>
     <string name="other_syncthing_instance_title">Une autre instance de Syncthing fonctionne</string>
     <string name="other_syncthing_instance_message">La découverte locale ne fonctionnera pas. Arrêtez l\'autre instance de Syncthing pour activer la découverte locale.</string>
     <string name="intro_page_one_title">Bienvenue dans Syncthing Lite</string>
@@ -38,7 +38,7 @@
     <string name="intro_page_three_description">Maintenant, acceptez l\'appareil avec l\'ID %1$s, et partagez un dossier avec lui. Cela peut prendre quelques minutes avant que les appareils ne se connectent.</string>
     <string name="settings">Réglages</string>
     <string name="settings_app_version_title">Version d\'application</string>
-    <string name="settings_local_device_name">Nom local de l\'\\'appareil</string>
+    <string name="settings_local_device_name">Nom local de l\'appareil</string>
     <string name="settings_local_device_summary">Le nom que les autres appareils verront pour cet appareil</string>
     <string name="device_id_dialog_title">Entrer l\'ID de l\'appareil</string>
     </resources>
