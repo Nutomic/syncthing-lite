@@ -8,3 +8,4 @@
 ## notes
 
 - F-Droid will pick up the new release automatically
+- The upload to google play happnes using the CI when a release was tagged
