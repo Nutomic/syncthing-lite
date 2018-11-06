@@ -14,8 +14,8 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress

@@ -13,10 +13,10 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.ReceiveChannel
-import kotlinx.coroutines.experimental.channels.SendChannel
-import kotlinx.coroutines.experimental.channels.consumeEach
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.channels.consumeEach
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.core.beans.DeviceId
 import java.io.IOException

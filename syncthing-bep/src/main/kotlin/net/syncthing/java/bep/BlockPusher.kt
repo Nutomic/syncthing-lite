@@ -15,8 +15,8 @@
 package net.syncthing.java.bep
 
 import com.google.protobuf.ByteString
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*

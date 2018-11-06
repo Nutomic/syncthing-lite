@@ -1,6 +1,6 @@
 package net.syncthing.java.bep
 
-import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.Deferred
 import net.syncthing.java.core.beans.DeviceId
 import java.io.IOException
 

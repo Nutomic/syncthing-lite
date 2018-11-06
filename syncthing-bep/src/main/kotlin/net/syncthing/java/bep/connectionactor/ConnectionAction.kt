@@ -13,7 +13,7 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.experimental.CompletableDeferred
+import kotlinx.coroutines.CompletableDeferred
 import net.syncthing.java.bep.BlockExchangeProtos
 
 sealed class ConnectionAction

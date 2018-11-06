@@ -13,8 +13,8 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.experimental.CompletableDeferred
-import kotlinx.coroutines.experimental.channels.SendChannel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.SendChannel
 import net.syncthing.java.bep.BlockExchangeProtos
 
 object ConnectionActorUtil {
