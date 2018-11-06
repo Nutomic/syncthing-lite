@@ -4,8 +4,9 @@ import android.os.Handler
 import android.os.Looper
 import android.support.v4.os.CancellationSignal
 import android.util.Log
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.suspendCancellableCoroutine
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import net.syncthing.java.bep.BlockPullerStatus
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.FileInfo
@@ -13,6 +14,8 @@ import net.syncthing.lite.BuildConfig
 import org.apache.commons.io.FileUtils
 import java.io.File
 import java.io.IOException
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class DownloadFileTask(private val fileStorageDirectory: File,
                        syncthingClient: SyncthingClient,
@@ -58,7 +61,7 @@ class DownloadFileTask(private val fileStorageDirectory: File,
     init {
         val file = DownloadFilePath(fileStorageDirectory, fileInfo.hash!!)
 
-        launch {
+        GlobalScope.launch {
             if (file.targetFile.exists()) {
                 if (BuildConfig.DEBUG) {
                     Log.d(TAG, "there is already a file")

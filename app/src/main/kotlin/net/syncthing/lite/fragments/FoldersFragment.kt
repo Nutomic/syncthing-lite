@@ -6,8 +6,9 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.lite.activities.FolderBrowserActivity
@@ -39,7 +40,7 @@ class FoldersFragment : SyncthingFragment() {
         libraryHandler.folderBrowser { folderBrowser ->
             val list = folderBrowser.folderInfoAndStatsList()
 
-            async (UI) {
+            GlobalScope.launch (Dispatchers.Main) {
                 Log.i(TAG, "list folders = " + list + " (" + list.size + " records)")
                 val adapter = FoldersListAdapter().apply { data = list }
                 binding.list.adapter = adapter

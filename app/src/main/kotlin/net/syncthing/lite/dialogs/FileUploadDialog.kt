@@ -3,8 +3,6 @@ package net.syncthing.lite.dialogs
 import android.app.ProgressDialog
 import android.content.Context
 import android.net.Uri
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
 import net.syncthing.java.bep.BlockPusher
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.lite.R

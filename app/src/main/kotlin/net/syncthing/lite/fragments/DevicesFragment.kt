@@ -10,8 +10,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import com.google.zxing.integration.android.IntentIntegrator
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.lite.R
 import net.syncthing.lite.adapters.DeviceAdapterListener
@@ -76,7 +77,7 @@ class DevicesFragment : SyncthingFragment() {
 
     private fun updateDeviceList() {
         libraryHandler.syncthingClient { syncthingClient ->
-            async(UI) {
+            GlobalScope.launch (Dispatchers.Main) {
                 adapter.data = syncthingClient.getPeerStatus()
                 binding.isEmpty = adapter.data.isEmpty()
             }

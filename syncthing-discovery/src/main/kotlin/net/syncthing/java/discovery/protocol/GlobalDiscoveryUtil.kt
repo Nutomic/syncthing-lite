@@ -15,8 +15,8 @@
 package net.syncthing.java.discovery.protocol
 
 import com.google.gson.stream.JsonReader
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.syncthing.java.core.beans.DeviceId
 import java.io.BufferedInputStream
 import java.io.IOException

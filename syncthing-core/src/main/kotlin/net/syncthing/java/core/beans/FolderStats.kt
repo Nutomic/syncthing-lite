@@ -14,8 +14,7 @@
 package net.syncthing.java.core.beans
 
 import org.apache.commons.io.FileUtils
-
-import java.util.Date
+import java.util.*
 
 class FolderStats private constructor(val fileCount: Long, val dirCount: Long, val size: Long, val lastUpdate: Date, folder: String, label: String?) : FolderInfo(folder, label) {
 

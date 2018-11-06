@@ -13,7 +13,7 @@
  */
 package net.syncthing.java.client.cli
 
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.runBlocking
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo

@@ -14,10 +14,10 @@
  */
 package net.syncthing.java.discovery
 
-import kotlinx.coroutines.experimental.CancellationException
-import kotlinx.coroutines.experimental.runBlocking
-import kotlinx.coroutines.experimental.selects.select
-import kotlinx.coroutines.experimental.withTimeout
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withTimeout
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import org.slf4j.LoggerFactory

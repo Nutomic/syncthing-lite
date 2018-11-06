@@ -4,7 +4,6 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.codec.binary.Base32
-import org.slf4j.LoggerFactory
 import java.io.IOException
 
 data class DeviceId @Throws(IOException::class) constructor(val deviceId: String) {
