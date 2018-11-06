@@ -14,10 +14,8 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.experimental.Deferred
-import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
-import kotlinx.coroutines.experimental.delay
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
@@ -29,7 +27,7 @@ object ConnectionActorGenerator {
     private val closed = Channel<ConnectionAction>().apply { cancel() }
     private val logger = LoggerFactory.getLogger(ConnectionActorGenerator::class.java)
 
-    fun deviceAddressesGenerator(deviceAddress: ReceiveChannel<DeviceAddress>) = GlobalScope.produce<List<DeviceAddress>> (capacity = Channel.CONFLATED) {
+    private fun deviceAddressesGenerator(deviceAddress: ReceiveChannel<DeviceAddress>) = GlobalScope.produce<List<DeviceAddress>> (capacity = Channel.CONFLATED) {
         val addresses = mutableMapOf<String, DeviceAddress>()
 
         invokeOnClose { deviceAddress.cancel() }
@@ -40,30 +38,67 @@ object ConnectionActorGenerator {
             addresses[address.address] = address
 
             if (isNew) {
-                offer(
+                send(
                         addresses.values.sortedBy { it.score }
                 )
             }
         }
     }
 
-    fun <T> waitForFirstValue(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce<T> {
+    private fun <T> waitForFirstValue(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce<T> {
         invokeOnClose { source.cancel() }
 
-        var isFirst = true
+        source.consume {
+            val firstValue = source.receive()
+            var lastValue = firstValue
 
-        source.consumeEach {
-            if (isFirst) {
-                isFirst = false
-                delay(time)
+            try {
+                withTimeout(time) {
+                    while (true) {
+                        lastValue = source.receive()
+                    }
+                }
+
+                throw IllegalStateException()
+            } catch (ex: TimeoutCancellationException) {
+                // this is expected here
             }
 
-            offer(it)
+            send(lastValue)
+
+            // other values without delay
+            for (value in source) {
+                send(value)
+            }
         }
     }
 
-    fun <T> debounce(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce <T> {
+    private fun <T> debounce(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce <T> {
         invokeOnClose { source.cancel() }
+
+        source.consume {
+            // first value without delay
+            send(source.receive())
+
+            // all other values only after the time and conflated
+            while (true) {
+                var lastValue: T? = null
+
+                try {
+                    withTimeout(time) {
+                        while (true) {
+                            lastValue = source.receive()
+                        }
+                    }
+
+                    throw IllegalStateException()
+                } catch (ex: TimeoutCancellationException) {
+                    // this is expected here
+                }
+
+                send(lastValue ?: source.receive())
+            }
+        }
 
         source.consumeEach {
             offer(it)
@@ -76,20 +111,20 @@ object ConnectionActorGenerator {
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
-    ) = generateConnectionActors2(
+    ) = generateConnectionActorsFromDeviceAddressList(
             deviceAddressSource = debounce(
                     source = waitForFirstValue(
                             source = deviceAddressesGenerator(deviceAddress),
                             time = 1000
                     ),
-                    time = 15 * 1000
+                    time = 5 * 1000
             ),
             configuration = configuration,
             indexHandler = indexHandler,
             requestHandler = requestHandler
     )
 
-    fun generateConnectionActors2(
+    fun generateConnectionActorsFromDeviceAddressList(
             deviceAddressSource: ReceiveChannel<List<DeviceAddress>>,
             configuration: Configuration,
             indexHandler: IndexHandler,
