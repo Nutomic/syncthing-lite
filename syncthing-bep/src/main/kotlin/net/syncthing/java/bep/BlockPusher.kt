@@ -17,7 +17,6 @@ import com.google.protobuf.ByteString
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.beans.FileInfo.Version
-import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.utils.BlockUtils
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.submitLogging

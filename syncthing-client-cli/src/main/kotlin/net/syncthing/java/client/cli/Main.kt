@@ -13,12 +13,12 @@
  */
 package net.syncthing.java.client.cli
 
+import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.repository.repo.SqlRepository
-import net.syncthing.java.client.SyncthingClient
 import org.apache.commons.cli.*
 import org.apache.commons.io.FileUtils
 import org.slf4j.LoggerFactory
