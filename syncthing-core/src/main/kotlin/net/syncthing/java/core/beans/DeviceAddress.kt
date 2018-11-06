@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  *
  * This Java file is subject to the terms of the Mozilla Public
@@ -35,23 +35,27 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
     @Throws(UnknownHostException::class)
     private fun getInetAddress(): InetAddress = InetAddress.getByName(address.replaceFirst("^[^:]+://".toRegex(), "").replaceFirst("(:[0-9]+)?(/.*)?$".toRegex(), ""))
 
-    private fun getPort(): Int = if (address.matches("^[a-z]+://[^:]+:([0-9]+).*".toRegex())) {
+    private val port: Int by lazy {
+        if (address.matches("^[a-z]+://[^:]+:([0-9]+).*".toRegex())) {
             Integer.parseInt(address.replaceFirst("^[a-z]+://[^:]+:([0-9]+).*".toRegex(), "$1"))
         } else {
-            DEFAULT_PORT_BY_PROTOCOL[getType()]!!
+            DEFAULT_PORT_BY_PROTOCOL[type]!!
         }
+    }
 
-    fun getType(): AddressType = when {
-        address.isEmpty() -> AddressType.NULL
-        address.startsWith("tcp://") -> AddressType.TCP
-        address.startsWith("relay://") -> AddressType.RELAY
-        address.startsWith("relay-http://") -> AddressType.HTTP_RELAY
-        address.startsWith("relay-https://") -> AddressType.HTTPS_RELAY
-        else -> AddressType.OTHER
+    val type: AddressType by lazy {
+        when {
+            address.isEmpty() -> AddressType.NULL
+            address.startsWith("tcp://") -> AddressType.TCP
+            address.startsWith("relay://") -> AddressType.RELAY
+            address.startsWith("relay-http://") -> AddressType.HTTP_RELAY
+            address.startsWith("relay-https://") -> AddressType.HTTPS_RELAY
+            else -> AddressType.OTHER
+        }
     }
 
     @Throws(UnknownHostException::class)
-    fun getSocketAddress(): InetSocketAddress = InetSocketAddress(getInetAddress(), getPort())
+    fun getSocketAddress(): InetSocketAddress = InetSocketAddress(getInetAddress(), port)
 
     fun isWorking(): Boolean = score < Integer.MAX_VALUE
 

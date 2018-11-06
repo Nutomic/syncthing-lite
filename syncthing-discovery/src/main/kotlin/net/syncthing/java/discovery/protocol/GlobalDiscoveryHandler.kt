@@ -62,7 +62,7 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
     )
 
     suspend fun pickAnnounceServers() = AddressRanker
-            .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
+            .pingAddressesReturnAllResultsAtOnce(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
             .map { it.deviceId }
 
     suspend fun queryAnnounceServers(servers: List<String>, deviceId: DeviceId) = coroutineScope {

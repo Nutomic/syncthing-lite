@@ -31,7 +31,7 @@ object OpenConnection {
     ): SSLSocket {
         val keystoreHandler = KeystoreHandler.Loader().loadKeystore(configuration)
 
-        return when (address.getType()) {
+        return when (address.type) {
             DeviceAddress.AddressType.TCP -> {
                 logger.debug("opening tcp ssl connection")
                 keystoreHandler.createSocket(address.getSocketAddress(), KeystoreHandler.BEP)
@@ -48,7 +48,7 @@ object OpenConnection {
                 // it's still kept because it is eventually useful in the future
                 // keystoreHandler.wrapSocket(HttpRelayClient().openRelayConnection(address), KeystoreHandler.BEP)
             }
-            else -> throw UnsupportedOperationException("unsupported address type ${address.getType()}")
+            else -> throw UnsupportedOperationException("unsupported address type ${address.type}")
         }
     }
 }

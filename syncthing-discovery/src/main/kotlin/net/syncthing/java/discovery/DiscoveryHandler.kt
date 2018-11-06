@@ -15,6 +15,7 @@
 package net.syncthing.java.discovery
 
 import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
@@ -77,8 +78,9 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
                 !peers.contains(deviceAddress.deviceIdObject)
             }
 
-            AddressRanker.pingAddresses(list)
-                    .forEach { putDeviceAddress(it) }
+            AddressRanker.pingAddressesChannel(list).consumeEach {
+                putDeviceAddress(it)
+            }
         }
     }
 
