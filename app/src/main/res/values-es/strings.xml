@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Syncthing Lite
+</string>
+    <string name="folder_list_empty_message">Carpeta no disponible</string>
+    <string name="clear_local_cache_index_label">Limpia caché/índice local</string>
+    <string name="devices_list_view_empty_message">Dispositivos no disponibles</string>
+    <string name="invalid_device_id">Error: identificador de dispositivo inválido</string>
+    <string name="dialog_downloading_file">Descargando archivo%1$s</string>
+    <string name="toast_file_download_failed">Falló al descargar el archivo</string>
+    <string name="toast_open_file_failed">No se ha encontrado una app compatible</string>
+    <string name="toast_file_upload_failed">Error en la carga de archivos
+</string>
+    <string name="toast_upload_complete">Carga de archivos completa
+</string>
+    <string name="dialog_uploading_file">Cargando archivo %1$s</string>
+    <string name="clear_cache_and_index_title">¿Borrar la caché local y el índice?</string>
+    <string name="clear_cache_and_index_body">¿Borrar todos los datos de la caché local y los datos de índice?</string>
+    <string name="index_update_progress_label">Actualización del índice de las carpetas %1$s, %2$d%% sincronizado</string>
+    <string name="loading_config_starting_syncthing_client">Cargando configuración, iniciando el cliente de sincronización....</string>
+    <string name="last_modified_time">Última modificación: %1$s</string>
+    <string name="remove_device_title">¿Quitar dispositivo %1$s?</string>
+    <string name="remove_device_message">¿Quitar dispositivo %1$s de la lista de dispositivos conocidos?</string>
+    </resources>
