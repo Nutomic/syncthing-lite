@@ -36,20 +36,9 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-import kotlin.collections.List
 import kotlin.collections.component1
 import kotlin.collections.component2
-import kotlin.collections.distinctBy
-import kotlin.collections.emptySet
-import kotlin.collections.filterNot
-import kotlin.collections.filterNotNull
-import kotlin.collections.find
-import kotlin.collections.forEach
-import kotlin.collections.groupBy
-import kotlin.collections.map
-import kotlin.collections.mutableListOf
 import kotlin.collections.set
-import kotlin.collections.takeWhile
 
 class SyncthingClient(
         private val configuration: Configuration,
