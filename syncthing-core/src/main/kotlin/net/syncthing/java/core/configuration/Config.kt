@@ -12,7 +12,8 @@ data class Config(
         val folders: Set<FolderInfo>,
         val localDeviceName: String,
         val localDeviceId: String,
-        val discoveryServers: Set<String>,
+        val customDiscoveryServers: Set<DiscoveryServer>,
+        val useDefaultDiscoveryServers: Boolean,
         val keystoreAlgorithm: String,
         val keystoreData: String
 ) {
@@ -21,7 +22,8 @@ data class Config(
         private const val FOLDERS = "folders"
         private const val LOCAL_DEVICE_NAME = "localDeviceName"
         private const val LOCAL_DEVICE_ID = "localDeviceId"
-        private const val DISCOVERY_SERVERS = "discoveryServers"
+        private const val USE_DEFAULT_DISCOVERY_SERVERS = "useDefaultDiscoveryServers"
+        private const val CUSTOM_DISCOVERY_SERVERS = "customDiscoveryServers"
         private const val KEYSTORE_ALGORITHM = "keystoreAlgorithm"
         private const val KEYSTORE_DATA = "keystoreData"
 
@@ -30,7 +32,8 @@ data class Config(
             var folders: Set<FolderInfo>? = null
             var localDeviceName: String? = null
             var localDeviceId: String? = null
-            var discoveryServers: Set<String>? = null
+            var customDiscoveryServers = emptySet<DiscoveryServer>()    // this field was added later, so it needs an default value
+            var useDefaultDiscoveryServers = true  // this field was added later, so it needs an default value
             var keystoreAlgorithm: String? = null
             var keystoreData: String? = null
 
@@ -61,17 +64,16 @@ data class Config(
                     }
                     LOCAL_DEVICE_NAME -> localDeviceName = reader.nextString()
                     LOCAL_DEVICE_ID -> localDeviceId = reader.nextString()
-                    DISCOVERY_SERVERS -> {
-                        val newDiscoveryServers = HashSet<String>()
-
-                        reader.beginArray()
-                        while (reader.hasNext()) {
-                            newDiscoveryServers.add(reader.nextString())
+                    CUSTOM_DISCOVERY_SERVERS -> {
+                        customDiscoveryServers = mutableSetOf<DiscoveryServer>().apply {
+                            reader.beginArray()
+                            while (reader.hasNext()) {
+                                add(DiscoveryServer.parse(reader))
+                            }
+                            reader.endArray()
                         }
-                        reader.endArray()
-
-                        discoveryServers = Collections.unmodifiableSet(newDiscoveryServers)
                     }
+                    USE_DEFAULT_DISCOVERY_SERVERS -> useDefaultDiscoveryServers = reader.nextBoolean()
                     KEYSTORE_ALGORITHM -> keystoreAlgorithm = reader.nextString()
                     KEYSTORE_DATA -> keystoreData = reader.nextString()
                     else -> reader.skipValue()
@@ -84,7 +86,8 @@ data class Config(
                     folders = folders!!,
                     localDeviceName = localDeviceName!!,
                     localDeviceId = localDeviceId!!,
-                    discoveryServers = discoveryServers!!,
+                    customDiscoveryServers = customDiscoveryServers,
+                    useDefaultDiscoveryServers = useDefaultDiscoveryServers,
                     keystoreAlgorithm = keystoreAlgorithm!!,
                     keystoreData = keystoreData!!
             )
@@ -105,9 +108,11 @@ data class Config(
         writer.name(LOCAL_DEVICE_NAME).value(localDeviceName)
         writer.name(LOCAL_DEVICE_ID).value(localDeviceId)
 
-        writer.name(DISCOVERY_SERVERS).beginArray()
-        discoveryServers.forEach { writer.value(it) }
+        writer.name(CUSTOM_DISCOVERY_SERVERS).beginArray()
+        customDiscoveryServers.forEach { it.serialize(writer) }
         writer.endArray()
+
+        writer.name(USE_DEFAULT_DISCOVERY_SERVERS).value(useDefaultDiscoveryServers)
 
         writer.name(KEYSTORE_ALGORITHM).value(keystoreAlgorithm)
         writer.name(KEYSTORE_DATA).value(keystoreData)
@@ -117,5 +122,6 @@ data class Config(
 
     // Exclude keystoreData from toString()
     override fun toString() = "Config(peers=$peers, folders=$folders, localDeviceName=$localDeviceName, " +
-            "localDeviceId=$localDeviceId, discoveryServers=$discoveryServers, keystoreAlgorithm=$keystoreAlgorithm)"
+            "localDeviceId=$localDeviceId, customDiscoveryServers=$customDiscoveryServers, " +
+            "useDefaultDiscoveryServers=$useDefaultDiscoveryServers, keystoreAlgorithm=$keystoreAlgorithm)"
 }
