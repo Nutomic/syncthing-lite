@@ -2,18 +2,27 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'com.github.ben-manes.versions'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'com.github.triplet.play'
 
 android {
     compileSdkVersion 27
     buildToolsVersion "28.0.2"
     dataBinding.enabled = true
+
+    playAccountConfigs {
+        defaultAccountConfig {
+            jsonFile = file(System.getenv("SYNCTHING_RELEASE_PLAY_ACCOUNT_CONFIG_FILE") ?: 'keys.json')
+        }
+    }
+
     defaultConfig {
         applicationId "net.syncthing.lite"
         minSdkVersion 21
         targetSdkVersion 26
-        versionCode 11
-        versionName "0.3.1"
+        versionCode 12
+        versionName "0.3.2"
         multiDexEnabled true
+        playAccountConfig = playAccountConfigs.defaultAccountConfig
     }
     sourceSets {
         main.java.srcDirs += "src/main/kotlin"

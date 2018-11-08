@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">Syncthing Lite</string>
-    <string name="folder_list_empty_message">Keine Ordner verfügbar</string>
+    <string name="folder_list_empty_message">Kein Ordner verfügbar</string>
     <string name="clear_local_cache_index_label">Lokalen Index und Cache löschen</string>
     <string name="devices_list_view_empty_message">Keine Geräte verfügbar</string>
-    <string name="device_id_dialog_title">Geräte ID eingeben</string>
+    <string name="invalid_device_id">Fehler: Ungültige Geräte ID</string>
     <string name="dialog_downloading_file">Datei %1$s wird heruntergeladen</string>
     <string name="toast_file_download_failed">Datei konnte nicht heruntergeladen werden</string>
     <string name="toast_open_file_failed">Keine kompatible app gefunden</string>
@@ -12,8 +12,11 @@
     <string name="dialog_uploading_file">Datei %1$s wird hochgeladen</string>
     <string name="clear_cache_and_index_title">Lokalen Cache und Index löschen?</string>
     <string name="clear_cache_and_index_body">Gesamten lokalen Cache und Index löschen?</string>
+    <string name="index_update_progress_label">Index Aktualisierung für Ordner %1$s, %2$d %% synchronisiert</string>
+    <string name="loading_config_starting_syncthing_client">Konfiguartion wird geladen, Syncthing wird gestartet...</string>
     <string name="last_modified_time">Zuletzt modifiziert: %1$s</string>
-    <string name="remove_device_title">Gerät entfernen: %1$s</string>
+    <string name="remove_device_title">Gerät %1$s entfernen?</string>
+    <string name="remove_device_message">Gerät %1$s von der Liste der bekannten Geräte entfernen?</string>
     <string name="device_import_success">Gerät %1$s erfolgreich importiert</string>
     <string name="device_already_known">Gerät ist bereits bekannt $1%s</string>
     <string name="folders_label">Ordner</string>
@@ -21,4 +24,21 @@
     <string name="folder_label_format">%1$s (%2$s)</string>
     <string name="folder_content_info">%1$s, %2$d Dateien, %3$d Ordner</string>
     <string name="file_info">%1$s, zuletzt modifiziert %2$s</string>
+    <string name="show_device_id">Geräte ID anzeigen</string>
+    <string name="device_id">Geräte ID</string>
+    <string name="device_id_copied">Geräte ID in den Zwischenspeicher kopiert</string>
+    <string name="share_device_id_chooser">Teile Geräte ID mit</string>
+    <string name="other_syncthing_instance_title">Eine andere Syncthing Instanz läuft bereits</string>
+    <string name="other_syncthing_instance_message">Lokale Auffindung wird nicht funktionieren. Stoppen Sie die andere Syncthing Instanz, um die lokale Auffindung zu ermöglichen.</string>
+    <string name="intro_page_one_title">Willkommen zu Syncthing Lite</string>
+    <string name="intro_page_one_description">Syncthing ersetzt proprietäre Sync- und Cloud-Services durch etwas Offenes, Vertrauenswürdiges und Dezentrales. Ihre Daten sind allein Ihre Daten, und Sie verdienen es zu wählen, wo sie gespeichert werden, ob sie an Dritte weitergegeben werden und wie sie über das Internet übertragen werden.</string>
+    <string name="intro_page_two_title">Ein Gerät hinzufügen</string>
+    <string name="intro_page_three_title">Ordner teilen</string>
+    <string name="intro_page_two_description">Eine Syncthing Geräte ID eingeben oder QR Code einer Geräte ID scannen.</string>
+    <string name="intro_page_three_description">Akzeptieren Sie nun das Gerät mit der ID %1$s und geben Sie einen Ordner mit ihm frei. Es kann einige Minuten dauern, bis sich die Geräte verbinden.</string>
+    <string name="settings">Einstellungen</string>
+    <string name="settings_app_version_title">App Version</string>
+    <string name="settings_local_device_name">Lokaler Geräte Namen</string>
+    <string name="settings_local_device_summary">Name, den das andere Gerät für dieses Gerät sehen wird</string>
+    <string name="device_id_dialog_title">Geräte ID eingeben</string>
     </resources>

@@ -14,12 +14,9 @@
  */
 package net.syncthing.java.discovery.utils
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.channels.toList
-import kotlinx.coroutines.withTimeout
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceAddress.AddressType
 import org.slf4j.LoggerFactory

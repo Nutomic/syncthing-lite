@@ -15,11 +15,10 @@
 package net.syncthing.java.bep
 
 import com.google.protobuf.ByteString
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withTimeout
+import net.syncthing.java.bep.BlockExchangeProtos.ErrorCode
+import net.syncthing.java.bep.BlockExchangeProtos.Request
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.bep.utils.longSumBy
 import net.syncthing.java.core.beans.BlockInfo
@@ -29,9 +28,14 @@ import net.syncthing.java.core.interfaces.TempRepository
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.*
+import java.io.ByteArrayInputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.SequenceInputStream
 import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.HashMap
+import kotlin.coroutines.resume
 
 object BlockPuller {
     private val logger = LoggerFactory.getLogger(javaClass)

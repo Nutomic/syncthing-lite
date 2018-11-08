@@ -26,8 +26,15 @@ import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.discovery.DiscoveryHandler
 import java.io.Closeable
+import java.io.IOException
 import java.io.InputStream
-import java.util.*
+import java.util.Collections
+import java.util.TreeSet
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 class SyncthingClient(
         private val configuration: Configuration,
