@@ -14,8 +14,11 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.withTimeout
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
@@ -98,11 +101,6 @@ object ConnectionActorGenerator {
 
                 send(lastValue ?: source.receive())
             }
-        }
-
-        source.consumeEach {
-            offer(it)
-            delay(time)
         }
     }
 
