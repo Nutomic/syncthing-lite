@@ -15,8 +15,8 @@
 package net.syncthing.java.bep
 
 import com.google.protobuf.ByteString
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.channels.Channel
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import net.syncthing.java.bep.BlockExchangeProtos.ErrorCode
 import net.syncthing.java.bep.BlockExchangeProtos.Request
 import net.syncthing.java.bep.utils.longSumBy
@@ -25,14 +25,16 @@ import net.syncthing.java.core.beans.FileBlocks
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
-import org.apache.commons.io.FileUtils
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
-import java.io.*
-import java.lang.Exception
+import java.io.ByteArrayInputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.SequenceInputStream
 import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.HashMap
+import kotlin.coroutines.resume
 
 class BlockPuller internal constructor(private val connectionHandler: ConnectionHandler,
                                        private val indexHandler: IndexHandler,

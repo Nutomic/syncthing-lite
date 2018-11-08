@@ -1,6 +1,5 @@
 <resources>
-    <string name="app_name">Syncthing Lite
-</string>
+    <string name="app_name">Syncthing Lite</string>
     <string name="folder_list_empty_message">Carpeta no disponible</string>
     <string name="clear_local_cache_index_label">Limpia caché/índice local</string>
     <string name="devices_list_view_empty_message">Dispositivos no disponibles</string>
@@ -20,4 +19,34 @@
     <string name="last_modified_time">Última modificación: %1$s</string>
     <string name="remove_device_title">¿Quitar dispositivo %1$s?</string>
     <string name="remove_device_message">¿Quitar dispositivo %1$s de la lista de dispositivos conocidos?</string>
-    </resources>
+    <string name="device_import_success">Dispositivo %1$simportado con éxito</string>
+    <string name="device_already_known">Dispositivo %1$s ya está presente</string>
+    <string name="folders_label">Carpetas</string>
+    <string name="devices_label">Dispositivos</string>
+    <string name="folder_label_format">%1$s (%2$s)</string>
+    <string name="folder_content_info">%1$s, %2$d archivos, %3$ddirectorios</string>
+    <string name="file_info">%1$s, modificado por última vez %2$s</string>
+    <string name="show_device_id">Mostrar ID de dispositivo </string>
+    <string name="device_id">ID de dispositivo</string>
+    <string name="device_id_copied">ID de dispositivo copiado al portapapeles</string>
+    <string name="share_device_id_chooser">Compartir ID de dispositivo con</string>
+    <string name="other_syncthing_instance_title">Otra instancia de Syncthing está siendo ejecutada</string>
+    <string name="other_syncthing_instance_message">El descubrimiento local no funcionará. Detenga la otra instancia de Syncthing para habilitar la detección local.</string>
+    <string name="intro_page_one_title">Bienvenido a Syncthing Lite</string>
+    <string name="intro_page_one_description">Syncthing reemplaza los servicios de sincronización y nube propietarios por algo abierto, fiable y descentralizado. Sus datos son sólo suyos y usted merece elegir dónde se almacenan, si se comparten con terceros y cómo se transmiten a través de Internet.</string>
+    <string name="intro_page_two_title">Añadir un dispositivo</string>
+    <string name="intro_page_three_title">Compartir tus carpetas</string>
+    <string name="intro_page_two_description">Introduce un ID de dispositivo de Syncthing o escanea un ID de dispositivo desde un código QR</string>
+    <string name="intro_page_three_description">Acepta ahora el dispositivo con ID %1$s, y comparte una carpeta con él. Pueden pasar unos minutos hasta que los dispositivos se conecten.</string>
+    <string name="settings">Configuración</string>
+    <string name="settings_app_version_title">Versión de la aplicación</string>
+    <string name="settings_local_device_name">Nombre del dispositivo local</string>
+    <string name="settings_local_device_summary">El nombre que otros dispositivos verán para este dispositivo</string>
+    <string name="settings_shutdown_delay_title">Retardo en el apagado</string>
+    <string name="settings_shutdown_delay_summary">Tiempo antes de apagar el cliente Syncthing después de su último uso</string>
+    <string name="device_id_dialog_title">Introducir la ID del dispositivo</string>
+    <string name="settings_shutdown_delay_10_seconds">10 segundos</string>
+    <string name="settings_shutdown_delay_30_seconds">30 segundos</string>
+    <string name="settings_shutdown_delay_1_minute">1 minuto</string>
+    <string name="settings_shutdown_delay_5_minutes">5 minutos</string>
+</resources>

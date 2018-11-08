@@ -5,8 +5,9 @@ import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.util.Log
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
@@ -70,7 +71,7 @@ class FolderBrowserActivity : SyncthingActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
         if (requestCode == REQUEST_SELECT_UPLOAD_FILE && resultCode == Activity.RESULT_OK) {
             libraryHandler?.syncthingClient { syncthingClient ->
-                async (UI) {
+                GlobalScope.launch (Dispatchers.Main) {
                     // FIXME: it would be better if the dialog would use the library handler
                     FileUploadDialog(this@FolderBrowserActivity, syncthingClient, intent!!.data,
                             indexBrowser.folder, indexBrowser.currentPath,
@@ -114,7 +115,7 @@ class FolderBrowserActivity : SyncthingActivity() {
             async {
                 val list = indexBrowser.listFiles()
 
-                async (UI) {
+                GlobalScope.launch (Dispatchers.Main) {
                     Log.i("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list.size + " records")
                     Log.d("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list)
                     assert(!list.isEmpty())//list must contain at least the 'parent' path
@@ -124,7 +125,7 @@ class FolderBrowserActivity : SyncthingActivity() {
                         libraryHandler?.folderBrowser {
                             val title = it.getFolderInfo(indexBrowser.folder)?.label
 
-                            async(UI) {
+                            GlobalScope.launch (Dispatchers.Main) {
                                 supportActionBar?.title = title
                             }
                         }

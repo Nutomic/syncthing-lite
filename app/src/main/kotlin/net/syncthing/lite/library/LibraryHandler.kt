@@ -6,8 +6,9 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
@@ -88,7 +89,7 @@ class LibraryHandler(context: Context,
     private fun onIndexRecordAcquired(folderInfo: FolderInfo, newRecords: List<FileInfo>, indexInfo: IndexInfo) {
         Log.i(TAG, "handleIndexRecordEvent trigger folder list update from index record acquired")
 
-        async(UI) {
+        GlobalScope.launch (Dispatchers.Main) {
             onIndexUpdateProgressListener(folderInfo, (indexInfo.getCompleted() * 100).toInt())
         }
     }
@@ -96,7 +97,7 @@ class LibraryHandler(context: Context,
     private fun onRemoteIndexAcquired(folderInfo: FolderInfo) {
         Log.i(TAG, "handleIndexAcquiredEvent trigger folder list update from index acquired")
 
-        async(UI) {
+        GlobalScope.launch (Dispatchers.Main) {
             onIndexUpdateCompleteListener(folderInfo)
         }
     }

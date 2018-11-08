@@ -14,7 +14,7 @@
  */
 package net.syncthing.java.discovery.utils
 
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceAddress.AddressType
 import org.slf4j.LoggerFactory

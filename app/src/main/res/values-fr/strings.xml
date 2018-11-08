@@ -40,5 +40,11 @@
     <string name="settings_app_version_title">Version d\'application</string>
     <string name="settings_local_device_name">Nom local de l\'appareil</string>
     <string name="settings_local_device_summary">Le nom que les autres appareils verront pour cet appareil</string>
+    <string name="settings_shutdown_delay_title">Délai d\'arrêt</string>
+    <string name="settings_shutdown_delay_summary">Délai avant d\'arrêter le client Syncthing après sa dernière utilisation</string>
     <string name="device_id_dialog_title">Entrer l\'ID de l\'appareil</string>
-    </resources>
+    <string name="settings_shutdown_delay_10_seconds">10 secondes</string>
+    <string name="settings_shutdown_delay_30_seconds">30 secondes</string>
+    <string name="settings_shutdown_delay_1_minute">1 minute</string>
+    <string name="settings_shutdown_delay_5_minutes">5 minutes</string>
+</resources>

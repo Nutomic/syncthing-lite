@@ -24,6 +24,7 @@ This does not apply to local discovery connections.
 ## Translations
 
 The project is translated on [Transifex](https://www.transifex.com/syncthing/syncthing-lite/).
+Requests for new languages are always accepted (but this happens manually because there is no option to accept it automatically).
 
 ## Building
 

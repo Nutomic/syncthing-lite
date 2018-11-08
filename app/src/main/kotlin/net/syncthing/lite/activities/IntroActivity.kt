@@ -4,8 +4,6 @@ import android.arch.lifecycle.Observer
 import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
 import android.text.Html
@@ -15,8 +13,9 @@ import android.view.ViewGroup
 import android.widget.Button
 import com.github.paolorotolo.appintro.AppIntro
 import com.google.zxing.integration.android.IntentIntegrator
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.lite.R
 import net.syncthing.lite.databinding.FragmentIntroOneBinding
@@ -183,7 +182,7 @@ class IntroActivity : AppIntro() {
             binding = DataBindingUtil.inflate(inflater, R.layout.fragment_intro_three, container, false)
 
             libraryHandler.library { config, client, _ ->
-                async(UI) {
+                GlobalScope.launch (Dispatchers.Main) {
                     client.addOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
                     val deviceId = config.localDeviceId.deviceId
                     val desc = activity?.getString(R.string.intro_page_three_description, "<b>$deviceId</b>")
@@ -196,7 +195,7 @@ class IntroActivity : AppIntro() {
 
         private fun onConnectionChanged(deviceId: DeviceId) {
             libraryHandler.library { config, client, _ ->
-                async(UI) {
+                GlobalScope.launch (Dispatchers.Main) {
                     if (config.folders.isNotEmpty()) {
                         client.removeOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
                         (activity as IntroActivity?)?.onDonePressed(this@IntroFragmentThree)
