@@ -33,8 +33,6 @@ object ConnectionActorGenerator {
     private fun deviceAddressesGenerator(deviceAddress: ReceiveChannel<DeviceAddress>) = GlobalScope.produce<List<DeviceAddress>> (capacity = Channel.CONFLATED) {
         val addresses = mutableMapOf<String, DeviceAddress>()
 
-        invokeOnClose { deviceAddress.cancel() }
-
         deviceAddress.consumeEach { address ->
             val isNew = addresses[address.address] == null
 
@@ -49,8 +47,6 @@ object ConnectionActorGenerator {
     }
 
     private fun <T> waitForFirstValue(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce<T> {
-        invokeOnClose { source.cancel() }
-
         source.consume {
             val firstValue = source.receive()
             var lastValue = firstValue
@@ -77,8 +73,6 @@ object ConnectionActorGenerator {
     }
 
     private fun <T> debounce(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce <T> {
-        invokeOnClose { source.cancel() }
-
         source.consume {
             // first value without delay
             send(source.receive())
@@ -140,7 +134,6 @@ object ConnectionActorGenerator {
         }
 
         invokeOnClose {
-            deviceAddressSource.cancel()
             currentActor.close()
         }
 
