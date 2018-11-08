@@ -22,14 +22,10 @@
         <activity android:name=".activities.FolderBrowserActivity"
             android:parentActivityName=".activities.MainActivity"/>
         <provider
-            android:name="android.support.v4.content.FileProvider"
+            android:name=".library.CacheFileProvider"
             android:authorities="net.syncthing.lite.fileprovider"
             android:grantUriPermissions="true"
-            android:exported="false">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/filepaths" />
-        </provider>
+            android:exported="false" />
         <provider
             android:name=".library.SyncthingProvider"
             android:authorities="net.syncthing.lite.documents"

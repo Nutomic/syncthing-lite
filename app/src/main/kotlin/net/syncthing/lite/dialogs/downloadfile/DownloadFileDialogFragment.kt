@@ -10,12 +10,12 @@ import android.content.Intent
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
 import android.support.v4.app.FragmentManager
-import android.support.v4.content.FileProvider
 import android.util.Log
 import android.webkit.MimeTypeMap
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.R
+import net.syncthing.lite.library.CacheFileProviderUrl
 import net.syncthing.lite.library.LibraryHandler
 import org.apache.commons.io.FilenameUtils
 import org.jetbrains.anko.newTask
@@ -73,12 +73,19 @@ class DownloadFileDialogFragment : DialogFragment() {
                 is DownloadFileStatusDone -> {
                     dismissAllowingStateLoss()
 
+                    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(fileSpec.fileName))
+
                     try {
                         context!!.startActivity(
                                 Intent(Intent.ACTION_VIEW)
                                         .setDataAndType(
-                                                FileProvider.getUriForFile(context!!, "net.syncthing.lite.fileprovider", status.file),
-                                                MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(fileSpec.fileName))
+                                                CacheFileProviderUrl.fromFile(
+                                                        filename = fileSpec.fileName,
+                                                        mimeType = mimeType,
+                                                        file = status.file,
+                                                        context = context!!
+                                                ).serialized,
+                                                mimeType
                                         )
                                         .newTask()
                                         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
