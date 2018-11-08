@@ -93,7 +93,11 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
     companion object {
         suspend fun queryAnnounceServer(server: String, deviceId: DeviceId) =
                 GlobalDiscoveryUtil
-                        .queryAnnounceServer(server, deviceId)
+                        .queryAnnounceServer(
+                                server,
+                                requestedDeviceId = deviceId,
+                                serverDeviceId = null
+                        )
                         .addresses.map { DeviceAddress(deviceId.deviceId, it) }
     }
 }

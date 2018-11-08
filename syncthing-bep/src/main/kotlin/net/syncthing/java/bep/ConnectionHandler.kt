@@ -28,7 +28,6 @@ import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.security.KeystoreHandler
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.submitLogging
-import net.syncthing.java.httprelay.HttpRelayClient
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
@@ -122,7 +121,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
         receiveHelloMessage()
         try {
-            keystoreHandler.checkSocketCertificate(socket, address.deviceId())
+            KeystoreHandler.assertSocketCertificateValid(socket, address.deviceId())
         } catch (e: CertificateException) {
             throw IOException(e)
         }
