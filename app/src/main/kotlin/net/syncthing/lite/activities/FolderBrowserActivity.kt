@@ -17,6 +17,7 @@ import net.syncthing.lite.R
 import net.syncthing.lite.adapters.FolderContentsAdapter
 import net.syncthing.lite.adapters.FolderContentsListener
 import net.syncthing.lite.databinding.ActivityFolderBrowserBinding
+import net.syncthing.lite.dialogs.FileMenuDialogFragment
 import net.syncthing.lite.dialogs.FileUploadDialog
 import net.syncthing.lite.dialogs.ReconnectIssueDialogFragment
 import net.syncthing.lite.dialogs.downloadfile.DownloadFileDialogFragment
@@ -44,6 +45,16 @@ class FolderBrowserActivity : SyncthingActivity() {
         adapter.listener = object: FolderContentsListener {
             override fun onItemClicked(fileInfo: FileInfo) {
                 navigateToFolder(fileInfo)
+            }
+
+            override fun onItemLongClicked(fileInfo: FileInfo): Boolean {
+                return if (fileInfo.type == FileInfo.FileType.FILE) {
+                    FileMenuDialogFragment.newInstance(fileInfo).show(supportFragmentManager)
+
+                    true
+                } else {
+                    false
+                }
             }
         }
         val folder = intent.getStringExtra(EXTRA_FOLDER_NAME)
@@ -78,6 +89,8 @@ class FolderBrowserActivity : SyncthingActivity() {
                             { showFolderListView(indexBrowser.currentPath) }).show()
                 }
             }
+        } else {
+            super.onActivityResult(requestCode, resultCode, intent)
         }
     }
 
