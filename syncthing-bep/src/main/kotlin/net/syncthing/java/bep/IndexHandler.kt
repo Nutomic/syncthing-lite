@@ -391,7 +391,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 //                    delay = 0;
                 //                }
                 logger.info("processing index message with {} records (queue size: messages = {} records = {})", message.filesCount, queuedMessages, queuedRecords)
-                logger.info("handling index update: $message")
                 //            String deviceId = connectionHandler.getDeviceId();
                 val folderId = message.folder
                 var sequence: Long = -1
