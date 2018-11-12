@@ -122,7 +122,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
         receiveHelloMessage()
         try {
-            keystoreHandler.checkSocketCertificate(socket, address.deviceId())
+            KeystoreHandler.assertSocketCertificateValid(socket, address.deviceId())
         } catch (e: CertificateException) {
             throw IOException(e)
         }

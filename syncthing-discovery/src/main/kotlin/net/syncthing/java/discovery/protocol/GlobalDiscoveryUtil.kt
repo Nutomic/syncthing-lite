@@ -18,12 +18,14 @@ import com.google.gson.stream.JsonReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.syncthing.java.core.beans.DeviceId
+import net.syncthing.java.core.security.KeystoreHandler
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.SecureRandom
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.HttpsURLConnection
@@ -34,11 +36,33 @@ object GlobalDiscoveryUtil {
     private fun queryAnnounceServerUrl(server: String, deviceId: DeviceId) =
             "https://$server/v2/?device=${deviceId.deviceId}"
 
-    suspend fun queryAnnounceServer(server: String, deviceId: DeviceId): AnnouncementMessage {
+    suspend fun queryAnnounceServer(
+            server: String,
+            requestedDeviceId: DeviceId,
+            serverDeviceId: DeviceId?
+    ): AnnouncementMessage {
         return withContext(Dispatchers.IO) {
-            val url = URL(queryAnnounceServerUrl(server, deviceId))
+            val url = URL(queryAnnounceServerUrl(server, requestedDeviceId))
             val connection = (url.openConnection() as HttpsURLConnection).apply {
-                hostnameVerifier = HostnameVerifier { _, _ -> true }
+                hostnameVerifier = HostnameVerifier { _, session ->
+                    try {
+                        if (serverDeviceId != null) {
+                            if (session.peerCertificates.isEmpty()) {
+                                throw IOException("no certificate found")
+                            }
+
+                            KeystoreHandler.assertSocketCertificateValid(session.peerCertificates.first(), serverDeviceId)
+                        }
+
+                        true
+                    } catch (ex: Exception) {
+                        when (ex) {
+                            is IOException -> false
+                            is CertificateException -> false
+                            else -> throw ex
+                        }
+                    }
+                }
                 sslSocketFactory = SSLContext.getInstance("SSL").apply {
                     init(null, arrayOf(object: X509TrustManager {
                         override fun checkClientTrusted(p0: Array<out X509Certificate>?, p1: String?) {

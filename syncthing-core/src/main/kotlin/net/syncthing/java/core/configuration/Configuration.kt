@@ -38,26 +38,15 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
             isSaved = false
             config = Config(peers = setOf(), folders = setOf(),
                     localDeviceName = localDeviceName,
-                    discoveryServers = Companion.DiscoveryServers,
                     localDeviceId = keystoreData.first.deviceId,
                     keystoreData = Base64.toBase64String(keystoreData.second),
-                    keystoreAlgorithm = keystoreData.third)
+                    keystoreAlgorithm = keystoreData.third,
+                    customDiscoveryServers = emptySet(),
+                    useDefaultDiscoveryServers = true
+            )
             persistNow()
         } else {
             config = Config.parse(JsonReader(StringReader(configFile.readText())))
-
-            // automatic migration if the old config was used
-            if (config.discoveryServers == OldDiscoveryServers) {
-                config = Config(
-                    peers = config.peers,
-                    folders = config.folders,
-                    localDeviceName = config.localDeviceName,
-                    localDeviceId = config.localDeviceId,
-                    discoveryServers = Companion.DiscoveryServers,
-                    keystoreAlgorithm = config.keystoreAlgorithm,
-                    keystoreData = config.keystoreData
-                )
-            }
         }
         logger.debug("Loaded config = $config")
     }
@@ -66,11 +55,6 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
         private val DefaultConfigFolder = File(System.getProperty("user.home"), ".config/syncthing-java/")
         private const val ConfigFileName = "config.json"
         private const val DatabaseFolderName = "database"
-        private val DiscoveryServers = setOf(
-                "discovery.syncthing.net", "discovery-v4.syncthing.net", "discovery-v6.syncthing.net")
-        private val OldDiscoveryServers = setOf(
-                "discovery-v4-1.syncthing.net", "discovery-v4-2.syncthing.net", "discovery-v4-3.syncthing.net",
-                "discovery-v6-1.syncthing.net", "discovery-v6-2.syncthing.net", "discovery-v6-3.syncthing.net")
     }
 
     val instanceId = Math.abs(Random().nextLong())
@@ -78,8 +62,8 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
     val localDeviceId: DeviceId
         get() = DeviceId(config.localDeviceId)
 
-    val discoveryServers: Set<String>
-        get() = config.discoveryServers
+    val discoveryServers: Set<DiscoveryServer>
+        get() = config.customDiscoveryServers + (if (config.useDefaultDiscoveryServers) DiscoveryServer.defaultDiscoveryServers else emptySet())
 
     val keystoreData: ByteArray
         get() = Base64.decode(config.keystoreData)

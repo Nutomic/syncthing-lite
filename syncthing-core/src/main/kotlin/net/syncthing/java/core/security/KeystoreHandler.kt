@@ -44,8 +44,6 @@ import javax.security.auth.x500.X500Principal
 
 class KeystoreHandler private constructor(private val keyStore: KeyStore) {
 
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     class CryptoException internal constructor(t: Throwable) : GeneralSecurityException(t)
 
     private val socketFactory: SSLSocketFactory
@@ -114,21 +112,6 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
         } catch (e: UnrecoverableKeyException) {
             throw CryptoException(e)
         }
-    }
-
-    @Throws(SSLPeerUnverifiedException::class, CertificateException::class)
-    fun checkSocketCertificate(socket: SSLSocket, deviceId: DeviceId) {
-        val session = socket.session
-        val certs = session.peerCertificates.toList()
-        val certificateFactory = CertificateFactory.getInstance("X.509")
-        val certPath = certificateFactory.generateCertPath(certs)
-        val certificate = certPath.certificates[0]
-        NetworkUtils.assertProtocol(certificate is X509Certificate)
-        val derData = certificate.encoded
-        val deviceIdFromCertificate = derDataToDeviceId(derData)
-        logger.trace("remote pem certificate =\n{}", derToPem(derData))
-        NetworkUtils.assertProtocol(deviceIdFromCertificate == deviceId, {"device id mismatch! expected = $deviceId, got = $deviceIdFromCertificate"})
-        logger.debug("remote ssl certificate match deviceId = {}", deviceId)
     }
 
     @Throws(CryptoException::class, IOException::class)
@@ -269,6 +252,29 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
 
         const val BEP = "bep/1.0"
         const val RELAY = "bep-relay"
+
+        private val logger = LoggerFactory.getLogger(KeystoreHandler::class.java)
+
+        @Throws(SSLPeerUnverifiedException::class, CertificateException::class)
+        fun assertSocketCertificateValid(socket: SSLSocket, deviceId: DeviceId) {
+            val session = socket.session
+            val certs = session.peerCertificates.toList()
+            val certificateFactory = CertificateFactory.getInstance("X.509")
+            val certPath = certificateFactory.generateCertPath(certs)
+            val certificate = certPath.certificates[0]
+
+            assertSocketCertificateValid(certificate, deviceId)
+        }
+
+        @Throws(SSLPeerUnverifiedException::class, CertificateException::class)
+        fun assertSocketCertificateValid(certificate: Certificate, deviceId: DeviceId) {
+            NetworkUtils.assertProtocol(certificate is X509Certificate)
+            val derData = certificate.encoded
+            val deviceIdFromCertificate = derDataToDeviceId(derData)
+            logger.trace("remote pem certificate =\n{}", derToPem(derData))
+            NetworkUtils.assertProtocol(deviceIdFromCertificate == deviceId, {"device id mismatch! expected = $deviceId, got = $deviceIdFromCertificate"})
+            logger.debug("remote ssl certificate match deviceId = {}", deviceId)
+        }
     }
 
 }
