@@ -36,7 +36,7 @@ class LibraryHandler(context: Context,
 
     private val libraryManager = DefaultLibraryManager.with(context)
     private val isStarted = AtomicBoolean(false)
-    private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { value = false }
+    private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
 
     val isListeningPortTaken: LiveData<Boolean> = isListeningPortTakenInternal
 
