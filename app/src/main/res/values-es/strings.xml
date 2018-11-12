@@ -19,7 +19,7 @@
     <string name="last_modified_time">Última modificación: %1$s</string>
     <string name="remove_device_title">¿Quitar dispositivo %1$s?</string>
     <string name="remove_device_message">¿Quitar dispositivo %1$s de la lista de dispositivos conocidos?</string>
-    <string name="device_import_success">Dispositivo %1$simportado con éxito</string>
+    <string name="device_import_success">Dispositivo %1$s importado con éxito</string>
     <string name="device_already_known">Dispositivo %1$s ya está presente</string>
     <string name="folders_label">Carpetas</string>
     <string name="devices_label">Dispositivos</string>
