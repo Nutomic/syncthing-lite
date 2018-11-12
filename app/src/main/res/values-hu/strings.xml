@@ -40,5 +40,11 @@
     <string name="settings_app_version_title">Verzió</string>
     <string name="settings_local_device_name">Helyi eszköz neve</string>
     <string name="settings_local_device_summary">Név amit a többi eszköz fog látni</string>
+    <string name="settings_shutdown_delay_title">Leállítás késleltetés</string>
+    <string name="settings_shutdown_delay_summary">A Syncthing leállítása ennyi idő elteltével a kliens utolsó csatlakozása után</string>
     <string name="device_id_dialog_title">Eszközazonosító megadása</string>
-    </resources>
+    <string name="settings_shutdown_delay_10_seconds">10 másodperc</string>
+    <string name="settings_shutdown_delay_30_seconds">30 másodperc</string>
+    <string name="settings_shutdown_delay_1_minute">1 perc</string>
+    <string name="settings_shutdown_delay_5_minutes">5 perc</string>
+</resources>

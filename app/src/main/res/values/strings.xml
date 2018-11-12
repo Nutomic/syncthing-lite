@@ -53,4 +53,5 @@
         or the connection was interrupted.
         This does not apply to local discovery connections.
     </string>
+    <string name="dialog_file_save_as">Save as</string>
 </resources>

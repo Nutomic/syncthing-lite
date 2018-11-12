@@ -7,6 +7,7 @@ import android.arch.lifecycle.ViewModelProviders
 import android.content.ActivityNotFoundException
 import android.content.DialogInterface
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
 import android.support.v4.app.FragmentManager
@@ -24,6 +25,7 @@ import org.jetbrains.anko.toast
 class DownloadFileDialogFragment : DialogFragment() {
     companion object {
         private const val ARG_FILE_SPEC = "file spec"
+        private const val ARG_SAVE_AS_URI = "save as"
         private const val TAG = "DownloadFileDialog"
 
         fun newInstance(fileInfo: FileInfo) = newInstance(DownloadFileSpec(
@@ -32,9 +34,16 @@ class DownloadFileDialogFragment : DialogFragment() {
                 fileName = fileInfo.fileName
         ))
 
-        fun newInstance(fileSpec: DownloadFileSpec) = DownloadFileDialogFragment().apply {
+        fun newInstance(
+                fileSpec: DownloadFileSpec,
+                outputUri: Uri? = null
+        ) = DownloadFileDialogFragment().apply {
             arguments = Bundle().apply {
                 putSerializable(ARG_FILE_SPEC, fileSpec)
+
+                if (outputUri != null) {
+                    putParcelable(ARG_SAVE_AS_URI, outputUri)
+                }
             }
         }
     }
@@ -45,11 +54,17 @@ class DownloadFileDialogFragment : DialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val fileSpec = arguments!!.getSerializable(ARG_FILE_SPEC) as DownloadFileSpec
+        val outputUri = if (arguments!!.containsKey(ARG_SAVE_AS_URI))
+            arguments!!.getParcelable(ARG_SAVE_AS_URI) as Uri
+        else
+            null
 
         model.init(
                 libraryHandler = LibraryHandler(context!!),
                 fileSpec = fileSpec,
-                externalCacheDir = context!!.externalCacheDir
+                externalCacheDir = context!!.externalCacheDir,
+                outputUri = outputUri,
+                contentResolver = context!!.contentResolver
         )
 
         val progressDialog = ProgressDialog(context).apply {
@@ -73,29 +88,31 @@ class DownloadFileDialogFragment : DialogFragment() {
                 is DownloadFileStatusDone -> {
                     dismissAllowingStateLoss()
 
-                    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(fileSpec.fileName))
+                    if (outputUri == null) {
+                        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(fileSpec.fileName))
 
-                    try {
-                        context!!.startActivity(
-                                Intent(Intent.ACTION_VIEW)
-                                        .setDataAndType(
-                                                CacheFileProviderUrl.fromFile(
-                                                        filename = fileSpec.fileName,
-                                                        mimeType = mimeType,
-                                                        file = status.file,
-                                                        context = context!!
-                                                ).serialized,
-                                                mimeType
-                                        )
-                                        .newTask()
-                                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        )
-                    } catch (e: ActivityNotFoundException) {
-                        if (BuildConfig.DEBUG) {
-                            Log.w(TAG, "No handler found for file " + status.file.name, e)
+                        try {
+                            context!!.startActivity(
+                                    Intent(Intent.ACTION_VIEW)
+                                            .setDataAndType(
+                                                    CacheFileProviderUrl.fromFile(
+                                                            filename = fileSpec.fileName,
+                                                            mimeType = mimeType,
+                                                            file = status.file,
+                                                            context = context!!
+                                                    ).serialized,
+                                                    mimeType
+                                            )
+                                            .newTask()
+                                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            )
+                        } catch (e: ActivityNotFoundException) {
+                            if (BuildConfig.DEBUG) {
+                                Log.w(TAG, "No handler found for file " + status.file.name, e)
+                            }
+
+                            context!!.toast(R.string.toast_open_file_failed)
                         }
-
-                        context!!.toast(R.string.toast_open_file_failed)
                     }
                 }
                 is DownloadFileStatusFailed -> {
