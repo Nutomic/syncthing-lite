@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
-import net.syncthing.java.discovery.utils.AddressRanker
+import net.syncthing.java.core.configuration.DiscoveryServer
 import org.slf4j.LoggerFactory
 import java.io.IOException
 
@@ -38,7 +38,7 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
     }
 
     suspend fun query(deviceIds: Collection<DeviceId>): List<DeviceAddress> {
-        val discoveryServers = pickAnnounceServers()
+        val discoveryServers = getLookupServers()
 
         return coroutineScope {
             deviceIds
@@ -57,15 +57,13 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
     }
 
     suspend fun query(deviceId: DeviceId) = queryAnnounceServers(
-            servers = pickAnnounceServers(),
+            servers = getLookupServers(),
             deviceId = deviceId
     )
 
-    suspend fun pickAnnounceServers() = AddressRanker
-            .pingAddresses(configuration.discoveryServers.map { DeviceAddress(it, "tcp://$it:443") })
-            .map { it.deviceId }
+    fun getLookupServers() = configuration.discoveryServers.filter { it.useForLookup }
 
-    suspend fun queryAnnounceServers(servers: List<String>, deviceId: DeviceId) = coroutineScope {
+    suspend fun queryAnnounceServers(servers: List<DiscoveryServer>, deviceId: DeviceId) = coroutineScope {
         servers
                 .map { server ->
                     async {
@@ -91,9 +89,13 @@ internal class GlobalDiscoveryHandler(private val configuration: Configuration) 
     }
 
     companion object {
-        suspend fun queryAnnounceServer(server: String, deviceId: DeviceId) =
+        suspend fun queryAnnounceServer(server: DiscoveryServer, deviceId: DeviceId) =
                 GlobalDiscoveryUtil
-                        .queryAnnounceServer(server, deviceId)
+                        .queryAnnounceServer(
+                                server = server.hostname,
+                                requestedDeviceId = deviceId,
+                                serverDeviceId = server.deviceId
+                        )
                         .addresses.map { DeviceAddress(deviceId.deviceId, it) }
     }
 }

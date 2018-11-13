@@ -208,7 +208,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     private fun addRecord(record: FileInfo, fileBlocks: FileBlocks?): FileInfo? {
         synchronized(writeAccessLock) {
             val lastModified = indexRepository.findFileInfoLastModified(record.folder, record.path)
-            return if (lastModified != null && !record.lastModified.after(lastModified)) {
+            return if (lastModified != null && record.lastModified < lastModified) {
                 logger.trace("discarding record = {}, modified before local record", record)
                 null
             } else {
