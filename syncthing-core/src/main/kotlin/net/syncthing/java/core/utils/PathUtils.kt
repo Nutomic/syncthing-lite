@@ -48,7 +48,7 @@ object PathUtils {
 
     private fun assertFilenameValid(filename: String) {
         if (!isFilenameValid(filename)) {
-            throw IllegalArgumentException("provided path is invalid")
+            throw IllegalArgumentException("provided filename is invalid")
         }
     }
 
