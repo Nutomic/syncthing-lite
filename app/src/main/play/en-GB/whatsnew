@@ -1,2 +1,6 @@
+- add option to export files
+- send correct file names to apps by which files are opened
+- adaptive icon
 - updated translations
-- refactored device discovery
+- validate discovery servers
+- bugfixes

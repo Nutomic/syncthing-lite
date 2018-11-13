@@ -19,8 +19,8 @@ android {
         applicationId "net.syncthing.lite"
         minSdkVersion 21
         targetSdkVersion 26
-        versionCode 12
-        versionName "0.3.2"
+        versionCode 14
+        versionName "0.3.4"
         multiDexEnabled true
         playAccountConfig = playAccountConfigs.defaultAccountConfig
     }
