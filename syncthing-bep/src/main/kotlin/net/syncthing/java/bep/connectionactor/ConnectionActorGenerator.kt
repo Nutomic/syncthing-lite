@@ -14,11 +14,8 @@
  */
 package net.syncthing.java.bep.connectionactor
 
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
-import kotlinx.coroutines.withTimeout
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
@@ -72,44 +69,15 @@ object ConnectionActorGenerator {
         }
     }
 
-    private fun <T> debounce(source: ReceiveChannel<T>, time: Long) = GlobalScope.produce <T> {
-        source.consume {
-            // first value without delay
-            send(source.receive())
-
-            // all other values only after the time and conflated
-            while (true) {
-                var lastValue: T? = null
-
-                try {
-                    withTimeout(time) {
-                        while (true) {
-                            lastValue = source.receive()
-                        }
-                    }
-
-                    throw IllegalStateException()
-                } catch (ex: TimeoutCancellationException) {
-                    // this is expected here
-                }
-
-                send(lastValue ?: source.receive())
-            }
-        }
-    }
-
     fun generateConnectionActors(
             deviceAddress: ReceiveChannel<DeviceAddress>,
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
     ) = generateConnectionActorsFromDeviceAddressList(
-            deviceAddressSource = debounce(
-                    source = waitForFirstValue(
-                            source = deviceAddressesGenerator(deviceAddress),
-                            time = 1000
-                    ),
-                    time = 5 * 1000
+            deviceAddressSource = waitForFirstValue(
+                    source = deviceAddressesGenerator(deviceAddress),
+                    time = 1000
             ),
             configuration = configuration,
             indexHandler = indexHandler,
@@ -178,33 +146,54 @@ object ConnectionActorGenerator {
             return true
         }
 
+        fun isConnected() = !currentActor.isClosedForSend
+
         invokeOnClose {
             currentActor.close()
             deviceAddressDebouncers.forEach { it.value.cancel() }
         }
 
-        deviceAddressSource.consumeEach { deviceAddresses ->
-            logger.debug("try $deviceAddresses")
+        val reconnectTicker = ticker(delayMillis = 30 * 1000, initialDelayMillis = 0)
 
-            if (deviceAddresses.isEmpty()) {
-                closeCurrent()
-            } else {
-                if (currentDeviceAddress == deviceAddresses.first() && (!currentActor.isClosedForSend)) {
-                    // don't reconnect
-                    return@consumeEach
-                }
+        deviceAddressSource.consume {
+            var lastDeviceAddressList: List<DeviceAddress> = emptyList()
 
-                for (deviceAddress in deviceAddresses) {
-                    closeCurrent()
+            while (true) {
+                if (isConnected()) {
+                    lastDeviceAddressList = deviceAddressSource.poll() ?: lastDeviceAddressList
 
-                    if (!deviceAddressSource.isEmpty) {
-                        // time to consume the next value
-                        break
+                    if (lastDeviceAddressList.isNotEmpty()) {
+                        if (reconnectTicker.poll() != null) {
+                            if (currentDeviceAddress != lastDeviceAddressList.first()) {
+                                val oldDeviceAddress = currentDeviceAddress!!
+
+                                if (!tryConnectingToAddress(lastDeviceAddressList.first())) {
+                                    tryConnectingToAddress(oldDeviceAddress)
+                                }
+                            }
+                        }
+                    } else {
+                        closeCurrent()
+                    }
+                } else /* is not connected */ {
+                    // get the new list version if there is any
+                    lastDeviceAddressList = deviceAddressSource.poll() ?: lastDeviceAddressList
+
+                    // try all addresses
+                    for (address in lastDeviceAddressList) {
+                        if (tryConnectingToAddress(address)) {
+                            break
+                        }
                     }
 
-                    if (tryConnectingToAddress(deviceAddress)) {
-                        break   // don't try the other addresses
-                    }
+                    // reset countdown before trying other connection if it would be time now
+                    // this does not reset if it has not counted down the whole time yet
+                    reconnectTicker.poll()
+
+                    // wait for new device address list but not more than 15 seconds before the next iteration
+                    lastDeviceAddressList = withTimeoutOrNull(15 * 1000) {
+                        deviceAddressSource.receive()
+                    } ?: lastDeviceAddressList
                 }
             }
         }
