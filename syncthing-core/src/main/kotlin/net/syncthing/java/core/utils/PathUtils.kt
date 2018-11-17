@@ -19,14 +19,19 @@ object PathUtils {
     const val PATH_SEPARATOR = "/"
     const val PATH_SEPARATOR_WIN = "\\"
     const val PARENT_PATH = ".."
+    const val CURRENT_PATH = "."
 
     fun isRoot(path: String): Boolean {
         return path.isEmpty()
     }
 
-    private fun isTrimmed(value: String) = value.trim() == value
+    private fun containsRelativeElements(path: String): Boolean {
+        val pathSegments = path.split(PATH_SEPARATOR)
 
-    private fun containsRelativeElements(path: String) = path.contains(PARENT_PATH)
+        return pathSegments.contains(PARENT_PATH) or pathSegments.contains(CURRENT_PATH)
+    }
+
+    private fun isTrimmed(value: String) = value.trim() == value
     private fun containsWindowsPathSeparator(path: String) = path.contains(PATH_SEPARATOR_WIN)
     private fun startsWithPathSeperator(path: String) = path.startsWith(PATH_SEPARATOR)
     private fun isValidPath(path: String) = (!containsRelativeElements(path)) and
