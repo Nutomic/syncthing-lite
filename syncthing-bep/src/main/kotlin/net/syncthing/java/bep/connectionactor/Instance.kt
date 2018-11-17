@@ -40,7 +40,7 @@ object ConnectionActor {
     ): SendChannel<ConnectionAction> {
         val channel = Channel<ConnectionAction>(Channel.RENDEZVOUS)
 
-        GlobalScope.async {
+        GlobalScope.async (Dispatchers.IO) {
             OpenConnection.openSocketConnection(address, configuration).use { socket ->
                 val inputStream = DataInputStream(socket.inputStream)
                 val outputStream = DataOutputStream(socket.outputStream)
