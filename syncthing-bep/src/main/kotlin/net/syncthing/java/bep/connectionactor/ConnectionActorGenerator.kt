@@ -124,6 +124,21 @@ object ConnectionActorGenerator {
     ) = GlobalScope.produce<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>> {
         var currentActor: SendChannel<ConnectionAction> = closed
         var currentDeviceAddress: DeviceAddress? = null
+        val deviceAddressDebouncers = mutableMapOf<String, ReceiveChannel<Unit>>()
+
+        fun getDeviceAddressDebouncer(deviceAddress: String): ReceiveChannel<Unit> {
+            val old = deviceAddressDebouncers[deviceAddress]
+
+            if (old != null) {
+                return old
+            }
+
+            val new = ticker(delayMillis = 1000 * 30, initialDelayMillis = 0)
+
+            deviceAddressDebouncers[deviceAddress] = new
+
+            return new
+        }
 
         suspend fun closeCurrent() {
             if (currentActor != closed) {
@@ -133,8 +148,39 @@ object ConnectionActorGenerator {
             }
         }
 
+        suspend fun tryConnectingToAddress(deviceAddress: DeviceAddress): Boolean {
+            closeCurrent()
+
+            val (newActor, clusterConfig) = try {
+                val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
+                val clusterConfig = ConnectionActorUtil.waitUntilConnected(newActor)
+
+                newActor to clusterConfig
+            } catch (ex: Exception) {
+                logger.warn("failed to connect to $deviceAddress", ex)
+
+                when (ex) {
+                    is IOException -> {/* expected -> ignore */}
+                    is InterruptedException -> {/* expected -> ignore */}
+                    else -> throw ex
+                }
+
+                return false
+            }
+
+            logger.debug("connected to $deviceAddress")
+
+            currentActor = newActor
+            currentDeviceAddress = deviceAddress
+
+            send(newActor to clusterConfig)
+
+            return true
+        }
+
         invokeOnClose {
             currentActor.close()
+            deviceAddressDebouncers.forEach { it.value.cancel() }
         }
 
         deviceAddressSource.consumeEach { deviceAddresses ->
@@ -156,30 +202,9 @@ object ConnectionActorGenerator {
                         break
                     }
 
-                    val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
-
-                    val clusterConfig = try {
-                        ConnectionActorUtil.waitUntilConnected(newActor)
-                    } catch (ex: Exception) {
-                        logger.warn("failed to connect to $deviceAddress", ex)
-
-                        when (ex) {
-                            is IOException -> {/* expected -> ignore */}
-                            is InterruptedException -> {/* expected -> ignore */}
-                            else -> throw ex
-                        }
-
-                        continue
+                    if (tryConnectingToAddress(deviceAddress)) {
+                        break   // don't try the other addresses
                     }
-
-                    logger.debug("connected to $deviceAddress")
-
-                    currentActor = newActor
-                    currentDeviceAddress = deviceAddress
-
-                    send(newActor to clusterConfig)
-
-                    break   // don't try the other addresses
                 }
             }
         }
