@@ -50,6 +50,10 @@ class FolderContentsAdapter: RecyclerView.Adapter<FolderContentsViewHolder>() {
             listener?.onItemClicked(fileInfo)
         }
 
+        binding.root.setOnLongClickListener {
+            listener?.onItemLongClicked(fileInfo) ?: false
+        }
+
         binding.executePendingBindings()
     }
 
@@ -59,6 +63,7 @@ class FolderContentsAdapter: RecyclerView.Adapter<FolderContentsViewHolder>() {
 
 interface FolderContentsListener {
     fun onItemClicked(fileInfo: FileInfo)
+    fun onItemLongClicked(fileInfo: FileInfo): Boolean
 }
 
 class FolderContentsViewHolder(val binding: ListviewFileBinding): RecyclerView.ViewHolder(binding.root)

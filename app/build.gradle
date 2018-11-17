@@ -19,8 +19,8 @@ android {
         applicationId "net.syncthing.lite"
         minSdkVersion 21
         targetSdkVersion 26
-        versionCode 12
-        versionName "0.3.2"
+        versionCode 14
+        versionName "0.3.4"
         multiDexEnabled true
         playAccountConfig = playAccountConfigs.defaultAccountConfig
     }
@@ -58,6 +58,13 @@ android {
     dataBinding {
         enabled = true
     }
+}
+
+
+play {
+    jsonFile = file(System.getenv("SYNCTHING_RELEASE_PLAY_ACCOUNT_CONFIG_FILE") ?: 'keys.json')
+    uploadImages = true
+    track = 'production'
 }
 
 dependencies {

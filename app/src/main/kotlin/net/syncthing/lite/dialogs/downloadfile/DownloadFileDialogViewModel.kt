@@ -2,12 +2,17 @@ package net.syncthing.lite.dialogs.downloadfile
 
 import android.arch.lifecycle.LiveData
 import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.ViewModel;
+import android.arch.lifecycle.ViewModel
+import android.content.ContentResolver
+import android.net.Uri
 import android.support.v4.os.CancellationSignal
 import android.util.Log
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.library.DownloadFileTask
 import net.syncthing.lite.library.LibraryHandler
+import org.apache.commons.io.FileUtils
 import java.io.File
 
 class DownloadFileDialogViewModel : ViewModel() {
@@ -20,7 +25,13 @@ class DownloadFileDialogViewModel : ViewModel() {
     private val cancellationSignal = CancellationSignal()
     val status: LiveData<DownloadFileStatus> = statusInternal
 
-    fun init(libraryHandler: LibraryHandler, fileSpec: DownloadFileSpec, externalCacheDir: File) {
+    fun init(
+            libraryHandler: LibraryHandler,
+            fileSpec: DownloadFileSpec,
+            externalCacheDir: File,
+            outputUri: Uri?,
+            contentResolver: ContentResolver
+    ) {
         if (isInitialized) {
             return
         }
@@ -54,10 +65,26 @@ class DownloadFileDialogViewModel : ViewModel() {
                                 statusInternal.value = DownloadFileStatusRunning(newProgress)
                             }
                         },
-                        onComplete = {
-                            statusInternal.value = DownloadFileStatusDone(it)
-
+                        onComplete = { file ->
                             libraryHandler.stop()
+
+                            GlobalScope.launch {
+                                try {
+                                    if (outputUri != null) {
+                                        contentResolver.openOutputStream(outputUri).use { outputStream ->
+                                            FileUtils.copyFile(file, outputStream)
+                                        }
+                                    }
+
+                                    statusInternal.postValue(DownloadFileStatusDone(file))
+                                } catch (ex: Exception) {
+                                    if (BuildConfig.DEBUG) {
+                                        Log.w(TAG, "downloading file failed", ex)
+                                    }
+
+                                    statusInternal.postValue(DownloadFileStatusFailed)
+                                }
+                            }
                         },
                         onError = {
                             statusInternal.value = DownloadFileStatusFailed

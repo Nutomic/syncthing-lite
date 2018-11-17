@@ -5,6 +5,7 @@ import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.util.Log
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -17,10 +18,11 @@ import net.syncthing.lite.R
 import net.syncthing.lite.adapters.FolderContentsAdapter
 import net.syncthing.lite.adapters.FolderContentsListener
 import net.syncthing.lite.databinding.ActivityFolderBrowserBinding
+import net.syncthing.lite.dialogs.FileMenuDialogFragment
 import net.syncthing.lite.dialogs.FileUploadDialog
 import net.syncthing.lite.dialogs.ReconnectIssueDialogFragment
 import net.syncthing.lite.dialogs.downloadfile.DownloadFileDialogFragment
-import org.jetbrains.anko.custom.async
+import org.jetbrains.anko.doAsync
 
 class FolderBrowserActivity : SyncthingActivity() {
 
@@ -44,6 +46,16 @@ class FolderBrowserActivity : SyncthingActivity() {
         adapter.listener = object: FolderContentsListener {
             override fun onItemClicked(fileInfo: FileInfo) {
                 navigateToFolder(fileInfo)
+            }
+
+            override fun onItemLongClicked(fileInfo: FileInfo): Boolean {
+                return if (fileInfo.type == FileInfo.FileType.FILE) {
+                    FileMenuDialogFragment.newInstance(fileInfo).show(supportFragmentManager)
+
+                    true
+                } else {
+                    false
+                }
             }
         }
         val folder = intent.getStringExtra(EXTRA_FOLDER_NAME)
@@ -78,6 +90,8 @@ class FolderBrowserActivity : SyncthingActivity() {
                             { showFolderListView(indexBrowser.currentPath) }).show()
                 }
             }
+        } else {
+            super.onActivityResult(requestCode, resultCode, intent)
         }
     }
 
@@ -92,7 +106,7 @@ class FolderBrowserActivity : SyncthingActivity() {
             finish()
         } else {
             if (fileInfo.isDirectory()) {
-                async {
+                doAsync {
                     indexBrowser.navigateTo(fileInfo)
                 }
 
@@ -109,32 +123,33 @@ class FolderBrowserActivity : SyncthingActivity() {
     }
 
     private fun onFolderChanged() {
-        runOnUiThread {
-            binding.isLoading = false
+        GlobalScope.launch {
+            val list = indexBrowser.listFiles()
 
-            async {
-                val list = indexBrowser.listFiles()
+            Log.i("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list.size + " records")
+            Log.d("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list)
+            assert(!list.isEmpty())//list must contain at least the 'parent' path
 
-                GlobalScope.launch (Dispatchers.Main) {
-                    Log.i("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list.size + " records")
-                    Log.d("navigateToFolder", "list for path = '" + indexBrowser.currentPath + "' list = " + list)
-                    assert(!list.isEmpty())//list must contain at least the 'parent' path
-                    adapter.data = list
-                    binding.listView.scrollToPosition(0)
-                    if (indexBrowser.isRoot())
-                        libraryHandler?.folderBrowser {
-                            val title = it.getFolderInfo(indexBrowser.folder)?.label
+            val title = if (indexBrowser.isRoot()) {
+                val result = CompletableDeferred<String?>()
 
-                            GlobalScope.launch (Dispatchers.Main) {
-                                supportActionBar?.title = title
-                            }
-                        }
-                    else
-                        supportActionBar?.title = indexBrowser.currentPathInfo().fileName
+                libraryHandler.folderBrowser {
+                    result.complete(it.getFolderInfo(indexBrowser.folder)?.label)
                 }
+
+                result.await()
+            } else {
+                indexBrowser.currentPathInfo().fileName
+            }
+
+            runOnUiThread {
+                binding.isLoading = false
+                adapter.data = list
+                binding.listView.scrollToPosition(0)
+                supportActionBar?.title = title
             }
         }
-}
+    }
 
     private fun updateFolderListView() {
         showFolderListView(indexBrowser.currentPath)
