@@ -17,8 +17,6 @@ package net.syncthing.java.bep
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import net.syncthing.java.bep.BlockExchangeProtos.ErrorCode
-import net.syncthing.java.bep.BlockExchangeProtos.Request
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.bep.utils.longSumBy
 import net.syncthing.java.core.beans.BlockInfo
@@ -28,14 +26,9 @@ import net.syncthing.java.core.interfaces.TempRepository
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.*
-import java.io.ByteArrayInputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.SequenceInputStream
 import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.HashMap
-import kotlin.coroutines.resume
 
 object BlockPuller {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -132,8 +125,29 @@ object BlockPuller {
                         for (block in pipe) {
                             logger.debug("message block with hash = {} from worker {}", block.hash, workerNumber)
 
-                            // TODO: retry a few times with a small delay in between
-                            val blockContent = pullBlock(fileBlocks, block, 1000 * 60 /* 60 seconds timeout per block */, connectionHelper.pickConnection())
+                            lateinit var blockContent: ByteArray
+
+                            val attempts = 0..4
+
+                            for (attempt in attempts) {
+                                try {
+                                    blockContent = pullBlock(fileBlocks, block, 1000 * 60 /* 60 seconds timeout per block */, connectionHelper.pickConnection())
+
+                                    break
+                                } catch (ex: IOException) {
+                                    if (attempt == attempts.last) {
+                                        throw ex
+                                    } else {
+                                        // will retry after a pause
+                                        // 0: 300 ms after the first attempt
+                                        // 1: 1200 ms after the second attempt
+                                        // 2: 2700 ms after the third attempt
+                                        // 3: 4800 ms after the third attempt
+                                        // total: 9000 ms
+                                        delay((attempt + 1) * (attempt + 1) * 300L)
+                                    }
+                                }
+                            }
 
                             blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
 
