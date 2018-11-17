@@ -92,21 +92,6 @@ object ConnectionActorGenerator {
     ) = GlobalScope.produce<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>> {
         var currentActor: SendChannel<ConnectionAction> = closed
         var currentDeviceAddress: DeviceAddress? = null
-        val deviceAddressDebouncers = mutableMapOf<String, ReceiveChannel<Unit>>()
-
-        fun getDeviceAddressDebouncer(deviceAddress: String): ReceiveChannel<Unit> {
-            val old = deviceAddressDebouncers[deviceAddress]
-
-            if (old != null) {
-                return old
-            }
-
-            val new = ticker(delayMillis = 1000 * 30, initialDelayMillis = 0)
-
-            deviceAddressDebouncers[deviceAddress] = new
-
-            return new
-        }
 
         suspend fun closeCurrent() {
             if (currentActor != closed) {
@@ -150,7 +135,6 @@ object ConnectionActorGenerator {
 
         invokeOnClose {
             currentActor.close()
-            deviceAddressDebouncers.forEach { it.value.cancel() }
         }
 
         val reconnectTicker = ticker(delayMillis = 30 * 1000, initialDelayMillis = 0)
