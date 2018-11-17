@@ -19,6 +19,10 @@ import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 
 class DeviceAddressesManager (val deviceId: DeviceId) {
+    companion object {
+        private const val MAX_ADDRESSES_PER_TYPE = 16
+    }
+
     private val lock = Object()
     private val deviceAddressesCache = mutableListOf<DeviceAddress>()
     private val listeners = mutableListOf<(DeviceAddress) -> Unit>()
@@ -29,6 +33,13 @@ class DeviceAddressesManager (val deviceId: DeviceId) {
         }
 
         synchronized(lock) {
+            val otherAddressesOfSameType = deviceAddressesCache.filter { it.type == address.type }
+
+            if (otherAddressesOfSameType.size == MAX_ADDRESSES_PER_TYPE) {
+                // forget the oldest one of the same type
+                deviceAddressesCache.remove(otherAddressesOfSameType.first())
+            }
+
             deviceAddressesCache.add(address)
             listeners.forEach { it(address) }
         }
