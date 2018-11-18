@@ -159,6 +159,8 @@ object ConnectionActorGenerator {
                     } else {
                         closeCurrent()
                     }
+
+                    delay(500)  // don't take too much CPU
                 } else /* is not connected */ {
                     // get the new list version if there is any
                     lastDeviceAddressList = deviceAddressSource.poll() ?: lastDeviceAddressList
