@@ -127,7 +127,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
             throw IOException(e)
         }
 
-        run {
+        indexHandler.indexRepository.runInTransaction { transaction ->
             val clusterConfigBuilder = ClusterConfig.newBuilder()
             for (folder in configuration.folders) {
                 val folderBuilder = Folder.newBuilder()
@@ -137,15 +137,15 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                     //our device
                     val deviceBuilder = Device.newBuilder()
                             .setId(ByteString.copyFrom(configuration.localDeviceId.toHashData()))
-                            .setIndexId(indexHandler.sequencer().indexId())
-                            .setMaxSequence(indexHandler.sequencer().currentSequence())
+                            .setIndexId(transaction.getSequencer().indexId())
+                            .setMaxSequence(transaction.getSequencer().currentSequence())
                     folderBuilder.addDevices(deviceBuilder)
                 }
                 run {
                     //other device
                     val deviceBuilder = Device.newBuilder()
                             .setId(ByteString.copyFrom(DeviceId(address.deviceId).toHashData()))
-                    val indexSequenceInfo = indexHandler.indexRepository.findIndexInfoByDeviceAndFolder(address.deviceId(), folder.folderId)
+                    val indexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(address.deviceId(), folder.folderId)
                     indexSequenceInfo?.let {
                         deviceBuilder
                                 .setIndexId(indexSequenceInfo.indexId)

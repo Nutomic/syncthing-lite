@@ -17,7 +17,7 @@ import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.beans.FileInfo.Version
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
-import net.syncthing.java.core.interfaces.Sequencer
+import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
@@ -37,7 +37,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     private val folderInfoByFolder = mutableMapOf<String, FolderInfo>()
     private val indexMessageProcessor = IndexMessageProcessor()
     private var lastIndexActivity: Long = 0
-    private val writeAccessLock = Object()
+    private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
     private val indexWaitLock = Object()
     private val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredListeners = mutableSetOf<(FolderInfo, List<FileInfo>, IndexInfo) -> Unit>()
@@ -45,7 +45,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     private fun lastActive(): Long = System.currentTimeMillis() - lastIndexActivity
 
-    fun sequencer(): Sequencer = indexRepository.getSequencer()
+    fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
     fun folderList(): List<String> = folderInfoByFolder.keys.toList()
 
@@ -88,7 +88,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     @Synchronized
     fun clearIndex() {
         synchronized(writeAccessLock) {
-            indexRepository.clearIndex()
+            indexRepository.runInTransaction { it.clearIndex() }
             folderInfoByFolder.clear()
             loadFolderInfoFromConfig()
         }
@@ -97,7 +97,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     internal fun isRemoteIndexAcquired(clusterConfigInfo: ConnectionHandler.ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
         var ready = true
         for (folder in clusterConfigInfo.getSharedFolders()) {
-            val indexSequenceInfo = indexRepository.findIndexInfoByDeviceAndFolder(peerDeviceId, folder)
+            val indexSequenceInfo = indexRepository.runInTransaction { it.findIndexInfoByDeviceAndFolder(peerDeviceId, folder) }
             if (indexSequenceInfo == null || indexSequenceInfo.localSequence < indexSequenceInfo.maxSequence) {
                 logger.debug("waiting for index on folder = {} sequenceInfo = {}", folder, indexSequenceInfo)
                 ready = false
@@ -122,15 +122,17 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     fun handleClusterConfigMessageProcessedEvent(clusterConfig: BlockExchangeProtos.ClusterConfig) {
         synchronized(writeAccessLock) {
-            for (folderRecord in clusterConfig.foldersList) {
-                val folder = folderRecord.id
-                val folderInfo = updateFolderInfo(folder, folderRecord.label)
-                logger.debug("acquired folder info from cluster config = {}", folderInfo)
-                for (deviceRecord in folderRecord.devicesList) {
-                    val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
-                    if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
-                        val folderIndexInfo = updateIndexInfo(folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
-                        logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
+            indexRepository.runInTransaction { transaction ->
+                for (folderRecord in clusterConfig.foldersList) {
+                    val folder = folderRecord.id
+                    val folderInfo = updateFolderInfo(folder, folderRecord.label)
+                    logger.debug("acquired folder info from cluster config = {}", folderInfo)
+                    for (deviceRecord in folderRecord.devicesList) {
+                        val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
+                        if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
+                            val folderIndexInfo = updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
+                            logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
+                        }
                     }
                 }
             }
@@ -141,7 +143,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         indexMessageProcessor.handleIndexMessageReceivedEvent(folderId, filesList, connectionHandler)
     }
 
-    fun pushRecord(folder: String, bepFileInfo: BlockExchangeProtos.FileInfo): FileInfo? {
+    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo): FileInfo? {
         var fileBlocks: FileBlocks? = null
         val builder = FileInfo.Builder()
                 .setFolder(folder)
@@ -165,12 +167,12 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 return null
             }
         }
-        return addRecord(builder.build(), fileBlocks)
+        return addRecord(transaction, builder.build(), fileBlocks)
     }
 
-    private fun updateIndexInfo(folder: String, deviceId: DeviceId, indexId: Long?, maxSequence: Long?, localSequence: Long?): IndexInfo {
+    private fun updateIndexInfo(transaction: IndexTransaction, folder: String, deviceId: DeviceId, indexId: Long?, maxSequence: Long?, localSequence: Long?): IndexInfo {
         synchronized(writeAccessLock) {
-            var indexSequenceInfo = indexRepository.findIndexInfoByDeviceAndFolder(deviceId, folder)
+            var indexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(deviceId, folder)
             var shouldUpdate = false
             val builder: IndexInfo.Builder
             if (indexSequenceInfo == null) {
@@ -199,20 +201,20 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             }
             if (shouldUpdate) {
                 indexSequenceInfo = builder.build()
-                indexRepository.updateIndexInfo(indexSequenceInfo)
+                transaction.updateIndexInfo(indexSequenceInfo)
             }
             return indexSequenceInfo!!
         }
     }
 
-    private fun addRecord(record: FileInfo, fileBlocks: FileBlocks?): FileInfo? {
+    private fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?): FileInfo? {
         synchronized(writeAccessLock) {
-            val lastModified = indexRepository.findFileInfoLastModified(record.folder, record.path)
+            val lastModified = transaction.findFileInfoLastModified(record.folder, record.path)
             return if (lastModified != null && record.lastModified < lastModified) {
                 logger.trace("discarding record = {}, modified before local record", record)
                 null
             } else {
-                indexRepository.updateFileInfo(record, fileBlocks)
+                transaction.updateFileInfo(record, fileBlocks)
                 logger.trace("loaded new record = {}", record)
                 indexBrowsers.forEach {
                     it.onIndexChangedevent(record.folder, record)
@@ -223,21 +225,25 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     }
 
     fun getFileInfoByPath(folder: String, path: String): FileInfo? {
-        return indexRepository.findFileInfo(folder, path)
+        return indexRepository.runInTransaction { it.findFileInfo(folder, path) }
     }
 
     fun getFileInfoAndBlocksByPath(folder: String, path: String): Pair<FileInfo, FileBlocks>? {
-        val fileInfo = getFileInfoByPath(folder, path)
-        return if (fileInfo == null) {
-            null
-        } else {
-            assert(fileInfo.isFile())
-            val fileBlocks = indexRepository.findFileBlocks(folder, path)
-            checkNotNull(fileBlocks, {"file blocks not found for file info = $fileInfo"})
+        return indexRepository.runInTransaction { transaction ->
+            val fileInfo = transaction.findFileInfo(folder, path)
 
-            FileInfo.checkBlocks(fileInfo, fileBlocks!!)
+            if (fileInfo == null) {
+                null
+            } else {
+                val fileBlocks = transaction.findFileBlocks(folder, path)
 
-            Pair.of(fileInfo, fileBlocks)
+                assert(fileInfo.isFile())
+                checkNotNull(fileBlocks) {"file blocks not found for file info = $fileInfo"}
+
+                FileInfo.checkBlocks(fileInfo, fileBlocks)
+
+                Pair.of(fileInfo, fileBlocks)
+            }
         }
     }
 
@@ -255,7 +261,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     }
 
     fun getIndexInfo(device: DeviceId, folder: String): IndexInfo? {
-        return indexRepository.findIndexInfoByDeviceAndFolder(device, folder)
+        return indexRepository.runInTransaction { it.findIndexInfoByDeviceAndFolder(device, folder) }
     }
 
     fun newFolderBrowser(): FolderBrowser {
@@ -398,20 +404,22 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 //                IndexInfo oldIndexInfo = indexRepository.findIndexInfoByDeviceAndFolder(deviceId, folder);
                 //            Stopwatch stopwatch = Stopwatch.createStarted();
                 logger.debug("processing {} index records for folder {}", message.filesList.size, folderId)
-                for (fileInfo in message.filesList) {
-                    markActive()
-                    //                    if (oldIndexInfo != null && isVersionOlderThanSequence(fileInfo, oldIndexInfo.getLocalSequence())) {
-                    //                        logger.trace("skipping file {}, version older than sequence {}", fileInfo, oldIndexInfo.getLocalSequence());
-                    //                    } else {
-                    val newRecord = pushRecord(folderId, fileInfo)
-                    if (newRecord != null) {
-                        newRecords.add(newRecord)
+                val newIndexInfo = indexRepository.runInTransaction { transaction ->
+                    for (fileInfo in message.filesList) {
+                        markActive()
+                        //                    if (oldIndexInfo != null && isVersionOlderThanSequence(fileInfo, oldIndexInfo.getLocalSequence())) {
+                        //                        logger.trace("skipping file {}, version older than sequence {}", fileInfo, oldIndexInfo.getLocalSequence());
+                        //                    } else {
+                        val newRecord = pushRecord(transaction, folderId, fileInfo)
+                        if (newRecord != null) {
+                            newRecords.add(newRecord)
+                        }
+                        sequence = Math.max(fileInfo.sequence, sequence)
+                        markActive()
+                        //                    }
                     }
-                    sequence = Math.max(fileInfo.sequence, sequence)
-                    markActive()
-                    //                    }
+                    updateIndexInfo(transaction, folderId, peerDeviceId, null, null, sequence)
                 }
-                val newIndexInfo = updateIndexInfo(folderId, peerDeviceId, null, null, sequence)
                 val elap = System.currentTimeMillis() - startTime!!
                 queuedRecords -= message.filesCount.toLong()
                 logger.info("processed {} index records, acquired {} ({} secs, {} record/sec)", message.filesCount, newRecords.size, elap / 1000.0, Math.round(message.filesCount / (elap / 1000.0) * 100) / 100.0)

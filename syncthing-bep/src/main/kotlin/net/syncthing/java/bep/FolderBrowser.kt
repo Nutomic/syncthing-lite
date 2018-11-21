@@ -31,7 +31,7 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler)
 
     init {
         indexHandler.indexRepository.setOnFolderStatsUpdatedListener(indexRepositoryEventListener)
-        addFolderStats(indexHandler.indexRepository.findAllFolderStats())
+        addFolderStats(indexHandler.indexRepository.runInTransaction { it.findAllFolderStats() })
     }
 
     private fun addFolderStats(folderStatsList: List<FolderStats>) {

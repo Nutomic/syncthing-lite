@@ -14,20 +14,22 @@ class SqliteIndexRepository(
     private var folderStatsChangeListener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)? = null
 
     override fun <T> runInTransaction(action: (IndexTransaction) -> T): T {
-        val transaction = SqliteTransaction(
-                database = database,
-                threadId = Thread.currentThread().id,
-                clearTempStorageHook = clearTempStorageHook,
-                folderStatsChangeListener = folderStatsChangeListener
-        )
+            return database.runInTransaction (object: Callable<T> {
+                override fun call(): T {
+                    val transaction = SqliteTransaction(
+                            database = database,
+                            threadId = Thread.currentThread().id,
+                            clearTempStorageHook = clearTempStorageHook,
+                            folderStatsChangeListener = folderStatsChangeListener
+                    )
 
-        return try {
-            database.runInTransaction (object: Callable<T> {
-                override fun call(): T = action(transaction)
+                    return try {
+                        action(transaction)
+                    } finally {
+                        transaction.markFinished()
+                    }
+                }
             })
-        } finally {
-            transaction.markFinished()
-        }
     }
 
     override fun close() {

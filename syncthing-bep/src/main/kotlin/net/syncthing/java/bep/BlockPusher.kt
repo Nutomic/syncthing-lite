@@ -134,7 +134,9 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
                 monitoringProcessExecutorService.shutdown()
                 indexHandler.unregisterOnIndexRecordAcquiredListener(indexListener)
                 connectionHandler.unregisterOnRequestMessageReceivedListeners(listener)
-                val fileInfo1 = indexHandler.pushRecord(indexUpdate.folder, indexUpdate.filesList.single())
+                val fileInfo1 = indexHandler.indexRepository.runInTransaction {
+                    indexHandler.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single())
+                }
                 logger.info("sent file info record = {}", fileInfo1)
             }
 
@@ -155,7 +157,7 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
     private fun sendIndexUpdate(folderId: String, fileInfoBuilder: BlockExchangeProtos.FileInfo.Builder,
                                 oldVersions: Iterable<Version>?): Pair<Future<*>, BlockExchangeProtos.IndexUpdate> {
         run {
-            val nextSequence = indexHandler.sequencer().nextSequence()
+            val nextSequence = indexHandler.getNextSequenceNumber()
             val list = oldVersions ?: emptyList()
             logger.debug("version list = {}", list)
             val id = ByteBuffer.wrap(localDeviceId.toHashData()).long
@@ -225,7 +227,9 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
 
         @Throws(IOException::class)
         override fun close() {
-            indexHandler.pushRecord(indexUpdate.folder, indexUpdate.filesList.single())
+            indexHandler.indexRepository.runInTransaction {
+                indexHandler.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single())
+            }
         }
 
     }

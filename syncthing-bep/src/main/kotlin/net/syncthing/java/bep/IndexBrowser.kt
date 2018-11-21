@@ -129,7 +129,7 @@ class IndexBrowser internal constructor(private val indexRepository: IndexReposi
 
     fun listFiles(path: String = currentPath): List<FileInfo> {
         logger.debug("doListFiles for path = '{}' BEGIN", path)
-        val list = ArrayList(indexRepository.findNotDeletedFilesByFolderAndParent(folder, path))
+        val list = ArrayList(indexRepository.runInTransaction { it.findNotDeletedFilesByFolderAndParent(folder, path) })
         logger.debug("doListFiles for path = '{}' : {} records loaded)", path, list.size)
         if (includeParentInList && (!PathUtils.isRoot(path) || allowParentInRoot)) {
             list.add(0, PARENT_FILE_INFO)
@@ -142,7 +142,8 @@ class IndexBrowser internal constructor(private val indexRepository: IndexReposi
             ROOT_FILE_INFO
         } else {
             logger.debug("doGetFileInfoByAbsolutePath for path = '{}' BEGIN", path)
-            val fileInfo = indexRepository.findNotDeletedFileInfo(folder, path) ?: error("file not found for path = $path")
+            val fileInfo = indexRepository.runInTransaction { it.findNotDeletedFileInfo(folder, path) }
+                    ?: error("file not found for path = $path")
             logger.debug("doGetFileInfoByAbsolutePath for path = '{}' END", path)
             fileInfo
         }
