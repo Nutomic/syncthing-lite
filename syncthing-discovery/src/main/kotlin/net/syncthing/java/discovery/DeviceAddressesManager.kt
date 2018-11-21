@@ -24,7 +24,7 @@ class DeviceAddressesManager (val deviceId: DeviceId) {
     private val listeners = mutableListOf<(DeviceAddress) -> Unit>()
 
     fun putAddress(address: DeviceAddress) {
-        if (address.deviceIdObject != deviceId) {
+        if (address.deviceId != deviceId) {
             throw IllegalArgumentException()
         }
 

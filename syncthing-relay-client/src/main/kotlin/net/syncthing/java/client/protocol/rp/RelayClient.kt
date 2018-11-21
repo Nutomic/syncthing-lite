@@ -37,7 +37,7 @@ class RelayClient(configuration: Configuration) {
     @Throws(IOException::class, KeystoreHandler.CryptoException::class)
     fun openRelayConnection(address: DeviceAddress): RelayConnection {
         assert(address.getType() == AddressType.RELAY)
-        val sessionInvitation = getSessionInvitation(address.getSocketAddress(), address.deviceId())
+        val sessionInvitation = getSessionInvitation(address.getSocketAddress(), address.deviceId)
         return openConnectionSessionMode(sessionInvitation)
     }
 
@@ -80,7 +80,7 @@ class RelayClient(configuration: Configuration) {
     @Throws(IOException::class, KeystoreHandler.CryptoException::class)
     fun getSessionInvitation(relaySocketAddress: InetSocketAddress, deviceId: DeviceId): SessionInvitation {
         logger.debug("connecting to relay = {} (temporary protocol mode)", relaySocketAddress)
-        keystoreHandler.createSocket(relaySocketAddress, KeystoreHandler.RELAY).use { socket ->
+        keystoreHandler.createSocket(relaySocketAddress).use { socket ->
             RelayDataInputStream(socket.getInputStream()).use { `in` ->
                 RelayDataOutputStream(socket.getOutputStream()).use { out ->
                     run {

@@ -310,21 +310,21 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
     }
 
     @Throws(SQLException::class)
-    override fun updateFileInfo(newFileInfo: FileInfo, newFileBlocks: FileBlocks?) {
-        val version = newFileInfo.versionList.last()
+    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?) {
+        val version = fileInfo.versionList.last()
         //TODO open transsaction, rollback
         getConnection().use { connection ->
-            if (newFileBlocks != null) {
-                FileInfo.checkBlocks(newFileInfo, newFileBlocks)
+            if (fileBlocks != null) {
+                FileInfo.checkBlocks(fileInfo, fileBlocks)
                 connection.prepareStatement("MERGE INTO file_blocks"
                         + " (folder,path,hash,size,blocks)"
                         + " VALUES (?,?,?,?,?)").use { prepareStatement ->
-                    prepareStatement.setString(1, newFileBlocks.folder)
-                    prepareStatement.setString(2, newFileBlocks.path)
-                    prepareStatement.setString(3, newFileBlocks.hash)
-                    prepareStatement.setLong(4, newFileBlocks.size)
+                    prepareStatement.setString(1, fileBlocks.folder)
+                    prepareStatement.setString(2, fileBlocks.path)
+                    prepareStatement.setString(3, fileBlocks.hash)
+                    prepareStatement.setLong(4, fileBlocks.size)
                     prepareStatement.setBytes(5, BlockExchangeExtraProtos.Blocks.newBuilder()
-                            .addAllBlocks(newFileBlocks.blocks.map { input ->
+                            .addAllBlocks(fileBlocks.blocks.map { input ->
                                 BlockExchangeProtos.BlockInfo.newBuilder()
                                         .setOffset(input.offset)
                                         .setSize(input.size)
@@ -334,25 +334,25 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
                     prepareStatement.executeUpdate()
                 }
             }
-            val oldFileInfo = findFileInfo(newFileInfo.folder, newFileInfo.path)
+            val oldFileInfo = findFileInfo(fileInfo.folder, fileInfo.path)
             connection.prepareStatement("MERGE INTO file_info"
                     + " (folder,path,file_name,parent,size,hash,last_modified,file_type,version_id,version_value,is_deleted)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?)").use { prepareStatement ->
-                prepareStatement.setString(1, newFileInfo.folder)
-                prepareStatement.setString(2, newFileInfo.path)
-                prepareStatement.setString(3, newFileInfo.fileName)
-                prepareStatement.setString(4, newFileInfo.parent)
-                prepareStatement.setLong(7, newFileInfo.lastModified.time)
-                prepareStatement.setString(8, newFileInfo.type.name)
+                prepareStatement.setString(1, fileInfo.folder)
+                prepareStatement.setString(2, fileInfo.path)
+                prepareStatement.setString(3, fileInfo.fileName)
+                prepareStatement.setString(4, fileInfo.parent)
+                prepareStatement.setLong(7, fileInfo.lastModified.time)
+                prepareStatement.setString(8, fileInfo.type.name)
                 prepareStatement.setLong(9, version.id)
                 prepareStatement.setLong(10, version.value)
-                prepareStatement.setBoolean(11, newFileInfo.isDeleted)
-                if (newFileInfo.isDirectory()) {
+                prepareStatement.setBoolean(11, fileInfo.isDeleted)
+                if (fileInfo.isDirectory()) {
                     prepareStatement.setNull(5, Types.BIGINT)
                     prepareStatement.setNull(6, Types.VARCHAR)
                 } else {
-                    prepareStatement.setLong(5, newFileInfo.size!!)
-                    prepareStatement.setString(6, newFileInfo.hash)
+                    prepareStatement.setLong(5, fileInfo.size!!)
+                    prepareStatement.setString(6, fileInfo.hash)
                 }
                 prepareStatement.executeUpdate()
             }
@@ -361,14 +361,14 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
             var deltaDirCount: Long = 0
             var deltaSize: Long = 0
             val oldMissing = oldFileInfo == null || oldFileInfo.isDeleted
-            val newMissing = newFileInfo.isDeleted
+            val newMissing = fileInfo.isDeleted
             val oldSizeMissing = oldMissing || !oldFileInfo!!.isFile()
-            val newSizeMissing = newMissing || !newFileInfo.isFile()
+            val newSizeMissing = newMissing || !fileInfo.isFile()
             if (!oldSizeMissing) {
                 deltaSize -= oldFileInfo!!.size!!
             }
             if (!newSizeMissing) {
-                deltaSize += newFileInfo.size!!
+                deltaSize += fileInfo.size!!
             }
             if (!oldMissing) {
                 if (oldFileInfo!!.isFile()) {
@@ -378,13 +378,13 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
                 }
             }
             if (!newMissing) {
-                if (newFileInfo.isFile()) {
+                if (fileInfo.isFile()) {
                     deltaFileCount++
-                } else if (newFileInfo.isDirectory()) {
+                } else if (fileInfo.isDirectory()) {
                     deltaDirCount++
                 }
             }
-            val folderStats = updateFolderStats(connection, newFileInfo.folder, deltaFileCount, deltaDirCount, deltaSize, newFileInfo.lastModified)
+            val folderStats = updateFolderStats(connection, fileInfo.folder, deltaFileCount, deltaDirCount, deltaSize, fileInfo.lastModified)
 
             onFolderStatsUpdatedListener?.invoke(object : IndexRepository.FolderStatsUpdatedEvent() {
                 override fun getFolderStats(): List<FolderStats> {
@@ -704,7 +704,7 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
         val instanceId = resultSet.getLong("instance_id")
         return DeviceAddress.Builder()
                 .setAddress(resultSet.getString("address_url"))
-                .setDeviceId(resultSet.getString("device_id"))
+                .setDeviceId(DeviceId(resultSet.getString("device_id")))
                 .setInstanceId(if (instanceId == 0L) null else instanceId)
                 .setProducer(DeviceAddress.AddressProducer.valueOf(resultSet.getString("address_producer")))
                 .setScore(resultSet.getInt("address_score"))

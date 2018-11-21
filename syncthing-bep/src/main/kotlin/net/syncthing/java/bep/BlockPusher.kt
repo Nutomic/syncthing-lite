@@ -103,7 +103,7 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
         }
         connectionHandler.registerOnRequestMessageReceivedListeners(listener)
         logger.debug("send index update for file = {}", targetPath)
-        val indexListener = { folderInfo: FolderInfo, newRecords: List<FileInfo>, indexInfo: IndexInfo ->
+        val indexListener = { folderInfo: FolderInfo, newRecords: List<FileInfo>, _: IndexInfo ->
             if (folderInfo.folderId == folderId) {
                 for (fileInfo2 in newRecords) {
                     if (fileInfo2.path == targetPath && fileInfo2.hash == dataSource.getHash()) { //TODO check not invalid

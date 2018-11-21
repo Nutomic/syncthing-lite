@@ -47,7 +47,7 @@ class SyncthingClient(
     val discoveryHandler: DiscoveryHandler
     val indexHandler: IndexHandler
     private val connections = Collections.synchronizedSet(createConnectionsSet())
-    private val connectByDeviceIdLocks = Collections.synchronizedMap(HashMap<DeviceId, Object>())
+    private val connectByDeviceIdLocks = Collections.synchronizedMap(HashMap<DeviceId, Any>())
     private val onConnectionChangedListeners = Collections.synchronizedList(mutableListOf<(DeviceId) -> Unit>())
     private var connectDevicesScheduler = Executors.newSingleThreadScheduledExecutor()
 
@@ -121,7 +121,7 @@ class SyncthingClient(
         discoveryHandler.newDeviceAddressSupplier()
                 .takeWhile { it != null }
                 .filterNotNull()
-                .groupBy { it.deviceId() }
+                .groupBy { it.deviceId }
                 .filterNot { it.value.isEmpty() }
                 .forEach { (deviceId, addresses) ->
                     // create an lock per device id to prevent multiple connections to one device

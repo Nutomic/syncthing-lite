@@ -72,7 +72,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
     var isConnected = false
         private set
 
-    fun deviceId(): DeviceId = address.deviceId()
+    fun deviceId(): DeviceId = address.deviceId
 
     private fun checkNotClosed() {
         NetworkUtils.assertProtocol(!isClosed, {"connection $this closed"})
@@ -98,15 +98,15 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
         socket = when (address.getType()) {
             DeviceAddress.AddressType.TCP -> {
                 logger.debug("opening tcp ssl connection")
-                keystoreHandler.createSocket(address.getSocketAddress(), KeystoreHandler.BEP)
+                keystoreHandler.createSocket(address.getSocketAddress())
             }
             DeviceAddress.AddressType.RELAY -> {
                 logger.debug("opening relay connection")
-                keystoreHandler.wrapSocket(RelayClient(configuration).openRelayConnection(address), KeystoreHandler.BEP)
+                keystoreHandler.wrapSocket(RelayClient(configuration).openRelayConnection(address))
             }
             DeviceAddress.AddressType.HTTP_RELAY, DeviceAddress.AddressType.HTTPS_RELAY -> {
                 logger.debug("opening http relay connection")
-                keystoreHandler.wrapSocket(HttpRelayClient().openRelayConnection(address), KeystoreHandler.BEP)
+                keystoreHandler.wrapSocket(HttpRelayClient().openRelayConnection(address))
             }
             else -> throw UnsupportedOperationException("unsupported address type = " + address.getType())
         }
@@ -122,7 +122,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
 
         receiveHelloMessage()
         try {
-            KeystoreHandler.assertSocketCertificateValid(socket, address.deviceId())
+            KeystoreHandler.assertSocketCertificateValid(socket, address.deviceId)
         } catch (e: CertificateException) {
             throw IOException(e)
         }
@@ -144,8 +144,8 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                 run {
                     //other device
                     val deviceBuilder = Device.newBuilder()
-                            .setId(ByteString.copyFrom(DeviceId(address.deviceId).toHashData()))
-                    val indexSequenceInfo = indexHandler.indexRepository.findIndexInfoByDeviceAndFolder(address.deviceId(), folder.folderId)
+                            .setId(ByteString.copyFrom(address.deviceId.toHashData()))
+                    val indexSequenceInfo = indexHandler.indexRepository.findIndexInfoByDeviceAndFolder(address.deviceId, folder.folderId)
                     indexSequenceInfo?.let {
                         deviceBuilder
                                 .setIndexId(indexSequenceInfo.indexId)
@@ -417,7 +417,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                                             .associateBy { input ->
                                                 DeviceId.fromHashData(input.id!!.toByteArray())
                                             }
-                                    val otherDevice = devicesById[address.deviceId()]
+                                    val otherDevice = devicesById[address.deviceId]
                                     val ourDevice = devicesById[configuration.localDeviceId]
                                     if (otherDevice != null) {
                                         folderInfo.isAnnounced = true
@@ -443,6 +443,7 @@ class ConnectionHandler(private val configuration: Configuration, val address: D
                                     clusterConfigWaitingLock.notifyAll()
                                 }
                             }
+                            else -> logger.debug("reveived message of unknown type: ${message.left}")
                         }
                     }
                 }

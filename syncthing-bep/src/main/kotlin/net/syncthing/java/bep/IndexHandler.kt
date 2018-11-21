@@ -215,7 +215,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 indexRepository.updateFileInfo(record, fileBlocks)
                 logger.trace("loaded new record = {}", record)
                 indexBrowsers.forEach {
-                    it.onIndexChangedevent(record.folder, record)
+                    it.onIndexChangedevent(record.folder)
                 }
                 record
             }
@@ -233,9 +233,9 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         } else {
             assert(fileInfo.isFile())
             val fileBlocks = indexRepository.findFileBlocks(folder, path)
-            checkNotNull(fileBlocks, {"file blocks not found for file info = $fileInfo"})
+            checkNotNull(fileBlocks) {"file blocks not found for file info = $fileInfo"}
 
-            FileInfo.checkBlocks(fileInfo, fileBlocks!!)
+            FileInfo.checkBlocks(fileInfo, fileBlocks)
 
             Pair.of(fileInfo, fileBlocks)
         }
