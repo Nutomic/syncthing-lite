@@ -23,6 +23,7 @@ import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
 import net.syncthing.java.core.utils.trySubmitLogging
 import org.apache.commons.lang3.tuple.Pair
+import org.apache.http.util.TextUtils
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.Closeable
