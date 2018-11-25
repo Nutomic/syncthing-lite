@@ -26,6 +26,6 @@ class HttpRelayClient {
         val httpRelayServerUrl = deviceAddress.address.replaceFirst("^relay-".toRegex(), "")
         val deviceId = deviceAddress.deviceId
         logger.info("open http relay connection, relay url = {}, target device id = {}", httpRelayServerUrl, deviceId)
-        return HttpRelayConnection(httpRelayServerUrl, deviceId)
+        return HttpRelayConnection(httpRelayServerUrl, deviceId.deviceId)
     }
 }

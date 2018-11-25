@@ -18,9 +18,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
             val versionName = activity.packageManager.getPackageInfo(activity.packageName, 0)?.versionName
             appVersion.summary = versionName
 
-            activity.libraryHandler?.configuration { localDeviceName.text = it.localDeviceName }
+            activity.libraryHandler.configuration { localDeviceName.text = it.localDeviceName }
             localDeviceName.setOnPreferenceChangeListener { _, _ ->
-                activity.libraryHandler?.configuration { conf ->
+                activity.libraryHandler.configuration { conf ->
                     conf.localDeviceName = localDeviceName.text
                     conf.persistLater()
                 }

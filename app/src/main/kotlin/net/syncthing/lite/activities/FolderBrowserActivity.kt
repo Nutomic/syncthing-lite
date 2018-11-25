@@ -59,7 +59,7 @@ class FolderBrowserActivity : SyncthingActivity() {
             }
         }
         val folder = intent.getStringExtra(EXTRA_FOLDER_NAME)
-        libraryHandler?.syncthingClient {
+        libraryHandler.syncthingClient {
             indexBrowser = it.indexHandler.newIndexBrowser(folder, true, true)
             indexBrowser.setOnFolderChangedListener(this::onFolderChanged)
         }
@@ -82,7 +82,7 @@ class FolderBrowserActivity : SyncthingActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
         if (requestCode == REQUEST_SELECT_UPLOAD_FILE && resultCode == Activity.RESULT_OK) {
-            libraryHandler?.syncthingClient { syncthingClient ->
+            libraryHandler.syncthingClient { syncthingClient ->
                 GlobalScope.launch (Dispatchers.Main) {
                     // FIXME: it would be better if the dialog would use the library handler
                     FileUploadDialog(this@FolderBrowserActivity, syncthingClient, intent!!.data,

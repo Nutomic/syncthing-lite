@@ -77,7 +77,7 @@ object LocalDiscoveryUtil {
                             // discovery announcement is to be used.
                             DeviceAddress.Builder()
                                     .setAddress(address.replaceFirst("tcp://(0.0.0.0|):".toRegex(), "tcp://$sourceAddress:"))
-                                    .setDeviceId(deviceId.deviceId)
+                                    .setDeviceId(deviceId)
                                     .setInstanceId(announce.instanceId)
                                     .setProducer(DeviceAddress.AddressProducer.LOCAL_DISCOVERY)
                                     .build()
@@ -135,7 +135,7 @@ object LocalDiscoveryUtil {
 data class LocalDiscoveryMessage(val deviceId: DeviceId, val addresses: List<DeviceAddress>) {
     init {
         addresses.forEach { address ->
-            if (address.deviceIdObject != deviceId) {
+            if (address.deviceId != deviceId) {
                 throw IllegalArgumentException()
             }
         }
