@@ -42,6 +42,8 @@
     <string name="settings_local_device_summary">The name that other devices will see for this device</string>
     <string name="settings_shutdown_delay_title">Shutdown delay</string>
     <string name="settings_shutdown_delay_summary">Time before shuting down the Syncthing client after its last usage</string>
+    <string name="settings_crash_handler_title">Custom Crash-Handler</string>
+    <string name="settings_crash_handler_summary">Copy the error message to the clipboard when the App crashes</string>
     <string name="device_id_dialog_title">Enter Device ID</string>
     <string name="settings_shutdown_delay_10_seconds">10 seconds</string>
     <string name="settings_shutdown_delay_30_seconds">30 seconds</string>

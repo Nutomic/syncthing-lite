@@ -24,6 +24,11 @@
 
         -->
 
+        <CheckBoxPreference
+            android:key="crash_handler"
+            android:title="@string/settings_crash_handler_title"
+            android:summary="@string/settings_crash_handler_summary" />
+
         <Preference
             android:key="app_version"
             android:title="@string/settings_app_version_title"/>
