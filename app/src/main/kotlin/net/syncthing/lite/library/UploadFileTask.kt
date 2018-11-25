@@ -5,6 +5,8 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.java.bep.BlockPusher
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.utils.PathUtils
@@ -31,22 +33,28 @@ class UploadFileTask(context: Context, syncthingClient: SyncthingClient,
 
     init {
         Log.i(TAG, "Uploading file $localFile to folder $syncthingFolder:$syncthingPath")
-        syncthingClient.getBlockPusher(syncthingFolder, { blockPusher ->
-            val observer = blockPusher.pushFile(uploadStream, syncthingFolder, syncthingPath)
 
-            handler.post { onProgress(observer) }
+        GlobalScope.launch {
+            try {
+                val blockPusher = syncthingClient.getBlockPusher(folderId = syncthingFolder)
+                val observer = blockPusher.pushFile(uploadStream, syncthingFolder, syncthingPath)
 
-            while (!observer.isCompleted()) {
-                if (isCancelled)
-                    return@getBlockPusher
-
-                observer.waitForProgressUpdate()
-                Log.i(TAG, "upload progress = ${observer.progressPercentage()}%")
                 handler.post { onProgress(observer) }
+
+                while (!observer.isCompleted()) {
+                    if (isCancelled)
+                        return@launch
+
+                    observer.waitForProgressUpdate()
+                    Log.i(TAG, "upload progress = ${observer.progressPercentage()}%")
+                    handler.post { onProgress(observer) }
+                }
+                IOUtils.closeQuietly(uploadStream)
+                handler.post { onComplete() }
+            } catch (ex: Exception) {
+                handler.post { onError() }
             }
-            IOUtils.closeQuietly(uploadStream)
-            handler.post { onComplete() }
-        }, { handler.post { onError() } })
+        }
     }
 
     fun cancel() {

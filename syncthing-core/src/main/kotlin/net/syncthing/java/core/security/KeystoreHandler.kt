@@ -269,10 +269,15 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
         @Throws(SSLPeerUnverifiedException::class, CertificateException::class)
         fun assertSocketCertificateValid(certificate: Certificate, deviceId: DeviceId) {
             NetworkUtils.assertProtocol(certificate is X509Certificate)
+
             val derData = certificate.encoded
             val deviceIdFromCertificate = derDataToDeviceId(derData)
             logger.trace("remote pem certificate =\n{}", derToPem(derData))
-            NetworkUtils.assertProtocol(deviceIdFromCertificate == deviceId, {"device id mismatch! expected = $deviceId, got = $deviceIdFromCertificate"})
+
+            NetworkUtils.assertProtocol(deviceIdFromCertificate == deviceId) {
+                "device id mismatch! expected = $deviceId, got = $deviceIdFromCertificate"
+            }
+
             logger.debug("remote ssl certificate match deviceId = {}", deviceId)
         }
     }

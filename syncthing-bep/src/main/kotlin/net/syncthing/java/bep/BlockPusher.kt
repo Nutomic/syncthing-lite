@@ -1,5 +1,6 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,14 +15,15 @@
 package net.syncthing.java.bep
 
 import com.google.protobuf.ByteString
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
+import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.beans.FileInfo.Version
 import net.syncthing.java.core.utils.BlockUtils
 import net.syncthing.java.core.utils.NetworkUtils
-import net.syncthing.java.core.utils.submitLogging
 import org.apache.commons.io.IOUtils
-import org.apache.commons.lang3.tuple.Pair
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -31,36 +33,35 @@ import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-class BlockPusher internal constructor(private val localDeviceId: DeviceId,
-                                       private val connectionHandler: ConnectionHandler,
-                                       private val indexHandler: IndexHandler) {
+// TODO: refactor this
+class BlockPusher(private val localDeviceId: DeviceId,
+                  private val connectionHandler: ConnectionActorWrapper,
+                  private val indexHandler: IndexHandler,
+                  private val requestHandlerRegistry: RequestHandlerRegistry) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-
-    fun pushDelete(folderId: String, targetPath: String): IndexEditObserver {
+    suspend fun pushDelete(folderId: String, targetPath: String): BlockExchangeProtos.IndexUpdate {
         val fileInfo = indexHandler.waitForRemoteIndexAcquired(connectionHandler).getFileInfoByPath(folderId, targetPath)!!
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(fileInfo.folder), {"supplied connection handler $connectionHandler will not share folder ${fileInfo.folder}"})
-        return IndexEditObserver(sendIndexUpdate(folderId, BlockExchangeProtos.FileInfo.newBuilder()
+        return sendIndexUpdate(folderId, BlockExchangeProtos.FileInfo.newBuilder()
                 .setName(targetPath)
                 .setType(BlockExchangeProtos.FileInfoType.valueOf(fileInfo.type.name))
-                .setDeleted(true), fileInfo.versionList))
+                .setDeleted(true), fileInfo.versionList)
     }
 
-    fun pushDir(folder: String, path: String): IndexEditObserver {
+    suspend fun pushDir(folder: String, path: String): BlockExchangeProtos.IndexUpdate {
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(folder), {"supplied connection handler $connectionHandler will not share folder $folder"})
-        return IndexEditObserver(sendIndexUpdate(folder, BlockExchangeProtos.FileInfo.newBuilder()
+        return sendIndexUpdate(folder, BlockExchangeProtos.FileInfo.newBuilder()
                 .setName(path)
-                .setType(BlockExchangeProtos.FileInfoType.DIRECTORY), null))
+                .setType(BlockExchangeProtos.FileInfoType.DIRECTORY), null)
     }
 
-    fun pushFile(inputStream: InputStream, folderId: String, targetPath: String): FileUploadObserver {
+    suspend fun pushFile(inputStream: InputStream, folderId: String, targetPath: String): FileUploadObserver {
         val fileInfo = indexHandler.waitForRemoteIndexAcquired(connectionHandler).getFileInfoByPath(folderId, targetPath)
         NetworkUtils.assertProtocol(connectionHandler.hasFolder(folderId), {"supplied connection handler $connectionHandler will not share folder $folderId"})
         assert(fileInfo == null || fileInfo.folder == folderId)
@@ -72,36 +73,31 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
         val uploadError = AtomicReference<Exception>()
         val isCompleted = AtomicBoolean(false)
         val updateLock = Object()
-        val listener = {request: BlockExchangeProtos.Request ->
-            if (request.folder == folderId && request.name == targetPath) {
+        val requestFilter = RequestHandlerFilter(
+                deviceId = connectionHandler.deviceId,
+                folderId = folderId,
+                path = targetPath
+        )
+
+        requestHandlerRegistry.registerListener(requestFilter) { request ->
+            GlobalScope.async {
                 val hash = Hex.toHexString(request.hash.toByteArray())
                 logger.debug("handling block request = {}:{}-{} ({})", request.name, request.offset, request.size, hash)
                 val data = dataSource.getBlock(request.offset, request.size, hash)
-                val future = connectionHandler.sendMessage(BlockExchangeProtos.Response.newBuilder()
+
+                sentBlocks.add(hash)
+                synchronized(updateLock) {
+                    updateLock.notifyAll()
+                }
+
+                BlockExchangeProtos.Response.newBuilder()
                         .setCode(BlockExchangeProtos.ErrorCode.NO_ERROR)
                         .setData(ByteString.copyFrom(data))
                         .setId(request.id)
-                        .build())
-                monitoringProcessExecutorService.submitLogging {
-                    try {
-                        future.get()
-                        sentBlocks.add(hash)
-                        synchronized(updateLock) {
-                            updateLock.notifyAll()
-                        }
-                        //TODO retry on error, register error and throw on watcher
-                    } catch (ex: InterruptedException) {
-                        //return and do nothing
-                    } catch (ex: ExecutionException) {
-                        uploadError.set(ex)
-                        synchronized(updateLock) {
-                            updateLock.notifyAll()
-                        }
-                    }
-                }
+                        .build()
             }
         }
-        connectionHandler.registerOnRequestMessageReceivedListeners(listener)
+
         logger.debug("send index update for file = {}", targetPath)
         val indexListener = { folderInfo: FolderInfo, newRecords: List<FileInfo>, _: IndexInfo ->
             if (folderInfo.folderId == folderId) {
@@ -121,7 +117,7 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
                 .setName(targetPath)
                 .setSize(fileSize)
                 .setType(BlockExchangeProtos.FileInfoType.FILE)
-                .addAllBlocks(dataSource.blocks), fileInfo?.versionList).right
+                .addAllBlocks(dataSource.blocks), fileInfo?.versionList)
         return object : FileUploadObserver() {
 
             override fun progressPercentage() = if (isCompleted.get()) 100 else (sentBlocks.size.toFloat() / dataSource.getHashes().size).toInt()
@@ -133,7 +129,7 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
                 logger.debug("closing upload process")
                 monitoringProcessExecutorService.shutdown()
                 indexHandler.unregisterOnIndexRecordAcquiredListener(indexListener)
-                connectionHandler.unregisterOnRequestMessageReceivedListeners(listener)
+                requestHandlerRegistry.unregisterListener(requestFilter)
                 val fileInfo1 = indexHandler.pushRecord(indexUpdate.folder, indexUpdate.filesList.single())
                 logger.info("sent file info record = {}", fileInfo1)
             }
@@ -152,8 +148,8 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
         }
     }
 
-    private fun sendIndexUpdate(folderId: String, fileInfoBuilder: BlockExchangeProtos.FileInfo.Builder,
-                                oldVersions: Iterable<Version>?): Pair<Future<*>, BlockExchangeProtos.IndexUpdate> {
+    private suspend fun sendIndexUpdate(folderId: String, fileInfoBuilder: BlockExchangeProtos.FileInfo.Builder,
+                                        oldVersions: Iterable<Version>?): BlockExchangeProtos.IndexUpdate {
         run {
             val nextSequence = indexHandler.sequencer().nextSequence()
             val list = oldVersions ?: emptyList()
@@ -182,7 +178,10 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
                 .addFiles(fileInfo)
                 .build()
         logger.debug("index update = {}", fileInfo)
-        return Pair.of(connectionHandler.sendMessage(indexUpdate), indexUpdate)
+
+        connectionHandler.sendIndexUpdate(indexUpdate)
+
+        return indexUpdate
     }
 
     abstract inner class FileUploadObserver : Closeable {
@@ -201,33 +200,6 @@ class BlockPusher internal constructor(private val localDeviceId: DeviceId,
             }
             return this
         }
-    }
-
-    inner class IndexEditObserver(private val future: Future<*>, private val indexUpdate: BlockExchangeProtos.IndexUpdate) : Closeable {
-
-        //throw exception if job has errors
-        @Throws(InterruptedException::class, ExecutionException::class)
-        fun isCompleted(): Boolean {
-            return if (future.isDone) {
-                future.get()
-                true
-            } else {
-                false
-            }
-        }
-
-        constructor(pair: Pair<Future<*>, BlockExchangeProtos.IndexUpdate>) : this(pair.left, pair.right)
-
-        @Throws(InterruptedException::class, ExecutionException::class)
-        fun waitForComplete() {
-            future.get()
-        }
-
-        @Throws(IOException::class)
-        override fun close() {
-            indexHandler.pushRecord(indexUpdate.folder, indexUpdate.filesList.single())
-        }
-
     }
 
     private class DataSource @Throws(IOException::class) constructor(private val inputStream: InputStream) {

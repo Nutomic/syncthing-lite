@@ -72,43 +72,35 @@ class DownloadFileTask(private val fileStorageDirectory: File,
                 return@launch
             }
 
-            syncthingClient.getBlockPuller(fileInfo.folder, { blockPuller ->
-                val job = launch {
-                    try {
-                        if (!file.filesDirectory.isDirectory) {
-                            if (!file.filesDirectory.mkdirs()) {
-                                throw IOException("could not create output directory")
-                            }
-                        }
-
-                        // download the file to a temp location
-                        val inputStream = blockPuller.pullFileCoroutine(fileInfo, this@DownloadFileTask::callProgress)
-
-                        try {
-                            FileUtils.copyInputStreamToFile(inputStream, file.tempFile)
-                            file.tempFile.renameTo(file.targetFile)
-                        } finally {
-                            file.tempFile.delete()
-                        }
-
-                        if (BuildConfig.DEBUG) {
-                            Log.i(TAG, "Downloaded file $fileInfo")
-                        }
-
-                        callComplete(file.targetFile)
-                    } catch (e: Exception) {
-                        callError(e)
-
-                        if (BuildConfig.DEBUG) {
-                            Log.w(TAG, "Failed to download file $fileInfo", e)
-                        }
+            try {
+                if (!file.filesDirectory.isDirectory) {
+                    if (!file.filesDirectory.mkdirs()) {
+                        throw IOException("could not create output directory")
                     }
                 }
 
-                cancellationSignal.setOnCancelListener {
-                    job.cancel()
+                // download the file to a temp location
+                val inputStream = syncthingClient.pullFile(fileInfo, this@DownloadFileTask::callProgress)
+
+                try {
+                    FileUtils.copyInputStreamToFile(inputStream, file.tempFile)
+                    file.tempFile.renameTo(file.targetFile)
+                } finally {
+                    file.tempFile.delete()
                 }
-            }, { callError(IOException("could not get block puller for file")) })
+
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "Downloaded file $fileInfo")
+                }
+
+                callComplete(file.targetFile)
+            } catch (e: Exception) {
+                callError(e)
+
+                if (BuildConfig.DEBUG) {
+                    Log.w(TAG, "Failed to download file $fileInfo", e)
+                }
+            }
         }
     }
 
