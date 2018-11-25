@@ -82,8 +82,7 @@ object ConnectionActor {
                         clusterConfig = clusterConfig,
                         configuration = configuration,
                         otherDeviceId = address.deviceId,
-                        indexHandler = indexHandler,
-                        onNewFolderSharedListener = { /* ignore it */ }
+                        indexHandler = indexHandler
                 )
 
                 fun hasFolder(folder: String) = clusterConfigInfo.sharedFolderIds.contains(folder)

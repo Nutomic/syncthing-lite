@@ -77,10 +77,10 @@ object ClusterConfigHandler {
             clusterConfig: BlockExchangeProtos.ClusterConfig,
             configuration: Configuration,
             otherDeviceId: DeviceId,
-            indexHandler: IndexHandler,
-            onNewFolderSharedListener: (FolderInfo) -> Unit
+            indexHandler: IndexHandler
     ): ClusterConfigInfo {
         val folderInfoList = mutableListOf<ClusterConfigFolderInfo>()
+        val newSharedFolders = mutableListOf<FolderInfo>()
 
         for (folder in clusterConfig.foldersList ?: emptyList()) {
             var folderInfo = ClusterConfigFolderInfo(folder.id, folder.label)
@@ -100,7 +100,7 @@ object ClusterConfigHandler {
                 if (!folderIds.contains(folderInfo.folderId)) {
                     val fi = FolderInfo(folderInfo.folderId, folderInfo.label)
                     configuration.folders = configuration.folders + fi
-                    onNewFolderSharedListener(fi)
+                    newSharedFolders.add(fi)
                     logger.info("new folder shared = {}", folderInfo)
                 }
             } else {
@@ -112,13 +112,13 @@ object ClusterConfigHandler {
         configuration.persistLater()
         indexHandler.handleClusterConfigMessageProcessedEvent(clusterConfig)
 
-        return ClusterConfigInfo(folderInfoList)
+        return ClusterConfigInfo(folderInfoList, newSharedFolders)
     }
 }
 
-class ClusterConfigInfo (val folderInfo: List<ClusterConfigFolderInfo>) {
+class ClusterConfigInfo (val folderInfo: List<ClusterConfigFolderInfo>, val newSharedFolders: List<FolderInfo>) {
     companion object {
-        val dummy = ClusterConfigInfo(folderInfo = emptyList())
+        val dummy = ClusterConfigInfo(folderInfo = emptyList(), newSharedFolders = emptyList())
     }
 
     val folderInfoById = folderInfo.associateBy { it.folderId }

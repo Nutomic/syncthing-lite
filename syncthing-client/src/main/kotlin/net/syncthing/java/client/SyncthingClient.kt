@@ -26,15 +26,8 @@ import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.discovery.DiscoveryHandler
 import java.io.Closeable
-import java.io.IOException
 import java.io.InputStream
-import java.util.Collections
-import java.util.TreeSet
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
+import java.util.*
 
 class SyncthingClient(
         private val configuration: Configuration,
@@ -46,7 +39,7 @@ class SyncthingClient(
     private val onConnectionChangedListeners = Collections.synchronizedList(mutableListOf<(DeviceId) -> Unit>())
 
     private val requestHandlerRegistry = RequestHandlerRegistry()
-    private val newConnections = Connections(
+    private val connections = Connections(
             generate = { deviceId ->
                 ConnectionActorWrapper(
                         source = ConnectionActorGenerator.generateConnectionActors(
@@ -76,7 +69,7 @@ class SyncthingClient(
         indexHandler.clearIndex()
         configuration.folders = emptySet()
         configuration.persistLater()
-        // TODO: update index from peers by reconnecting
+        connections.reconnectAllConnections()
     }
 
     fun addOnConnectionChangedListener(listener: (DeviceId) -> Unit) {
@@ -88,7 +81,7 @@ class SyncthingClient(
         onConnectionChangedListeners.remove(listener)
     }
 
-    private fun getConnections() = configuration.peerIds.map { newConnections.getByDeviceId(it) }
+    private fun getConnections() = configuration.peerIds.map { connections.getByDeviceId(it) }
 
     init {
         discoveryHandler.newDeviceAddressSupplier() // starts the discovery
@@ -96,7 +89,7 @@ class SyncthingClient(
     }
 
     fun getActiveConnectionsForFolder(folderId: String) = configuration.peerIds
-            .map { newConnections.getByDeviceId(it) }
+            .map { connections.getByDeviceId(it) }
             .filter { it.isConnected && it.hasFolder(folderId) }
 
     suspend fun pullFile(
@@ -125,7 +118,7 @@ class SyncthingClient(
 
     fun getPeerStatus() = configuration.peers.map { device ->
         device.copy(
-                isConnected = newConnections.getByDeviceId(device.deviceId).isConnected
+                isConnected = connections.getByDeviceId(device.deviceId).isConnected
         )
     }
 
@@ -134,7 +127,7 @@ class SyncthingClient(
         indexHandler.close()
         repository.close()
         tempRepository.close()
-        newConnections.shutdown()
+        connections.shutdown()
         assert(onConnectionChangedListeners.isEmpty())
     }
 }

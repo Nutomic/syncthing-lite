@@ -101,7 +101,7 @@ object ConnectionActorGenerator {
             }
         }
 
-        suspend fun tryConnectingToAddress(deviceAddress: DeviceAddress): Boolean {
+        suspend fun tryConnectingToAddress(deviceAddress: DeviceAddress, ignoreNewFolders: Boolean = false): Boolean {
             closeCurrent()
 
             val (newActor, clusterConfig) = try {
@@ -119,6 +119,10 @@ object ConnectionActorGenerator {
                 }
 
                 return false
+            }
+
+            if (clusterConfig.newSharedFolders.isNotEmpty() && (!ignoreNewFolders)) {
+                return tryConnectingToAddress(deviceAddress = deviceAddress, ignoreNewFolders = true)
             }
 
             logger.debug("connected to $deviceAddress")

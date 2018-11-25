@@ -40,4 +40,10 @@ class Connections (val generate: (DeviceId) -> ConnectionActorWrapper) {
             map.values.forEach { it.shutdown() }
         }
     }
+
+    fun reconnectAllConnections() {
+        synchronized(map) {
+            map.values.forEach { it.reconnect() }
+        }
+    }
 }

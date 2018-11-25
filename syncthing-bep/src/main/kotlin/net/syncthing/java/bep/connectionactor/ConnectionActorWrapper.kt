@@ -77,4 +77,10 @@ class ConnectionActorWrapper (
     fun shutdown() {
         job.cancel()
     }
+
+    // this triggers a disconnection
+    // the ConnectionActorGenerator will reconnect soon
+    fun reconnect() {
+        currentConnectionActor?.close()
+    }
 }
