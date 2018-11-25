@@ -51,10 +51,10 @@ object ConnectionActor {
                 }
 
                 // the hello message exchange should happen before the certificate validation
-                KeystoreHandler.assertSocketCertificateValid(socket, address.deviceIdObject)
+                KeystoreHandler.assertSocketCertificateValid(socket, address.deviceId)
 
                 // now (after the validation) use the content of the hello message
-                HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceIdObject)
+                HelloMessageHandler.processHelloMessage(helloMessage, configuration, address.deviceId)
 
                 // helpers for messages
                 val sendPostAuthMessageLock = Mutex()
@@ -70,7 +70,7 @@ object ConnectionActor {
 
                 // cluster config exchange
                 val clusterConfig = coroutineScope {
-                    launch { sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceIdObject)) }
+                    launch { sendPostAuthMessage(ClusterConfigHandler.buildClusterConfig(configuration, indexHandler, address.deviceId)) }
                     async { receivePostAuthMessage() }.await()
                 }.second
 
@@ -81,7 +81,7 @@ object ConnectionActor {
                 val clusterConfigInfo = ClusterConfigHandler.handleReceivedClusterConfig(
                         clusterConfig = clusterConfig,
                         configuration = configuration,
-                        otherDeviceId = address.deviceIdObject,
+                        otherDeviceId = address.deviceId,
                         indexHandler = indexHandler,
                         onNewFolderSharedListener = { /* ignore it */ }
                 )
@@ -107,7 +107,7 @@ object ConnectionActor {
                                             folderId = message.folder,
                                             filesList = message.filesList,
                                             clusterConfigInfo = clusterConfigInfo,
-                                            peerDeviceId = address.deviceIdObject
+                                            peerDeviceId = address.deviceId
                                     )
                                 }
                                 is BlockExchangeProtos.IndexUpdate -> {
@@ -115,7 +115,7 @@ object ConnectionActor {
                                             folderId = message.folder,
                                             filesList = message.filesList,
                                             clusterConfigInfo = clusterConfigInfo,
-                                            peerDeviceId = address.deviceIdObject
+                                            peerDeviceId = address.deviceId
                                     )
                                 }
                                 is BlockExchangeProtos.Request -> {
