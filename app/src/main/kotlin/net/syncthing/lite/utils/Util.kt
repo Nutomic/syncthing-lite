@@ -44,10 +44,11 @@ object Util {
     fun importDeviceId(libraryHandler: LibraryHandler?, context: Context?, deviceId: String,
                        onComplete: () -> Unit) {
         val deviceId2 = DeviceId(deviceId.toUpperCase(Locale.US))
-        libraryHandler?.configuration { configuration ->
+        libraryHandler?.library { configuration, syncthingClient, _ ->
             if (!configuration.peerIds.contains(deviceId2)) {
                 configuration.peers = configuration.peers + DeviceInfo(deviceId2, null)
                 configuration.persistLater()
+                syncthingClient.connectToNewlyAddedDevices()
                 GlobalScope.launch (Dispatchers.Main) {
                     context?.toast(context.getString(R.string.device_import_success, deviceId2.shortId))
                     onComplete()

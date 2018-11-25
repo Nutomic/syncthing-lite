@@ -36,7 +36,7 @@ class RelayClient(configuration: Configuration) {
 
     @Throws(IOException::class, KeystoreHandler.CryptoException::class)
     fun openRelayConnection(address: DeviceAddress): RelayConnection {
-        assert(address.getType() == AddressType.RELAY)
+        assert(address.type == AddressType.RELAY)
         val sessionInvitation = getSessionInvitation(address.getSocketAddress(), address.deviceId)
         return openConnectionSessionMode(sessionInvitation)
     }

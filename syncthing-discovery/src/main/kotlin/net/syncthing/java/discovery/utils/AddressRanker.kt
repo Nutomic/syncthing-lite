@@ -15,6 +15,8 @@
 package net.syncthing.java.discovery.utils
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.channels.toList
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceAddress.AddressType
 import org.slf4j.LoggerFactory
@@ -26,49 +28,47 @@ object AddressRanker {
     private const val TCP_CONNECTION_TIMEOUT = 5000
     private val BASE_SCORE_MAP = mapOf(
             AddressType.TCP to 0,
-            AddressType.RELAY to 2000,
-            AddressType.HTTP_RELAY to 1000 * 2000,
-            AddressType.HTTPS_RELAY to 1000 * 2000
+            AddressType.RELAY to 2000
     )
     private val ACCEPTED_ADDRESS_TYPES = BASE_SCORE_MAP.keys
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    suspend fun pingAddresses(sourceAddresses: List<DeviceAddress>) = coroutineScope {
-        addHttpRelays(sourceAddresses)
-                .filter { ACCEPTED_ADDRESS_TYPES.contains(it.getType()) }
-                .toList()   // the following should happen parallel
-                .map {
+    fun pingAddressesChannel(sourceAddresses: List<DeviceAddress>) = GlobalScope.produce<DeviceAddress> {
+        sourceAddresses
+                .filter { ACCEPTED_ADDRESS_TYPES.contains(it.type) }
+                .toList()
+                .map { address ->
                     async {
                         try {
-                            withTimeout(TCP_CONNECTION_TIMEOUT * 2L) {
+                            val addressWithScore = withTimeout(TCP_CONNECTION_TIMEOUT * 2L) {
                                 // this nested async ensures that cancelling/ the timeout has got an effect without delay
                                 GlobalScope.async (Dispatchers.IO) {
-                                    pingAddressSync(it)
+                                    pingAddressSync(address)
                                 }.await()
+                            }
+
+                            if (addressWithScore != null) {
+                                send(addressWithScore)
                             }
                         } catch (ex: Exception) {
                             logger.warn("Failed to ping device", ex)
-
-                            null
                         }
+
+                        null
                     }
                 }
                 .map { it.await() }
-                .filterNotNull()
-                .sortedBy { it.score }
+
+        close()
     }
 
-    private fun getHttpRelays(list: List<DeviceAddress>) = list
-            .asSequence()
-            .filter { address ->
-                address.getType() == AddressType.RELAY && address.containsUriParamValue("httpUrl")
-            }
-            .map { address ->
-                val httpUrl = address.getUriParam("httpUrl")
-                address.copyBuilder().setAddress("relay-" + httpUrl!!).build()
-            }
-
-    private fun addHttpRelays(list: List<DeviceAddress>) = getHttpRelays(list) + list
+    @Deprecated(
+            message = "This is slower than the version which returns the channel",
+            replaceWith = ReplaceWith("pingAddressesChannel")
+    )
+    suspend fun pingAddressesReturnAllResultsAtOnce(sourceAddresses: List<DeviceAddress>) = pingAddressesChannel(sourceAddresses)
+            .toList()
+            .sortedBy { it.score }
 
     private fun pingAddressSync(deviceAddress: DeviceAddress): DeviceAddress? {
         val startTime = System.currentTimeMillis()
@@ -84,7 +84,7 @@ object AddressRanker {
         }
 
         val ping = (System.currentTimeMillis() - startTime).toInt()
-        val baseScore = BASE_SCORE_MAP[deviceAddress.getType()] ?: 0
+        val baseScore = BASE_SCORE_MAP[deviceAddress.type] ?: 0
 
         return deviceAddress.copyBuilder().setScore(ping + baseScore).build()
     }
