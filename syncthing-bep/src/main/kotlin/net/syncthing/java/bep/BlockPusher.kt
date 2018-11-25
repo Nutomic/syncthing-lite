@@ -82,7 +82,7 @@ class BlockPusher(private val localDeviceId: DeviceId,
         requestHandlerRegistry.registerListener(requestFilter) { request ->
             GlobalScope.async {
                 val hash = Hex.toHexString(request.hash.toByteArray())
-                logger.debug("handling block message = {}:{}-{} ({})", request.name, request.offset, request.size, hash)
+                logger.debug("handling block request = {}:{}-{} ({})", request.name, request.offset, request.size, hash)
                 val data = dataSource.getBlock(request.offset, request.size, hash)
 
                 sentBlocks.add(hash)
