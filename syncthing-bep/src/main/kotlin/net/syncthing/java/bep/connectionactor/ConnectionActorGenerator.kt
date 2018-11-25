@@ -101,36 +101,49 @@ object ConnectionActorGenerator {
             }
         }
 
-        suspend fun tryConnectingToAddress(deviceAddress: DeviceAddress, ignoreNewFolders: Boolean = false): Boolean {
-            closeCurrent()
+        suspend fun tryConnectingToAddressHandleBaseErrors(deviceAddress: DeviceAddress) = try {
+            val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
+            val clusterConfig = ConnectionActorUtil.waitUntilConnected(newActor)
 
-            val (newActor, clusterConfig) = try {
-                val newActor = ConnectionActor.createInstance(deviceAddress, configuration, indexHandler, requestHandler)
-                val clusterConfig = ConnectionActorUtil.waitUntilConnected(newActor)
+            newActor to clusterConfig
+        } catch (ex: Exception) {
+            logger.warn("failed to connect to $deviceAddress", ex)
 
-                newActor to clusterConfig
-            } catch (ex: Exception) {
-                logger.warn("failed to connect to $deviceAddress", ex)
-
-                when (ex) {
-                    is IOException -> {/* expected -> ignore */}
-                    is InterruptedException -> {/* expected -> ignore */}
-                    else -> throw ex
-                }
-
-                return false
+            when (ex) {
+                is IOException -> {/* expected -> ignore */}
+                is InterruptedException -> {/* expected -> ignore */}
+                else -> throw ex
             }
 
-            if (clusterConfig.newSharedFolders.isNotEmpty() && (!ignoreNewFolders)) {
-                return tryConnectingToAddress(deviceAddress = deviceAddress, ignoreNewFolders = true)
+            null
+        }
+
+        suspend fun dispatchConnection(
+                connection: SendChannel<ConnectionAction>,
+                clusterConfig: ClusterConfigInfo,
+                deviceAddress: DeviceAddress
+        ) {
+            currentActor = connection
+            currentDeviceAddress = deviceAddress
+
+            send(connection to clusterConfig)
+        }
+
+        suspend fun tryConnectingToAddress(deviceAddress: DeviceAddress): Boolean {
+            closeCurrent()
+
+            var connection = tryConnectingToAddressHandleBaseErrors(deviceAddress) ?: return false
+
+            if (connection.second.newSharedFolders.isNotEmpty()) {
+                logger.debug("connected to $deviceAddress with new folders -> reconnect")
+                // reconnect to send new cluster config
+                connection.first.close()
+                connection = tryConnectingToAddressHandleBaseErrors(deviceAddress) ?: return false
             }
 
             logger.debug("connected to $deviceAddress")
 
-            currentActor = newActor
-            currentDeviceAddress = deviceAddress
-
-            send(newActor to clusterConfig)
+            dispatchConnection(connection.first, connection.second, deviceAddress)
 
             return true
         }
