@@ -75,7 +75,7 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
             val peers = configuration.peerIds
             //do not process address already processed
             list.filter { deviceAddress ->
-                !peers.contains(deviceAddress.deviceIdObject)
+                !peers.contains(deviceAddress.deviceId)
             }
 
             AddressRanker.pingAddressesChannel(list).consumeEach {
@@ -86,7 +86,7 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
 
     private fun putDeviceAddress(deviceAddress: DeviceAddress) {
         devicesAddressesManager.getDeviceAddressManager(
-                deviceId = deviceAddress.deviceIdObject
+                deviceId = deviceAddress.deviceId
         ).putAddress(deviceAddress)
     }
 

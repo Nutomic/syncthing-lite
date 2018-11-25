@@ -23,7 +23,7 @@ import net.syncthing.java.core.interfaces.Sequencer
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
-import net.syncthing.java.core.utils.submitLogging
+import net.syncthing.java.core.utils.trySubmitLogging
 import org.apache.commons.lang3.tuple.Pair
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
@@ -216,7 +216,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 indexRepository.updateFileInfo(record, fileBlocks)
                 logger.trace("loaded new record = {}", record)
                 indexBrowsers.forEach {
-                    it.onIndexChangedevent(record.folder, record)
+                    it.onIndexChangedevent(record.folder)
                 }
                 record
             }
@@ -234,9 +234,9 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         } else {
             assert(fileInfo.isFile())
             val fileBlocks = indexRepository.findFileBlocks(folder, path)
-            checkNotNull(fileBlocks, {"file blocks not found for file info = $fileInfo"})
+            checkNotNull(fileBlocks) {"file blocks not found for file info = $fileInfo"}
 
-            FileInfo.checkBlocks(fileInfo, fileBlocks!!)
+            FileInfo.checkBlocks(fileInfo, fileBlocks)
 
             Pair.of(fileInfo, fileBlocks)
         }
@@ -323,7 +323,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             logger.debug("received index message event, queuing for processing")
             queuedMessages++
             queuedRecords += data.filesCount.toLong()
-            executorService.submitLogging(object : ProcessingRunnable() {
+            executorService.trySubmitLogging(object : ProcessingRunnable() {
                 override fun runProcess() {
                     doHandleIndexMessageReceivedEvent(data, clusterConfigInfo, peerDeviceId)
                 }
@@ -335,7 +335,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             logger.debug("received index message event, stored to temp record {}, queuing for processing", key)
             queuedMessages++
             queuedRecords += data.filesCount.toLong()
-            executorService.submitLogging(object : ProcessingRunnable() {
+            executorService.trySubmitLogging(object : ProcessingRunnable() {
                 override fun runProcess() {
                     try {
                         doHandleIndexMessageReceivedEvent(key, clusterConfigInfo, peerDeviceId)

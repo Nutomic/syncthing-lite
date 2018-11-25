@@ -3,7 +3,8 @@ package net.syncthing.lite.library
 import android.os.Handler
 import android.os.Looper
 import java.util.concurrent.Executors
-import kotlin.coroutines.experimental.suspendCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * This class manages the access to an LibraryInstance
