@@ -41,7 +41,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     private var lastIndexActivity: Long = 0
     private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
     private val indexWaitLock = Object()
-    private val indexBrowsers = mutableSetOf<IndexBrowser>()
+    /* TODO: make this private again or remove it */ val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredListeners = mutableSetOf<(FolderInfo, List<FileInfo>, IndexInfo) -> Unit>()
     private val onFullIndexAcquiredListeners = mutableSetOf<(FolderInfo) -> Unit>()
 
