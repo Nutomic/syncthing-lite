@@ -13,6 +13,7 @@
  */
 package net.syncthing.java.bep
 
+import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.interfaces.IndexRepository

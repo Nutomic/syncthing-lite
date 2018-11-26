@@ -11,8 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.syncthing.java.bep
+package net.syncthing.java.bep.index
 
+import net.syncthing.java.bep.BlockExchangeProtos
+import net.syncthing.java.bep.FolderBrowser
+import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*

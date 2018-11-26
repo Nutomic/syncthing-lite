@@ -17,7 +17,7 @@ package net.syncthing.java.bep.connectionactor
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.IndexHandler
+import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.configuration.Configuration
 import org.slf4j.LoggerFactory

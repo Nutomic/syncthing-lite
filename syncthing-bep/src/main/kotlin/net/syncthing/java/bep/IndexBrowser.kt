@@ -13,6 +13,7 @@
  */
 package net.syncthing.java.bep
 
+import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.utils.PathUtils
@@ -25,8 +26,8 @@ import java.util.*
 import java.util.concurrent.Executors
 
 class IndexBrowser internal constructor(private val indexRepository: IndexRepository, private val indexHandler: IndexHandler,
-                                       val folder: String, private val includeParentInList: Boolean = false,
-                                       private val allowParentInRoot: Boolean = false, ordering: Comparator<FileInfo>?) : Closeable {
+                                        val folder: String, private val includeParentInList: Boolean = false,
+                                        private val allowParentInRoot: Boolean = false, ordering: Comparator<FileInfo>?) : Closeable {
 
     private fun isParent(fileInfo: FileInfo) = PathUtils.isParent(fileInfo.path)
 

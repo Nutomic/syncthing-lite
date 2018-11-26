@@ -19,6 +19,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
+import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.beans.FileInfo.Version
 import net.syncthing.java.core.utils.BlockUtils

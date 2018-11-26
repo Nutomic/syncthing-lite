@@ -18,6 +18,7 @@ import com.google.protobuf.ByteString
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
+import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.bep.utils.longSumBy
 import net.syncthing.java.core.beans.BlockInfo
 import net.syncthing.java.core.beans.FileBlocks

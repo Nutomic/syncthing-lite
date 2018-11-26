@@ -16,7 +16,7 @@ package net.syncthing.java.bep.connectionactor
 
 import com.google.protobuf.ByteString
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.IndexHandler
+import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.configuration.Configuration
