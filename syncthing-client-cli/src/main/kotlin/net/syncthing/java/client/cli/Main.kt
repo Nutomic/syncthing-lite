@@ -13,6 +13,7 @@
  */
 package net.syncthing.java.client.cli
 
+import kotlinx.coroutines.runBlocking
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
@@ -91,28 +92,23 @@ class Main(private val commandLine: CommandLine) {
                 System.out.println("file path = $folderAndPath")
                 val folder = folderAndPath.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[0]
                 val path = folderAndPath.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[1]
-                val latch = CountDownLatch(1)
                 val fileInfo = FileInfo(folder = folder, path = path, type = FileInfo.FileType.FILE)
-                syncthingClient.getBlockPuller(folder, { blockPuller ->
-                    try {
-                        val inputStream = blockPuller.pullFileSync(fileInfo)
-                        val fileName = syncthingClient.indexHandler.getFileInfoByPath(folder, path)!!.fileName
-                        val file  =
-                                if (commandLine.hasOption("o")) {
-                                    val param = File(commandLine.getOptionValue("o"))
-                                    if (param.isDirectory) File(param, fileName) else param
-                                } else {
-                                    File(fileName)
-                                }
-                        FileUtils.copyInputStreamToFile(inputStream, file)
-                        System.out.println("saved file to = $file.absolutePath")
-                    } catch (e: InterruptedException) {
-                        logger.warn("", e)
-                    } catch (e: IOException) {
-                        logger.warn("", e)
+                try {
+                    val inputStream = syncthingClient.pullFileSync(fileInfo)
+                    val fileName = syncthingClient.indexHandler.getFileInfoByPath(folder, path)!!.fileName
+                    val file = if (commandLine.hasOption("o")) {
+                        val param = File(commandLine.getOptionValue("o"))
+                        if (param.isDirectory) File(param, fileName) else param
+                    } else {
+                        File(fileName)
                     }
-                }, { logger.warn("Failed to pull file") })
-                latch.await()
+                    FileUtils.copyInputStreamToFile(inputStream, file)
+                    System.out.println("saved file to = $file.absolutePath")
+                } catch (e: InterruptedException) {
+                    logger.warn("", e)
+                } catch (e: IOException) {
+                    logger.warn("", e)
+                }
             }
             "P" -> {
                 var path = option.value
@@ -122,20 +118,20 @@ class Main(private val commandLine: CommandLine) {
                 val folder = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[0]
                 path = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[1]
                 val latch = CountDownLatch(1)
-                syncthingClient.getBlockPusher(folder, { blockPusher ->
-                    val observer = blockPusher.pushFile(FileInputStream(file), folder, path)
-                    while (!observer.isCompleted()) {
-                        try {
-                            observer.waitForProgressUpdate()
-                        } catch (e: InterruptedException) {
-                            logger.warn("", e)
-                        }
+                val blockPusher = syncthingClient.getBlockPusher(folder)
 
-                        System.out.println("upload progress ${observer.progressPercentage()}%")
+                val observer = runBlocking {
+                    blockPusher.pushFile(FileInputStream(file), folder, path)
+                }
+                while (!observer.isCompleted()) {
+                    try {
+                        observer.waitForProgressUpdate()
+                    } catch (e: InterruptedException) {
+                        logger.warn("", e)
                     }
-                    latch.countDown()
-                }, { logger.warn("Failed to upload file") })
-                latch.await()
+
+                    System.out.println("upload progress ${observer.progressPercentage()}%")
+                }
                 System.out.println("uploaded file to network")
             }
             "D" -> {
@@ -143,17 +139,16 @@ class Main(private val commandLine: CommandLine) {
                 val folder = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[0]
                 path = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[1]
                 System.out.println("delete path = $path")
-                val latch = CountDownLatch(1)
-                syncthingClient.getBlockPusher(folder, { blockPusher ->
-                    try {
-                        blockPusher.pushDelete(folder, path).waitForComplete()
-                    } catch (e: InterruptedException) {
-                        logger.warn("", e)
-                    }
+                try {
+                    val blockPusher = syncthingClient.getBlockPusher(folder)
 
-                    latch.countDown()
-                }, { System.out.println("Failed to delete path") })
-                latch.await()
+                    runBlocking {
+                        blockPusher.pushDelete(folder, path)
+                    }
+                } catch (e: InterruptedException) {
+                    logger.warn("", e)
+                    System.out.println("Failed to delete path")
+                }
                 System.out.println("deleted path")
             }
             "M" -> {
@@ -161,17 +156,16 @@ class Main(private val commandLine: CommandLine) {
                 val folder = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[0]
                 path = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[1]
                 System.out.println("dir path = $path")
-                val latch = CountDownLatch(1)
-                syncthingClient.getBlockPusher(folder, { blockPusher ->
-                    try {
-                        blockPusher.pushDir(folder, path).waitForComplete()
-                    } catch (e: InterruptedException) {
-                        logger.warn("", e)
-                    }
+                try {
+                    val blockPusher = syncthingClient.getBlockPusher(folder)
 
-                    latch.countDown()
-                }, { System.out.println("Failed to push directory") })
-                latch.await()
+                    runBlocking {
+                        blockPusher.pushDir(folder, path)
+                    }
+                } catch (e: InterruptedException) {
+                    System.out.println("Failed to push directory")
+                    logger.warn("", e)
+                }
                 System.out.println("uploaded dir to network")
             }
             "L" -> {

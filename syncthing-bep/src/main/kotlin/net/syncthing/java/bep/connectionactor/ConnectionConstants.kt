@@ -1,5 +1,6 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,13 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.syncthing.java.bep
+package net.syncthing.java.bep.connectionactor
 
-internal data class ClusterConfigFolderInfo(val folderId: String, var label: String = folderId,
-                                            var isAnnounced: Boolean = false, var isShared: Boolean = false) {
-
-    init {
-        assert(folderId.isNotEmpty())
-    }
-
+object ConnectionConstants {
+    const val MAGIC = 0x2EA7D90B
 }

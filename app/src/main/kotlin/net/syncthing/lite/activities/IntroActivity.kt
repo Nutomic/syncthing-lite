@@ -100,18 +100,18 @@ class IntroActivity : AppIntro() {
 
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
             binding = DataBindingUtil.inflate(inflater, R.layout.fragment_intro_two, container, false)
-            binding.enterDeviceId!!.scanQrCode.setOnClickListener {
+            binding.enterDeviceId.scanQrCode.setOnClickListener {
                 FragmentIntentIntegrator(this@IntroFragmentTwo).initiateScan()
             }
-            binding.enterDeviceId!!.scanQrCode.setImageResource(R.drawable.ic_qr_code_white_24dp)
+            binding.enterDeviceId.scanQrCode.setImageResource(R.drawable.ic_qr_code_white_24dp)
             return binding.root
         }
 
         override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
             val scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent)
             if (scanResult?.contents != null && scanResult.contents.isNotBlank()) {
-                binding.enterDeviceId!!.deviceId.setText(scanResult.contents)
-                binding.enterDeviceId!!.deviceIdHolder.isErrorEnabled = false
+                binding.enterDeviceId.deviceId.setText(scanResult.contents)
+                binding.enterDeviceId.deviceIdHolder.isErrorEnabled = false
             }
         }
 
@@ -121,11 +121,11 @@ class IntroActivity : AppIntro() {
          */
         fun isDeviceIdValid(): Boolean {
             return try {
-                val deviceId = binding.enterDeviceId!!.deviceId.text.toString()
+                val deviceId = binding.enterDeviceId.deviceId.text.toString()
                 Util.importDeviceId(libraryHandler, context, deviceId, { })
                 true
             } catch (e: IOException) {
-                binding.enterDeviceId!!.deviceId.error = getString(R.string.invalid_device_id)
+                binding.enterDeviceId.deviceId.error = getString(R.string.invalid_device_id)
                 false
             }
         }

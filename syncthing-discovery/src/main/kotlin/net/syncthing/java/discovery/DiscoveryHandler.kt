@@ -15,6 +15,7 @@
 package net.syncthing.java.discovery
 
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
@@ -39,7 +40,7 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
     }, { deviceId ->
         onMessageFromUnknownDeviceListeners.forEach { listener -> listener(deviceId) }
     })
-    private val devicesAddressesManager = DevicesAddressesManager()
+    val devicesAddressesManager = DevicesAddressesManager()
     private var isClosed = false
     private val onMessageFromUnknownDeviceListeners = Collections.synchronizedSet(HashSet<(DeviceId) -> Unit>())
 
@@ -74,17 +75,18 @@ class DiscoveryHandler(private val configuration: Configuration) : Closeable {
             val peers = configuration.peerIds
             //do not process address already processed
             list.filter { deviceAddress ->
-                !peers.contains(deviceAddress.deviceIdObject)
+                !peers.contains(deviceAddress.deviceId)
             }
 
-            AddressRanker.pingAddresses(list)
-                    .forEach { putDeviceAddress(it) }
+            AddressRanker.pingAddressesChannel(list).consumeEach {
+                putDeviceAddress(it)
+            }
         }
     }
 
     private fun putDeviceAddress(deviceAddress: DeviceAddress) {
         devicesAddressesManager.getDeviceAddressManager(
-                deviceId = deviceAddress.deviceIdObject
+                deviceId = deviceAddress.deviceId
         ).putAddress(deviceAddress)
     }
 

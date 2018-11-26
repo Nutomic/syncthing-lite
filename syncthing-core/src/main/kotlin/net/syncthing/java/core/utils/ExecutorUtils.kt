@@ -16,6 +16,7 @@ package net.syncthing.java.core.utils
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 
 private val logger = LoggerFactory.getLogger(ExecutorService::class.java)
@@ -44,4 +45,12 @@ fun <T> ExecutorService.submitLogging(runnable: () -> T): Future<T> {
             null
         }
     })
+}
+
+fun ExecutorService.trySubmitLogging(runnable: Runnable) {
+    try {
+        submitLogging(runnable)
+    } catch (ex: RejectedExecutionException) {
+        logger.warn("could not submit task", ex)
+    }
 }

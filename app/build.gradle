@@ -89,11 +89,9 @@ dependencies {
      */
     implementation(project(':syncthing-client')) {
         exclude group: 'commons-logging', module: 'commons-logging'
-        exclude group: 'org.apache.httpcomponents', module: 'httpclient'
         exclude group: 'org.slf4j'
         exclude group: 'ch.qos.logback'
     }
-    implementation 'org.apache.httpcomponents:httpclient-android:4.3.5.1'
 
     implementation 'sk.baka.slf4j:slf4j-handroid:1.7.26'
     implementation 'com.google.zxing:android-integration:3.3.0'

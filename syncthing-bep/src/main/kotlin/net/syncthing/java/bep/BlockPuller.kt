@@ -17,57 +17,43 @@ package net.syncthing.java.bep
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import net.syncthing.java.bep.BlockExchangeProtos.ErrorCode
-import net.syncthing.java.bep.BlockExchangeProtos.Request
+import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.bep.utils.longSumBy
 import net.syncthing.java.core.beans.BlockInfo
 import net.syncthing.java.core.beans.FileBlocks
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.TempRepository
-import net.syncthing.java.core.utils.NetworkUtils
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
-import java.io.ByteArrayInputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.SequenceInputStream
+import java.io.*
 import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.HashMap
-import kotlin.coroutines.resume
 
-class BlockPuller internal constructor(private val connectionHandler: ConnectionHandler,
-                                       private val indexHandler: IndexHandler,
-                                       private val responseHandler: ResponseHandler,
-                                       private val tempRepository: TempRepository) {
-
+object BlockPuller {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun pullFileSync(
+    suspend fun pullFile(
             fileInfo: FileInfo,
-            progressListener: (status: BlockPullerStatus) -> Unit = {  }
+            progressListener: (status: BlockPullerStatus) -> Unit = {  },
+            connections: List<ConnectionActorWrapper>,
+            indexHandler: IndexHandler,
+            tempRepository: TempRepository
     ): InputStream {
-        return runBlocking {
-            pullFileCoroutine(fileInfo, progressListener)
+        val connectionHelper = MultiConnectionHelper(connections) {
+            it.hasFolder(fileInfo.folder)
         }
-    }
 
-    suspend fun pullFileCoroutine(
-            fileInfo: FileInfo,
-            progressListener: (status: BlockPullerStatus) -> Unit = {  }
-    ): InputStream {
-        val fileBlocks = indexHandler.waitForRemoteIndexAcquired(connectionHandler)
-                .getFileInfoAndBlocksByPath(fileInfo.folder, fileInfo.path)
-                ?.value
-                ?: throw IOException("file not found in local index for folder = ${fileInfo.folder} path = ${fileInfo.path}")
-        logger.info("pulling file = {}", fileBlocks)
-        NetworkUtils.assertProtocol(connectionHandler.hasFolder(fileBlocks.folder), { "supplied connection handler $connectionHandler will not share folder ${fileBlocks.folder}" })
+        // fail early if there is no matching connection
+        connectionHelper.pickConnection()
 
-        // the file could have changed since the caller read it
-        // this would save the file using a wrong name, so throw here
+        val (newFileInfo, fileBlocks) = indexHandler.getFileInfoAndBlocksByPath(fileInfo.folder, fileInfo.path) ?: throw FileNotFoundException()
+
         if (fileBlocks.hash != fileInfo.hash) {
             throw IllegalStateException("the current file entry hash does not match the hash of the provided one")
         }
+
+        logger.info("pulling file = {}", fileBlocks)
 
         val blockTempIdByHash = Collections.synchronizedMap(HashMap<String, String>())
 
@@ -76,6 +62,47 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                 totalTransferSize = fileBlocks.blocks.distinctBy { it.hash }.longSumBy { it.size.toLong() },
                 totalFileSize = fileBlocks.size
         )
+
+        suspend fun pullBlock(fileBlocks: FileBlocks, block: BlockInfo, timeoutInMillis: Long, connectionActorWrapper: ConnectionActorWrapper): ByteArray {
+            logger.debug("sent message for block, hash = {}", block.hash)
+
+            val response =
+                    withTimeout(timeoutInMillis) {
+                        try {
+                            connectionActorWrapper.sendRequest(
+                                    BlockExchangeProtos.Request.newBuilder()
+                                            .setFolder(fileBlocks.folder)
+                                            .setName(fileBlocks.path)
+                                            .setOffset(block.offset)
+                                            .setSize(block.size)
+                                            .setHash(ByteString.copyFrom(Hex.decode(block.hash)))
+                                            .buildPartial()
+                            )
+                        } catch (ex: TimeoutCancellationException) {
+                            // It seems like the TimeoutCancellationException
+                            // is handled differently so that the timeout is ignored.
+                            // Due to that, it's converted to an IOException.
+
+                            throw IOException("timeout during requesting block")
+                        }
+                    }
+
+            if (response.code != BlockExchangeProtos.ErrorCode.NO_ERROR) {
+                // the server does not have/ want to provide this file -> don't ask him again
+                connectionHelper.disableConnection(connectionActorWrapper)
+
+                throw IOException("received error response ${response.code}")
+            }
+
+            val data = response.data.toByteArray()
+            val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
+
+            if (hash != block.hash) {
+                throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
+            }
+
+            return data
+        }
 
         try {
             val reportProgressLock = Object()
@@ -96,9 +123,31 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
                 repeat(4 /* 4 blocks per time */) { workerNumber ->
                     async {
                         for (block in pipe) {
-                            logger.debug("request block with hash = {} from worker {}", block.hash, workerNumber)
+                            logger.debug("message block with hash = {} from worker {}", block.hash, workerNumber)
 
-                            val blockContent = pullBlock(fileBlocks, block, 1000 * 60 /* 60 seconds timeout per block */)
+                            lateinit var blockContent: ByteArray
+
+                            val attempts = 0..4
+
+                            for (attempt in attempts) {
+                                try {
+                                    blockContent = pullBlock(fileBlocks, block, 1000 * 60 /* 60 seconds timeout per block */, connectionHelper.pickConnection())
+
+                                    break
+                                } catch (ex: IOException) {
+                                    if (attempt == attempts.last) {
+                                        throw ex
+                                    } else {
+                                        // will retry after a pause
+                                        // 0: 300 ms after the first attempt
+                                        // 1: 1200 ms after the second attempt
+                                        // 2: 2700 ms after the third attempt
+                                        // 3: 4800 ms after the third attempt
+                                        // total: 9000 ms
+                                        delay((attempt + 1) * (attempt + 1) * 300L)
+                                    }
+                                }
+                            }
 
                             blockTempIdByHash[block.hash] = tempRepository.pushTempData(blockContent)
 
@@ -138,57 +187,6 @@ class BlockPuller internal constructor(private val connectionHandler: Connection
             tempRepository.deleteTempData(blockTempIdByHash.values.toList())
 
             throw ex
-        }
-    }
-
-    private suspend fun pullBlock(fileBlocks: FileBlocks, block: BlockInfo, timeoutInMillis: Long): ByteArray {
-        logger.debug("sent request for block, hash = {}", block.hash)
-
-        val response =
-                withTimeout(timeoutInMillis) {
-                    try {
-                        doRequest(
-                                Request.newBuilder()
-                                        .setFolder(fileBlocks.folder)
-                                        .setName(fileBlocks.path)
-                                        .setOffset(block.offset)
-                                        .setSize(block.size)
-                                        .setHash(ByteString.copyFrom(Hex.decode(block.hash)))
-                        )
-                    } catch (ex: TimeoutCancellationException) {
-                        // It seems like the TimeoutCancellationException
-                        // is handled differently so that the timeout is ignored.
-                        // Due to that, it's converted to an IOException.
-
-                        throw IOException("timeout during requesting block")
-                    }
-                }
-
-        NetworkUtils.assertProtocol(response.code == ErrorCode.NO_ERROR) {
-            "received error response, code = ${response.code}"
-        }
-
-        val data = response.data.toByteArray()
-        val hash = Hex.toHexString(MessageDigest.getInstance("SHA-256").digest(data))
-
-        if (hash != block.hash) {
-            throw IllegalStateException("expected block with hash ${block.hash}, but got block with hash $hash")
-        }
-
-        return data
-    }
-
-    private suspend fun doRequest(request: Request.Builder): BlockExchangeProtos.Response {
-        return suspendCancellableCoroutine { continuation ->
-            val requestId = responseHandler.registerListener { response ->
-                continuation.resume(response)
-            }
-
-            connectionHandler.sendMessage(
-                    request
-                            .setId(requestId)
-                            .build()
-            )
         }
     }
 }

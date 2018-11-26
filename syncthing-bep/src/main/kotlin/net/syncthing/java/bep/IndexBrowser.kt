@@ -55,7 +55,7 @@ class IndexBrowser internal constructor(private val indexRepository: IndexReposi
         }
     }
 
-    internal fun onIndexChangedevent(folder: String, newRecord: FileInfo) {
+    internal fun onIndexChangedevent(folder: String) {
         if (folder == this.folder) {
             preloadFileInfoForCurrentPath()
         }

@@ -77,7 +77,7 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
     }
 
     @Throws(CryptoException::class, IOException::class)
-    private fun wrapSocket(socket: Socket, isServerSocket: Boolean, protocol: String): SSLSocket {
+    private fun wrapSocket(socket: Socket, isServerSocket: Boolean): SSLSocket {
         try {
             logger.debug("wrapping plain socket, server mode = {}", isServerSocket)
             val sslSocket = socketFactory.createSocket(socket, null, socket.port, true) as SSLSocket
@@ -98,7 +98,7 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
     }
 
     @Throws(CryptoException::class, IOException::class)
-    fun createSocket(relaySocketAddress: InetSocketAddress, protocol: String): SSLSocket {
+    fun createSocket(relaySocketAddress: InetSocketAddress): SSLSocket {
         try {
             val socket = socketFactory.createSocket() as SSLSocket
             socket.connect(relaySocketAddress, SOCKET_TIMEOUT)
@@ -115,8 +115,8 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
     }
 
     @Throws(CryptoException::class, IOException::class)
-    fun wrapSocket(relayConnection: RelayConnection, protocol: String): SSLSocket {
-        return wrapSocket(relayConnection.getSocket(), relayConnection.isServerSocket(), protocol)
+    fun wrapSocket(relayConnection: RelayConnection): SSLSocket {
+        return wrapSocket(relayConnection.getSocket(), relayConnection.isServerSocket())
     }
 
     class Loader {
@@ -269,10 +269,15 @@ class KeystoreHandler private constructor(private val keyStore: KeyStore) {
         @Throws(SSLPeerUnverifiedException::class, CertificateException::class)
         fun assertSocketCertificateValid(certificate: Certificate, deviceId: DeviceId) {
             NetworkUtils.assertProtocol(certificate is X509Certificate)
+
             val derData = certificate.encoded
             val deviceIdFromCertificate = derDataToDeviceId(derData)
             logger.trace("remote pem certificate =\n{}", derToPem(derData))
-            NetworkUtils.assertProtocol(deviceIdFromCertificate == deviceId, {"device id mismatch! expected = $deviceId, got = $deviceIdFromCertificate"})
+
+            NetworkUtils.assertProtocol(deviceIdFromCertificate == deviceId) {
+                "device id mismatch! expected = $deviceId, got = $deviceIdFromCertificate"
+            }
+
             logger.debug("remote ssl certificate match deviceId = {}", deviceId)
         }
     }

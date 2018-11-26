@@ -39,12 +39,12 @@ class DevicesFragment : SyncthingFragment() {
 
     override fun onResume() {
         super.onResume()
-        libraryHandler?.syncthingClient { it.addOnConnectionChangedListener { _ -> updateDeviceList() } }
+        libraryHandler.syncthingClient { it.addOnConnectionChangedListener { _ -> updateDeviceList() } }
     }
 
     override fun onPause() {
         super.onPause()
-        libraryHandler?.syncthingClient { it.removeOnConnectionChangedListener{ _ -> updateDeviceList() } }
+        libraryHandler.syncthingClient { it.removeOnConnectionChangedListener{ _ -> updateDeviceList() } }
     }
 
     override fun onLibraryLoaded() {
@@ -61,10 +61,12 @@ class DevicesFragment : SyncthingFragment() {
                         .setTitle(getString(R.string.remove_device_title, deviceInfo.name))
                         .setMessage(getString(R.string.remove_device_message, deviceInfo.deviceId.deviceId.substring(0, 7)))
                         .setPositiveButton(android.R.string.yes) { _, _ ->
-                            libraryHandler?.configuration { config ->
+                            libraryHandler.library { config, syncthingClient, _ ->
                                 config.peers = config.peers.filterNot { it.deviceId == deviceInfo.deviceId }.toSet()
                                 config.persistLater()
                                 updateDeviceList()
+
+                                syncthingClient.disconnectFromRemovedDevices()
                             }
                         }
                         .setNegativeButton(android.R.string.no, null)

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  *
  * This Java file is subject to the terms of the Mozilla Public
@@ -18,44 +18,38 @@ import java.net.InetSocketAddress
 import java.net.UnknownHostException
 import java.util.*
 
-/**
- *
- * TODO: this class cant use [[DeviceId]] because [[GlobalDiscoveryHandler.pickAnnounceServers]] uses that field for discovery server URLs.
- */
-class DeviceAddress private constructor(val deviceId: String, private val instanceId: Long?, val address: String, producer: AddressProducer?, score: Int?, lastModified: Date?) {
+// TODO: this should use a data class, but the custom equals prevents it
+class DeviceAddress private constructor(val deviceId: DeviceId, private val instanceId: Long?, val address: String, producer: AddressProducer?, score: Int?, lastModified: Date?) {
     private val producer = producer ?: AddressProducer.UNKNOWN
     val score = score ?: Integer.MAX_VALUE
     private val lastModified = lastModified ?: Date()
 
-    @Deprecated(message = "should use deviceIdObject instead")
-    fun deviceId() = DeviceId(deviceId)
-
-    val deviceIdObject: DeviceId by lazy { DeviceId(deviceId) }
-
     @Throws(UnknownHostException::class)
     private fun getInetAddress(): InetAddress = InetAddress.getByName(address.replaceFirst("^[^:]+://".toRegex(), "").replaceFirst("(:[0-9]+)?(/.*)?$".toRegex(), ""))
 
-    private fun getPort(): Int = if (address.matches("^[a-z]+://[^:]+:([0-9]+).*".toRegex())) {
+    private val port: Int by lazy {
+        if (address.matches("^[a-z]+://[^:]+:([0-9]+).*".toRegex())) {
             Integer.parseInt(address.replaceFirst("^[a-z]+://[^:]+:([0-9]+).*".toRegex(), "$1"))
         } else {
-            DEFAULT_PORT_BY_PROTOCOL[getType()]!!
+            DEFAULT_PORT_BY_PROTOCOL[type]!!
         }
+    }
 
-    fun getType(): AddressType = when {
-        address.isEmpty() -> AddressType.NULL
-        address.startsWith("tcp://") -> AddressType.TCP
-        address.startsWith("relay://") -> AddressType.RELAY
-        address.startsWith("relay-http://") -> AddressType.HTTP_RELAY
-        address.startsWith("relay-https://") -> AddressType.HTTPS_RELAY
-        else -> AddressType.OTHER
+    val type: AddressType by lazy {
+        when {
+            address.isEmpty() -> AddressType.NULL
+            address.startsWith("tcp://") -> AddressType.TCP
+            address.startsWith("relay://") -> AddressType.RELAY
+            else -> AddressType.OTHER
+        }
     }
 
     @Throws(UnknownHostException::class)
-    fun getSocketAddress(): InetSocketAddress = InetSocketAddress(getInetAddress(), getPort())
+    fun getSocketAddress(): InetSocketAddress = InetSocketAddress(getInetAddress(), port)
 
     fun isWorking(): Boolean = score < Integer.MAX_VALUE
 
-    constructor(deviceId: String, address: String) : this(deviceId, null, address, null, null, null)
+    constructor(deviceId: String, address: String) : this(DeviceId(deviceId), null, address, null, null, null)
 
     fun containsUriParamValue(key: String): Boolean {
         return !getUriParam(key).isNullOrEmpty()
@@ -79,7 +73,7 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
     }
 
     enum class AddressType {
-        TCP, RELAY, OTHER, NULL, HTTP_RELAY, HTTPS_RELAY
+        TCP, RELAY, OTHER, NULL
     }
 
     enum class AddressProducer {
@@ -97,18 +91,18 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
         return hash
     }
 
-    override fun equals(obj: Any?): Boolean {
-        if (this === obj) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) {
             return true
         }
-        if (obj == null) {
+        if (other == null) {
             return false
         }
-        if (javaClass != obj.javaClass) {
+        if (javaClass != other.javaClass) {
             return false
         }
-        val other = obj as DeviceAddress?
-        if (this.deviceId != other!!.deviceId) {
+        other as DeviceAddress
+        if (this.deviceId != other.deviceId) {
             return false
         }
         return this.address == other.address
@@ -120,7 +114,7 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
 
     class Builder {
 
-        private var deviceId: String? = null
+        private var deviceId: DeviceId? = null
         private var instanceId: Long? = null
         private var address: String? = null
         private var producer: AddressProducer? = null
@@ -129,7 +123,7 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
 
         constructor()
 
-        internal constructor(deviceId: String, instanceId: Long?, address: String, producer: AddressProducer, score: Int?, lastModified: Date) {
+        internal constructor(deviceId: DeviceId, instanceId: Long?, address: String, producer: AddressProducer, score: Int?, lastModified: Date) {
             this.deviceId = deviceId
             this.instanceId = instanceId
             this.address = address
@@ -147,11 +141,11 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
             return this
         }
 
-        fun getDeviceId(): String? {
+        fun getDeviceId(): DeviceId? {
             return deviceId
         }
 
-        fun setDeviceId(deviceId: String): Builder {
+        fun setDeviceId(deviceId: DeviceId): Builder {
             this.deviceId = deviceId
             return this
         }
@@ -200,8 +194,7 @@ class DeviceAddress private constructor(val deviceId: String, private val instan
     companion object {
         private val DEFAULT_PORT_BY_PROTOCOL = mapOf(
                 AddressType.TCP to 22000,
-                AddressType.RELAY to 22067,
-                AddressType.HTTP_RELAY to 80,
-                AddressType.HTTPS_RELAY to 443)
+                AddressType.RELAY to 22067
+        )
     }
 }
