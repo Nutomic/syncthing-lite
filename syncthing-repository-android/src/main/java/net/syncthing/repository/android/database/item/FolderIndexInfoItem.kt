@@ -31,12 +31,12 @@ data class FolderIndexInfoItem(
 
     @delegate:Transient
     val native: IndexInfo by lazy {
-        IndexInfo.newBuilder()
-                .setFolder(folder)
-                .setDeviceId(deviceId)
-                .setIndexId(indexId)
-                .setLocalSequence(localSequence)
-                .setMaxSequence(maxSequence)
-                .build()
+        IndexInfo(
+                folderId = folder,
+                deviceId = deviceId,
+                indexId = indexId,
+                localSequence = localSequence,
+                maxSequence = maxSequence
+        )
     }
 }

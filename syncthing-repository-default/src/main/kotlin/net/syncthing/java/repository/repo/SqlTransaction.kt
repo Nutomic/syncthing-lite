@@ -471,15 +471,13 @@ class SqlTransaction(
     }
 
     @Throws(SQLException::class)
-    private fun readFolderIndexInfo(resultSet: ResultSet): IndexInfo {
-        return IndexInfo.newBuilder()
-                .setFolder(resultSet.getString("folder"))
-                .setDeviceId(resultSet.getString("device_id"))
-                .setIndexId(resultSet.getLong("index_id"))
-                .setLocalSequence(resultSet.getLong("local_sequence"))
-                .setMaxSequence(resultSet.getLong("max_sequence"))
-                .build()
-    }
+    private fun readFolderIndexInfo(resultSet: ResultSet) = IndexInfo(
+            folderId = resultSet.getString("folder"),
+            deviceId = resultSet.getString("device_id"),
+            indexId = resultSet.getLong("index_id"),
+            localSequence = resultSet.getLong("local_sequence"),
+            maxSequence = resultSet.getLong("max_sequence")
+    )
 
     @Throws(SQLException::class)
     private fun readDeviceAddress(resultSet: ResultSet): DeviceAddress {

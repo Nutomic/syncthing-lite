@@ -90,7 +90,7 @@ class LibraryHandler(context: Context,
         Log.i(TAG, "handleIndexRecordEvent trigger folder list update from index record acquired")
 
         GlobalScope.launch (Dispatchers.Main) {
-            onIndexUpdateProgressListener(folderInfo, (indexInfo.getCompleted() * 100).toInt())
+            onIndexUpdateProgressListener(folderInfo, (indexInfo.completed * 100).toInt())
         }
     }
 

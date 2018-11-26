@@ -149,33 +149,36 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         synchronized(writeAccessLock) {
             var indexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(deviceId, folder)
             var shouldUpdate = false
-            val builder: IndexInfo.Builder
+            var builder: IndexInfo
             if (indexSequenceInfo == null) {
                 shouldUpdate = true
-                assert(indexId != null, {"index sequence info not found, and supplied null index id (folder = $folder, device = $deviceId)"})
-                builder = IndexInfo.newBuilder()
-                        .setFolder(folder)
-                        .setDeviceId(deviceId.deviceId)
-                        .setIndexId(indexId!!)
-                        .setLocalSequence(0)
-                        .setMaxSequence(-1)
+                assert(indexId != null) {
+                    "index sequence info not found, and supplied null index id (folder = $folder, device = $deviceId)"
+                }
+                builder = IndexInfo(
+                        folderId = folder,
+                        deviceId = deviceId.deviceId,
+                        indexId = indexId!!,
+                        localSequence = 0,
+                        maxSequence = -1
+                )
             } else {
-                builder = indexSequenceInfo.copyBuilder()
+                builder = indexSequenceInfo
             }
-            if (indexId != null && indexId != builder.getIndexId()) {
+            if (indexId != null && indexId != builder.indexId) {
                 shouldUpdate = true
-                builder.setIndexId(indexId)
+                builder = builder.copy(indexId = indexId)
             }
-            if (maxSequence != null && maxSequence > builder.getMaxSequence()) {
+            if (maxSequence != null && maxSequence > builder.maxSequence) {
                 shouldUpdate = true
-                builder.setMaxSequence(maxSequence)
+                builder = builder.copy(maxSequence = maxSequence)
             }
-            if (localSequence != null && localSequence > builder.getLocalSequence()) {
+            if (localSequence != null && localSequence > builder.maxSequence) {
                 shouldUpdate = true
-                builder.setLocalSequence(localSequence)
+                builder = builder.copy(localSequence = localSequence)
             }
             if (shouldUpdate) {
-                indexSequenceInfo = builder.build()
+                indexSequenceInfo = builder
                 transaction.updateIndexInfo(indexSequenceInfo)
             }
             return indexSequenceInfo!!
