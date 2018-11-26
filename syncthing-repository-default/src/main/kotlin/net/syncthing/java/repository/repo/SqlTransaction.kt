@@ -22,8 +22,6 @@ import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.Sequencer
-import org.apache.commons.lang3.tuple.Pair
-import org.apache.http.util.TextUtils
 import org.bouncycastle.util.encoders.Hex
 import java.sql.Connection
 import java.sql.ResultSet
@@ -90,8 +88,7 @@ class SqlTransaction(
     }
 
     override fun findIndexInfoByDeviceAndFolder(deviceId: DeviceId, folder: String): IndexInfo? = runIfAllowed {
-        val key = Pair.of(deviceId, folder)
-        doFindIndexInfoByDeviceAndFolder(key.left, key.right)
+        doFindIndexInfoByDeviceAndFolder(deviceId, folder)
     }
 
     @Throws(SQLException::class)
@@ -299,7 +296,7 @@ class SqlTransaction(
 
     @Throws(SQLException::class)
     override fun findFileInfoBySearchTerm(query: String): List<FileInfo> = runIfAllowed {
-        assert(!TextUtils.isBlank(query))
+        assert(query.isNotBlank())
         //        checkArgument(maxResult > 0);
         //        try (Connection connection = getConnection(); PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM file_info WHERE LOWER(file_name) LIKE ? AND is_deleted=FALSE LIMIT ?")) {
         connection.prepareStatement("SELECT * FROM file_info WHERE LOWER(file_name) REGEXP ? AND is_deleted=FALSE").use { preparedStatement ->
@@ -319,7 +316,7 @@ class SqlTransaction(
 
     @Throws(SQLException::class)
     override fun countFileInfoBySearchTerm(query: String): Long = runIfAllowed {
-        assert(!TextUtils.isBlank(query))
+        assert(query.isNotBlank())
         connection.prepareStatement("SELECT COUNT(*) FROM file_info WHERE LOWER(file_name) REGEXP ? AND is_deleted=FALSE").use { preparedStatement ->
             //        try (Connection connection = getConnection(); PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM file_info")) {
             preparedStatement.setString(1, query.trim { it <= ' ' }.toLowerCase())
@@ -489,7 +486,7 @@ class SqlTransaction(
         val instanceId = resultSet.getLong("instance_id")
         return DeviceAddress.Builder()
                 .setAddress(resultSet.getString("address_url"))
-                .setDeviceId(resultSet.getString("device_id"))
+                .setDeviceId(DeviceId(resultSet.getString("device_id")))
                 .setInstanceId(if (instanceId == 0L) null else instanceId)
                 .setProducer(DeviceAddress.AddressProducer.valueOf(resultSet.getString("address_producer")))
                 .setScore(resultSet.getInt("address_score"))
