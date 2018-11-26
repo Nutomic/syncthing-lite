@@ -186,7 +186,7 @@ class Main(private val commandLine: CommandLine) {
                     folderInfo.append("\nfolder info: ")
                             .append(syncthingClient.indexHandler.getFolderInfo(folder))
                     folderInfo.append("\nfolder stats: ")
-                            .append(syncthingClient.indexHandler.newFolderBrowser().getFolderStats(folder).dumpInfo())
+                            .append(syncthingClient.indexHandler.newFolderBrowser().getFolderStats(folder).infoDump)
                             .append("\n")
                 }
                 System.out.println("folders:\n$folderInfo\n")
@@ -195,7 +195,7 @@ class Main(private val commandLine: CommandLine) {
                 var folderInfo = ""
                 for (folder in syncthingClient.indexHandler.folderList()) {
                     folderInfo += "\nfolder info: " + syncthingClient.indexHandler.getFolderInfo(folder)
-                    folderInfo += "\nfolder stats: " + syncthingClient.indexHandler.newFolderBrowser().getFolderStats(folder).dumpInfo() + "\n"
+                    folderInfo += "\nfolder stats: " + syncthingClient.indexHandler.newFolderBrowser().getFolderStats(folder).infoDump + "\n"
                 }
                 System.out.println("folders:\n$folderInfo\n")
             }

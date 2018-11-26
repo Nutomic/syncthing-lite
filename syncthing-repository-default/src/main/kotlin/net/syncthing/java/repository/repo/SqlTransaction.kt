@@ -333,15 +333,13 @@ class SqlTransaction(
 
     // FOLDER STATS - BEGIN
     @Throws(SQLException::class)
-    private fun readFolderStats(resultSet: ResultSet): FolderStats {
-        return FolderStats.Builder()
-                .setFolder(resultSet.getString("folder"))
-                .setDirCount(resultSet.getLong("dir_count"))
-                .setFileCount(resultSet.getLong("file_count"))
-                .setSize(resultSet.getLong("size"))
-                .setLastUpdate(Date(resultSet.getLong("last_update")))
-                .build()
-    }
+    private fun readFolderStats(resultSet: ResultSet) = FolderStats(
+            folderId = resultSet.getString("folder"),
+            dirCount = resultSet.getLong("dir_count"),
+            fileCount = resultSet.getLong("file_count"),
+            size = resultSet.getLong("size"),
+            lastUpdate = Date(resultSet.getLong("last_update"))
+    )
 
     override fun findFolderStats(folder: String): FolderStats? {
         return doFindFolderStats(folder)
@@ -380,20 +378,20 @@ class SqlTransaction(
         val oldFolderStats = findFolderStats(folder)
         val newFolderStats: FolderStats
         if (oldFolderStats == null) {
-            newFolderStats = FolderStats.Builder()
-                    .setDirCount(deltaDirCount)
-                    .setFileCount(deltaFileCount)
-                    .setFolder(folder)
-                    .setLastUpdate(lastUpdate)
-                    .setSize(deltaSize)
-                    .build()
+            newFolderStats = FolderStats(
+                    dirCount = deltaDirCount,
+                    fileCount = deltaFileCount,
+                    folderId = folder,
+                    lastUpdate = lastUpdate,
+                    size = deltaSize
+            )
         } else {
-            newFolderStats = oldFolderStats.copyBuilder()
-                    .setDirCount(oldFolderStats.dirCount + deltaDirCount)
-                    .setFileCount(oldFolderStats.fileCount + deltaFileCount)
-                    .setSize(oldFolderStats.size + deltaSize)
-                    .setLastUpdate(if (lastUpdate.after(oldFolderStats.lastUpdate)) lastUpdate else oldFolderStats.lastUpdate)
-                    .build()
+            newFolderStats = oldFolderStats.copy(
+                    dirCount = oldFolderStats.dirCount + deltaDirCount,
+                    fileCount = oldFolderStats.fileCount + deltaFileCount,
+                    size = oldFolderStats.size + deltaSize,
+                    lastUpdate = if (lastUpdate.after(oldFolderStats.lastUpdate)) lastUpdate else oldFolderStats.lastUpdate
+            )
         }
         updateFolderStats(connection, newFolderStats)
         return newFolderStats

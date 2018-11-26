@@ -42,11 +42,7 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler)
     }
 
     fun getFolderStats(folder: String): FolderStats {
-        return folderStatsCache[folder] ?: let {
-            FolderStats.Builder()
-                    .setFolder(folder)
-                    .build()
-        }
+        return folderStatsCache[folder] ?: FolderStats.createDummy(folder)
     }
 
     fun getFolderInfo(folder: String): FolderInfo? {

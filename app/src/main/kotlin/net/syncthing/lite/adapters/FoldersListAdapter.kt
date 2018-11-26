@@ -40,7 +40,7 @@ class FoldersListAdapter: RecyclerView.Adapter<FolderListViewHolder>() {
         binding.lastModification = context.getString(R.string.last_modified_time,
                 DateUtils.getRelativeDateTimeString(context, folderStats.lastUpdate.time, DateUtils.MINUTE_IN_MILLIS, DateUtils.WEEK_IN_MILLIS, 0))
 
-        binding.info = context.getString(R.string.folder_content_info, folderStats.describeSize(), folderStats.fileCount, folderStats.dirCount)
+        binding.info = context.getString(R.string.folder_content_info, folderStats.sizeDescription, folderStats.fileCount, folderStats.dirCount)
 
         binding.root.setOnClickListener {
             listener?.onFolderClicked(folderInfo, folderStats)

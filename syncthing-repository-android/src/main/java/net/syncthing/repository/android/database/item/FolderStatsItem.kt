@@ -25,12 +25,12 @@ data class FolderStatsItem(
 ) {
     @delegate:Transient
     val native: FolderStats by lazy {
-        FolderStats.Builder()
-                .setFolder(folder)
-                .setDirCount(dirCount)
-                .setFileCount(fileCount)
-                .setSize(size)
-                .setLastUpdate(lastUpdate)
-                .build()
+        FolderStats(
+                folderId = folder,
+                dirCount = dirCount,
+                fileCount = fileCount,
+                size = size,
+                lastUpdate = lastUpdate
+        )
     }
 }
