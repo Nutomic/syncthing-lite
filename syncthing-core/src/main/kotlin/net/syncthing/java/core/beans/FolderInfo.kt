@@ -17,7 +17,7 @@ package net.syncthing.java.core.beans
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 
-open class FolderInfo(val folderId: String, label: String? = null) {
+data class FolderInfo(val folderId: String, val label: String) {
     companion object {
         private const val FOLDER_ID = "folderId"
         private const val LABEL = "label"
@@ -46,8 +46,6 @@ open class FolderInfo(val folderId: String, label: String? = null) {
     init {
         assert(!folderId.isEmpty())
     }
-
-    val label: String = if (label != null && !label.isEmpty()) label else folderId
 
     override fun toString(): String {
         return "FolderInfo(folderId=$folderId, label=$label)"

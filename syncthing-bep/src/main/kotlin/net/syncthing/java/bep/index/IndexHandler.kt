@@ -208,9 +208,9 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    private fun updateFolderInfo(folder: String, label: String?): FolderInfo {
+    private fun updateFolderInfo(folder: String, label: String): FolderInfo {
         var folderInfo: FolderInfo? = folderInfoByFolder[folder]
-        if (folderInfo == null || label.isNullOrEmpty()) {
+        if (folderInfo == null) {
             folderInfo = FolderInfo(folder, label)
             folderInfoByFolder.put(folderInfo.folderId, folderInfo)
         }
