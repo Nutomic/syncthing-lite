@@ -19,7 +19,6 @@ import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*
-import net.syncthing.java.core.beans.FileInfo.Version
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
@@ -28,7 +27,6 @@ import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
 import net.syncthing.java.core.utils.trySubmitLogging
 import org.apache.commons.lang3.tuple.Pair
-import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
@@ -147,33 +145,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         indexMessageProcessor.handleIndexMessageReceivedEvent(folderId, filesList, clusterConfigInfo, peerDeviceId)
     }
 
-    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo): FileInfo? {
-        var fileBlocks: FileBlocks? = null
-        val builder = FileInfo.Builder()
-                .setFolder(folder)
-                .setPath(bepFileInfo.name)
-                .setLastModified(Date(bepFileInfo.modifiedS * 1000 + bepFileInfo.modifiedNs / 1000000))
-                .setVersionList((if (bepFileInfo.hasVersion()) bepFileInfo.version.countersList else null ?: emptyList()).map { record -> Version(record.id, record.value) })
-                .setDeleted(bepFileInfo.deleted)
-        when (bepFileInfo.type) {
-            BlockExchangeProtos.FileInfoType.FILE -> {
-                fileBlocks = FileBlocks(folder, builder.getPath()!!, ((bepFileInfo.blocksList ?: emptyList())).map { record ->
-                    BlockInfo(record.offset, record.size, Hex.toHexString(record.hash.toByteArray()))
-                })
-                builder
-                        .setTypeFile()
-                        .setHash(fileBlocks.hash)
-                        .setSize(bepFileInfo.size)
-            }
-            BlockExchangeProtos.FileInfoType.DIRECTORY -> builder.setTypeDir()
-            else -> {
-                logger.warn("unsupported file type = {}, discarding file info", bepFileInfo.type)
-                return null
-            }
-        }
-        return addRecord(transaction, builder.build(), fileBlocks)
-    }
-
     private fun updateIndexInfo(transaction: IndexTransaction, folder: String, deviceId: DeviceId, indexId: Long?, maxSequence: Long?, localSequence: Long?): IndexInfo {
         synchronized(writeAccessLock) {
             var indexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(deviceId, folder)
@@ -208,23 +179,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 transaction.updateIndexInfo(indexSequenceInfo)
             }
             return indexSequenceInfo!!
-        }
-    }
-
-    private fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?): FileInfo? {
-        synchronized(writeAccessLock) {
-            val lastModified = transaction.findFileInfoLastModified(record.folder, record.path)
-            return if (lastModified != null && record.lastModified < lastModified) {
-                logger.trace("discarding record = {}, modified before local record", record)
-                null
-            } else {
-                transaction.updateFileInfo(record, fileBlocks)
-                logger.trace("loaded new record = {}", record)
-                indexBrowsers.forEach {
-                    it.onIndexChangedevent(record.folder)
-                }
-                record
-            }
         }
     }
 
@@ -412,7 +366,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                         //                    if (oldIndexInfo != null && isVersionOlderThanSequence(fileInfo, oldIndexInfo.getLocalSequence())) {
                         //                        logger.trace("skipping file {}, version older than sequence {}", fileInfo, oldIndexInfo.getLocalSequence());
                         //                    } else {
-                        val newRecord = pushRecord(transaction, folderId, fileInfo)
+                        val newRecord = IndexProcessor.pushRecord(transaction, folderId, fileInfo, indexBrowsers)
                         if (newRecord != null) {
                             newRecords.add(newRecord)
                         }
