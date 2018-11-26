@@ -21,7 +21,6 @@ import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
-import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
@@ -132,7 +131,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                     for (deviceRecord in folderRecord.devicesList) {
                         val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
                         if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
-                            val folderIndexInfo = updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
+                            val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
                             logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
                         }
                     }
@@ -143,46 +142,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     internal fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
         indexMessageProcessor.handleIndexMessageReceivedEvent(folderId, filesList, clusterConfigInfo, peerDeviceId)
-    }
-
-    private fun updateIndexInfo(transaction: IndexTransaction, folder: String, deviceId: DeviceId, indexId: Long?, maxSequence: Long?, localSequence: Long?): IndexInfo {
-        synchronized(writeAccessLock) {
-            var indexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(deviceId, folder)
-            var shouldUpdate = false
-            var builder: IndexInfo
-            if (indexSequenceInfo == null) {
-                shouldUpdate = true
-                assert(indexId != null) {
-                    "index sequence info not found, and supplied null index id (folder = $folder, device = $deviceId)"
-                }
-                builder = IndexInfo(
-                        folderId = folder,
-                        deviceId = deviceId.deviceId,
-                        indexId = indexId!!,
-                        localSequence = 0,
-                        maxSequence = -1
-                )
-            } else {
-                builder = indexSequenceInfo
-            }
-            if (indexId != null && indexId != builder.indexId) {
-                shouldUpdate = true
-                builder = builder.copy(indexId = indexId)
-            }
-            if (maxSequence != null && maxSequence > builder.maxSequence) {
-                shouldUpdate = true
-                builder = builder.copy(maxSequence = maxSequence)
-            }
-            if (localSequence != null && localSequence > builder.maxSequence) {
-                shouldUpdate = true
-                builder = builder.copy(localSequence = localSequence)
-            }
-            if (shouldUpdate) {
-                indexSequenceInfo = builder
-                transaction.updateIndexInfo(indexSequenceInfo)
-            }
-            return indexSequenceInfo!!
-        }
     }
 
     fun getFileInfoByPath(folder: String, path: String): FileInfo? {
@@ -358,27 +317,15 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 logger.info("processing index message with {} records (queue size: messages = {} records = {})", message.filesCount, queuedMessages, queuedRecords)
                 //            String deviceId = connectionHandler.getDeviceId();
                 val folderId = message.folder
-                var sequence: Long = -1
-                val newRecords = mutableListOf<FileInfo>()
-                //                IndexInfo oldIndexInfo = indexRepository.findIndexInfoByDeviceAndFolder(deviceId, folder);
-                //            Stopwatch stopwatch = Stopwatch.createStarted();
-                logger.debug("processing {} index records for folder {}", message.filesList.size, folderId)
-                val newIndexInfo = indexRepository.runInTransaction { transaction ->
-                    for (fileInfo in message.filesList) {
-                        markActive()
-                        //                    if (oldIndexInfo != null && isVersionOlderThanSequence(fileInfo, oldIndexInfo.getLocalSequence())) {
-                        //                        logger.trace("skipping file {}, version older than sequence {}", fileInfo, oldIndexInfo.getLocalSequence());
-                        //                    } else {
-                        val newRecord = IndexProcessor.pushRecord(transaction, folderId, fileInfo, indexBrowsers)
-                        if (newRecord != null) {
-                            newRecords.add(newRecord)
-                        }
-                        sequence = Math.max(fileInfo.sequence, sequence)
-                        markActive()
-                        //                    }
-                    }
-                    updateIndexInfo(transaction, folderId, peerDeviceId, null, null, sequence)
-                }
+
+                val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
+                        message = message,
+                        peerDeviceId = peerDeviceId,
+                        indexBrowsers = indexBrowsers,
+                        indexRepository = indexRepository,
+                        markActive = this@IndexHandler::markActive
+                )
+
                 val elap = System.currentTimeMillis() - startTime!!
                 queuedRecords -= message.filesCount.toLong()
                 logger.info("processed {} index records, acquired {} ({} secs, {} record/sec)", message.filesCount, newRecords.size, elap / 1000.0, Math.round(message.filesCount / (elap / 1000.0) * 100) / 100.0)

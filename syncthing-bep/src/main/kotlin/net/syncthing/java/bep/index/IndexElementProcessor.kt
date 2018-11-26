@@ -10,8 +10,8 @@ import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
 import java.util.*
 
-object IndexProcessor {
-    val logger = LoggerFactory.getLogger(IndexProcessor::class.java)
+object IndexElementProcessor {
+    val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
 
     fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo, indexBrowsers: Set<IndexBrowser>): FileInfo? {
         var fileBlocks: FileBlocks? = null
