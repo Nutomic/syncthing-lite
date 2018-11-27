@@ -13,6 +13,7 @@
  */
 package net.syncthing.java.client.cli
 
+import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.runBlocking
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
@@ -169,7 +170,7 @@ class Main(private val commandLine: CommandLine) {
                 System.out.println("uploaded dir to network")
             }
             "L" -> {
-                waitForIndexUpdate(syncthingClient, configuration)
+                waitForIndexUpdate(syncthingClient)
                 for (folder in syncthingClient.indexHandler.folderList()) {
                     syncthingClient.indexHandler.newIndexBrowser(folder).use { indexBrowser ->
                         System.out.println("list folder = ${indexBrowser.folder}")
@@ -180,7 +181,7 @@ class Main(private val commandLine: CommandLine) {
                 }
             }
             "I" -> {
-                waitForIndexUpdate(syncthingClient, configuration)
+                waitForIndexUpdate(syncthingClient)
                 val folderInfo = StringBuilder()
                 for (folder in syncthingClient.indexHandler.folderList()) {
                     folderInfo.append("\nfolder info: ")
@@ -211,11 +212,12 @@ class Main(private val commandLine: CommandLine) {
     }
 
     @Throws(InterruptedException::class)
-    private fun waitForIndexUpdate(client: SyncthingClient, configuration: Configuration) {
-        val latch = CountDownLatch(configuration.peers.size)
-        client.indexHandler.registerOnFullIndexAcquiredListenersListener {
-            latch.countDown()
+    private fun waitForIndexUpdate(client: SyncthingClient) {
+        // FIXME: what happens if the index update happened already?
+        runBlocking {
+            client.indexHandler.subscribeToOnFullIndexAcquiredEvents().consume {
+                this.receive()  // wait until there is one event
+            }
         }
-        latch.await()
     }
 }

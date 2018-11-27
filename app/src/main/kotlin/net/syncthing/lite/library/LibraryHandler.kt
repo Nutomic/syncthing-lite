@@ -5,16 +5,9 @@ import android.arch.lifecycle.MutableLiveData
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
-import net.syncthing.java.core.beans.FileInfo
-import net.syncthing.java.core.beans.FolderInfo
-import net.syncthing.java.core.beans.IndexInfo
 import net.syncthing.java.core.configuration.Configuration
 import org.jetbrains.anko.doAsync
 import java.util.concurrent.atomic.AtomicBoolean
@@ -25,9 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * It's possible to do multiple start and stop cycles with one instance of this class.
  */
-class LibraryHandler(context: Context,
-                     private val onIndexUpdateProgressListener: (FolderInfo, Int) -> Unit = {_, _ -> },
-                     private val onIndexUpdateCompleteListener: (FolderInfo) -> Unit = {}) {
+class LibraryHandler(context: Context) {
 
     companion object {
         private const val TAG = "LibraryHandler"
@@ -62,8 +53,6 @@ class LibraryHandler(context: Context,
 
             val client = libraryInstance.syncthingClient
 
-            client.indexHandler.registerOnIndexRecordAcquiredListener(this::onIndexRecordAcquired)
-            client.indexHandler.registerOnFullIndexAcquiredListenersListener(this::onRemoteIndexAcquired)
             client.discoveryHandler.registerMessageFromUnknownDeviceListener(internalMessageFromUnknownDeviceListener)
         }
     }
@@ -75,8 +64,6 @@ class LibraryHandler(context: Context,
 
         syncthingClient {
             try {
-                it.indexHandler.unregisterOnIndexRecordAcquiredListener(this::onIndexRecordAcquired)
-                it.indexHandler.unregisterOnFullIndexAcquiredListenersListener(this::onRemoteIndexAcquired)
                 it.discoveryHandler.unregisterMessageFromUnknownDeviceListener(internalMessageFromUnknownDeviceListener)
             } catch (e: IllegalArgumentException) {
                 // ignored, no idea why this is thrown
@@ -84,22 +71,6 @@ class LibraryHandler(context: Context,
         }
 
         libraryManager.stopLibraryUsage()
-    }
-
-    private fun onIndexRecordAcquired(folderInfo: FolderInfo, newRecords: List<FileInfo>, indexInfo: IndexInfo) {
-        Log.i(TAG, "handleIndexRecordEvent trigger folder list update from index record acquired")
-
-        GlobalScope.launch (Dispatchers.Main) {
-            onIndexUpdateProgressListener(folderInfo, (indexInfo.completed * 100).toInt())
-        }
-    }
-
-    private fun onRemoteIndexAcquired(folderInfo: FolderInfo) {
-        Log.i(TAG, "handleIndexAcquiredEvent trigger folder list update from index acquired")
-
-        GlobalScope.launch (Dispatchers.Main) {
-            onIndexUpdateCompleteListener(folderInfo)
-        }
     }
 
     /*

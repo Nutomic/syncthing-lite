@@ -1,15 +1,10 @@
 package net.syncthing.lite.fragments
 
 import android.support.v4.app.Fragment
-import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.lite.library.LibraryHandler
 
 abstract class SyncthingFragment : Fragment() {
-    val libraryHandler: LibraryHandler by lazy { LibraryHandler(
-            context = context!!,
-            onIndexUpdateProgressListener = this::onIndexUpdateProgress,
-            onIndexUpdateCompleteListener = this::onIndexUpdateComplete
-    )}
+    val libraryHandler: LibraryHandler by lazy { LibraryHandler(context = context!!)}
 
     override fun onStart() {
         super.onStart()
@@ -27,8 +22,4 @@ abstract class SyncthingFragment : Fragment() {
     }
 
     open fun onLibraryLoaded() {}
-
-    open fun onIndexUpdateProgress(folderInfo: FolderInfo, percentage: Int) {}
-
-    open fun onIndexUpdateComplete(folderInfo: FolderInfo) {}
 }
