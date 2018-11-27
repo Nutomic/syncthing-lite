@@ -21,6 +21,7 @@ import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
+import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
 import net.syncthing.java.core.utils.awaitTerminationSafe
@@ -95,23 +96,24 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    internal fun isRemoteIndexAcquired(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
-        var ready = true
-        for (folder in clusterConfigInfo.sharedFolderIds) {
-            val indexSequenceInfo = indexRepository.runInTransaction { it.findIndexInfoByDeviceAndFolder(peerDeviceId, folder) }
-            if (indexSequenceInfo == null || indexSequenceInfo.localSequence < indexSequenceInfo.maxSequence) {
-                logger.debug("waiting for index on folder = {} sequenceInfo = {}", folder, indexSequenceInfo)
-                ready = false
-            }
-        }
-        return ready
+    private fun isRemoteIndexAcquiredWithoutTransaction(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
+        return indexRepository.runInTransaction { transaction -> isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, transaction) }
+    }
+
+    private fun isRemoteIndexAcquired(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId, transaction: IndexTransaction): Boolean {
+        return clusterConfigInfo.sharedFolderIds.find { sharedFolderId ->
+            // try to find one folder which is not yet ready
+            val indexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(peerDeviceId, sharedFolderId)
+
+            indexSequenceInfo == null || indexSequenceInfo.localSequence < indexSequenceInfo.maxSequence
+        } == null
     }
 
     @Throws(InterruptedException::class)
     fun waitForRemoteIndexAcquired(connectionHandler: ConnectionActorWrapper, timeoutSecs: Long? = null): IndexHandler {
         val timeoutMillis = (timeoutSecs ?: DEFAULT_INDEX_TIMEOUT) * 1000
         synchronized(indexWaitLock) {
-            while (!isRemoteIndexAcquired(connectionHandler.getClusterConfig(), connectionHandler.deviceId)) {
+            while (!isRemoteIndexAcquiredWithoutTransaction(connectionHandler.getClusterConfig(), connectionHandler.deviceId)) {
                 indexWaitLock.wait(timeoutMillis)
                 NetworkUtils.assertProtocol(/* TODO connectionHandler.getLastActive() < timeoutMillis || */ lastActive() < timeoutMillis,
                         {"unable to acquire index from connection $connectionHandler, timeout reached!"})
@@ -302,49 +304,35 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             }
 
             protected fun doHandleIndexMessageReceivedEvent(message: BlockExchangeProtos.IndexUpdate, clusterConfigInfo: ClusterConfigInfo?, peerDeviceId: DeviceId) {
-                //            synchronized (writeAccessLock) {
-                //                if (addProcessingDelayForInterface) {
-                //                    delay = Math.min(MAX_DELAY, Math.max(MIN_DELAY, lastRecordProcessingTime * DELAY_FACTOR));
-                //                    logger.info("add delay of {} secs before processing index message (to allow UI to process)", delay / 1000d);
-                //                    try {
-                //                        Thread.sleep(delay);
-                //                    } catch (InterruptedException ex) {
-                //                        logger.warn("interrupted", ex);
-                //                    }
-                //                } else {
-                //                    delay = 0;
-                //                }
-                logger.info("processing index message with {} records (queue size: messages = {} records = {})", message.filesCount, queuedMessages, queuedRecords)
-                //            String deviceId = connectionHandler.getDeviceId();
-                val folderId = message.folder
+                logger.info("processing index message with {} records", message.filesCount)
 
-                val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
-                        message = message,
-                        peerDeviceId = peerDeviceId,
-                        indexBrowsers = indexBrowsers,
-                        indexRepository = indexRepository,
-                        markActive = this@IndexHandler::markActive
-                )
+                indexRepository.runInTransaction { indexTransaction ->
+                    val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
+                            message = message,
+                            peerDeviceId = peerDeviceId,
+                            indexBrowsers = indexBrowsers,
+                            transaction = indexTransaction,
+                            markActive = this@IndexHandler::markActive
+                    )
 
-                val elap = System.currentTimeMillis() - startTime!!
-                queuedRecords -= message.filesCount.toLong()
-                logger.info("processed {} index records, acquired {} ({} secs, {} record/sec)", message.filesCount, newRecords.size, elap / 1000.0, Math.round(message.filesCount / (elap / 1000.0) * 100) / 100.0)
-                if (logger.isInfoEnabled && newRecords.size <= 10) {
-                    for (fileInfo in newRecords) {
-                        logger.info("acquired record = {}", fileInfo)
+                    logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
+
+                    val folderInfo = folderInfoByFolder[message.folder]
+
+                    if (!newRecords.isEmpty()) {
+                        onIndexRecordAcquiredListeners.forEach { it(folderInfo!!, newRecords, newIndexInfo) }
+                    }
+
+                    logger.debug("index info = {}", newIndexInfo)
+
+                    if (isRemoteIndexAcquired(clusterConfigInfo!!, peerDeviceId, indexTransaction)) {
+                        logger.debug("index acquired")
+                        onFullIndexAcquiredListeners.forEach { it(folderInfo!!)}
                     }
                 }
-                val folderInfo = folderInfoByFolder[folderId]
-                if (!newRecords.isEmpty()) {
-                    onIndexRecordAcquiredListeners.forEach { it(folderInfo!!, newRecords, newIndexInfo) }
-                }
-                logger.debug("index info = {}", newIndexInfo)
-                if (isRemoteIndexAcquired(clusterConfigInfo!!, peerDeviceId)) {
-                    logger.debug("index acquired")
-                    onFullIndexAcquiredListeners.forEach { it(folderInfo!!)}
-                }
-                //                IndexHandler.this.notifyAll();
+
                 markActive()
+
                 synchronized(indexWaitLock) {
                     indexWaitLock.notifyAll()
                 }
