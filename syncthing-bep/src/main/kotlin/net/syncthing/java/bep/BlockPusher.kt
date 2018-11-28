@@ -17,11 +17,14 @@ package net.syncthing.java.bep
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.launch
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.bep.index.IndexElementProcessor
 import net.syncthing.java.bep.index.IndexHandler
-import net.syncthing.java.core.beans.*
+import net.syncthing.java.core.beans.BlockInfo
+import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo.Version
 import net.syncthing.java.core.utils.BlockUtils
 import net.syncthing.java.core.utils.NetworkUtils
@@ -101,20 +104,22 @@ class BlockPusher(private val localDeviceId: DeviceId,
         }
 
         logger.debug("send index update for file = {}", targetPath)
-        val indexListener = { folderInfo: FolderInfo, newRecords: List<FileInfo>, _: IndexInfo ->
-            if (folderInfo.folderId == folderId) {
-                for (fileInfo2 in newRecords) {
-                    if (fileInfo2.path == targetPath && fileInfo2.hash == dataSource.getHash()) { //TODO check not invalid
-                        //                                sentBlocks.addAll(dataSource.getHashes());
-                        isCompleted.set(true)
-                        synchronized(updateLock) {
-                            updateLock.notifyAll()
+        val indexListenerStream = indexHandler.subscribeToOnIndexRecordAcquiredEvents()
+        GlobalScope.launch {
+            indexListenerStream.consumeEach { (folderInfo, newRecords, _) ->
+                if (folderInfo.folderId == folderId) {
+                    for (fileInfo2 in newRecords) {
+                        if (fileInfo2.path == targetPath && fileInfo2.hash == dataSource.getHash()) { //TODO check not invalid
+                            //                                sentBlocks.addAll(dataSource.getHashes());
+                            isCompleted.set(true)
+                            synchronized(updateLock) {
+                                updateLock.notifyAll()
+                            }
                         }
                     }
                 }
             }
         }
-        indexHandler.registerOnIndexRecordAcquiredListener(indexListener)
         val indexUpdate = sendIndexUpdate(folderId, BlockExchangeProtos.FileInfo.newBuilder()
                 .setName(targetPath)
                 .setSize(fileSize)
@@ -130,7 +135,7 @@ class BlockPusher(private val localDeviceId: DeviceId,
             override fun close() {
                 logger.debug("closing upload process")
                 monitoringProcessExecutorService.shutdown()
-                indexHandler.unregisterOnIndexRecordAcquiredListener(indexListener)
+                indexListenerStream.cancel()
                 requestHandlerRegistry.unregisterListener(requestFilter)
                 val fileInfo1 = indexHandler.indexRepository.runInTransaction {
                     IndexElementProcessor.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single(), indexHandler.indexBrowsers)

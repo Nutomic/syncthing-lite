@@ -35,6 +35,8 @@ import java.io.IOException
 import java.util.*
 import java.util.concurrent.Executors
 
+data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<FileInfo>, val indexInfo: IndexInfo)
+
 class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -44,10 +46,11 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
     private val indexWaitLock = Object()
     /* TODO: make this private again or remove it */ val indexBrowsers = mutableSetOf<IndexBrowser>()
-    private val onIndexRecordAcquiredListeners = mutableSetOf<(FolderInfo, List<FileInfo>, IndexInfo) -> Unit>()
+    private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
+    fun subscribeToOnIndexRecordAcquiredEvents() = onIndexRecordAcquiredEvents.openSubscription()
 
     private fun lastActive(): Long = System.currentTimeMillis() - lastIndexActivity
 
@@ -59,15 +62,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     private fun markActive() {
         lastIndexActivity = System.currentTimeMillis()
-    }
-
-    fun registerOnIndexRecordAcquiredListener(listener: (FolderInfo, List<FileInfo>, IndexInfo) -> Unit) {
-        onIndexRecordAcquiredListeners.add(listener)
-    }
-
-    fun unregisterOnIndexRecordAcquiredListener(listener: (FolderInfo, List<FileInfo>, IndexInfo) -> Unit) {
-        assert(onIndexRecordAcquiredListeners.contains(listener))
-        onIndexRecordAcquiredListeners.remove(listener)
     }
 
     init {
@@ -199,7 +193,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     override fun close() {
         assert(indexBrowsers.isEmpty())
-        assert(onIndexRecordAcquiredListeners.isEmpty())
+        onIndexRecordAcquiredEvents.close()
         onFullIndexAcquiredEvents.close()
         indexMessageProcessor.stop()
     }
@@ -317,7 +311,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                     val folderInfo = folderInfoByFolder[message.folder]
 
                     if (!newRecords.isEmpty()) {
-                        onIndexRecordAcquiredListeners.forEach { it(folderInfo!!, newRecords, newIndexInfo) }
+                        runBlocking { onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo!!, newRecords, newIndexInfo)) }
                     }
 
                     logger.debug("index info = {}", newIndexInfo)
