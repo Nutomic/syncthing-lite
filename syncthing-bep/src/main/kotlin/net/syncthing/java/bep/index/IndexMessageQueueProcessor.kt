@@ -37,7 +37,6 @@ class IndexMessageQueueProcessor (
         private val configuration: Configuration,
         private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
         private val onFullIndexAcquiredEvents: BroadcastChannel<FolderInfo>,
-        private val indexWaitLock: Object,
         private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean
 ) {
     private data class IndexUpdateAction(val update: BlockExchangeProtos.IndexUpdate, val clusterConfigInfo: ClusterConfigInfo, val peerDeviceId: DeviceId)
@@ -134,10 +133,6 @@ class IndexMessageQueueProcessor (
         }
 
         markActive()
-
-        synchronized(indexWaitLock) {
-            indexWaitLock.notifyAll()
-        }
     }
 
     fun stop() {

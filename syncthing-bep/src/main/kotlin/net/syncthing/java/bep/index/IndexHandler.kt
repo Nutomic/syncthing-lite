@@ -16,8 +16,10 @@ package net.syncthing.java.bep.index
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.BroadcastChannel
+import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.bep.IndexBrowser
@@ -28,10 +30,10 @@ import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
-import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
 import java.io.Closeable
+import java.io.IOException
 import java.util.*
 
 data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<FileInfo>, val indexInfo: IndexInfo)
@@ -40,7 +42,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
     private var lastIndexActivity: Long = 0
-    private val indexWaitLock = Object()
     private val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
@@ -57,7 +58,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             indexRepository = indexRepository,
             markActive = ::markActive,
             tempRepository = tempRepository,
-            indexWaitLock = indexWaitLock,
             isRemoteIndexAcquired = ::isRemoteIndexAcquired,
             onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
             onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
@@ -95,18 +95,39 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         } == null
     }
 
-    @Throws(InterruptedException::class)
-    fun waitForRemoteIndexAcquired(connectionHandler: ConnectionActorWrapper, timeoutSecs: Long? = null): IndexHandler {
+    // the old implementation kept waiting when index updates were still happening, but waiting 30 seconds should be enough
+    suspend fun waitForRemoteIndexAcquiredWithTimeout(connectionHandler: ConnectionActorWrapper, timeoutSecs: Long? = null): IndexHandler {
         val timeoutMillis = (timeoutSecs ?: DEFAULT_INDEX_TIMEOUT) * 1000
-        synchronized(indexWaitLock) {
-            while (!isRemoteIndexAcquiredWithoutTransaction(connectionHandler.getClusterConfig(), connectionHandler.deviceId)) {
-                indexWaitLock.wait(timeoutMillis)
-                NetworkUtils.assertProtocol(/* TODO connectionHandler.getLastActive() < timeoutMillis || */ lastActive() < timeoutMillis,
-                        {"unable to acquire index from connection $connectionHandler, timeout reached!"})
+
+        val ok = withTimeoutOrNull(timeoutMillis) {
+            waitForRemoteIndexAcquiredWithoutTimeout(connectionHandler)
+
+            true
+        } ?: false
+
+        if (!ok) {
+            throw IOException("unable to acquire index from connection $connectionHandler, timeout reached!")
+        }
+
+        return this
+    }
+
+    suspend fun waitForRemoteIndexAcquiredWithoutTimeout(connectionHandler: ConnectionActorWrapper) {
+        val events = onFullIndexAcquiredEvents.openSubscription()
+
+        events.consume {
+            fun isDone() = isRemoteIndexAcquiredWithoutTransaction(connectionHandler.getClusterConfig(), connectionHandler.deviceId)
+
+            if (isDone()) {
+                return
+            }
+
+            for (event in events) {
+                if (isDone()) {
+                    return
+                }
             }
         }
-        logger.debug("acquired all indexes on connection {}", connectionHandler)
-        return this
     }
 
     fun handleClusterConfigMessageProcessedEvent(clusterConfig: BlockExchangeProtos.ClusterConfig) {
