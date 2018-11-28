@@ -53,7 +53,7 @@ class SyncthingProvider : DocumentsProvider() {
         val latch = CountDownLatch(1)
         var folders: List<Pair<FolderInfo, FolderStats>>? = null
         libraryHandler.folderBrowser { folderBrowser ->
-            folders = folderBrowser.folderInfoAndStatsList()
+            folders = runBlocking { folderBrowser.folderInfoAndStatsList() }
             latch.countDown()
         }
         latch.await()

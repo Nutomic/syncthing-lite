@@ -158,13 +158,9 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    @Deprecated("use config instead")
-    fun getFolderInfo(folder: String): FolderInfo? {
-        return configuration.folders.find { it.folderId == folder }
-    }
-
+    // FIXME: there should only be one instance of this
     fun newFolderBrowser(): FolderBrowser {
-        return FolderBrowser(this)
+        return FolderBrowser(this, configuration)
     }
 
     fun newIndexBrowser(folder: String, includeParentInList: Boolean = false, allowParentInRoot: Boolean = false,

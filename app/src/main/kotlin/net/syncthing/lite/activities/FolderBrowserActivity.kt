@@ -139,8 +139,8 @@ class FolderBrowserActivity : SyncthingActivity() {
             val title = if (indexBrowser.isRoot()) {
                 val result = CompletableDeferred<String?>()
 
-                libraryHandler.folderBrowser {
-                    result.complete(it.getFolderInfo(indexBrowser.folder)?.label)
+                libraryHandler.configuration {
+                    result.complete(it.folders.find { it.folderId == indexBrowser.folder }?.label)
                 }
 
                 result.await()

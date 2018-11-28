@@ -8,12 +8,15 @@ import android.os.Looper
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BroadcastChannel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consume
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
+import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.configuration.Configuration
 import org.jetbrains.anko.doAsync
 import java.util.concurrent.atomic.AtomicBoolean
@@ -35,6 +38,7 @@ class LibraryHandler(context: Context) {
     private val isStarted = AtomicBoolean(false)
     private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
     private val indexUpdateCompleteMessages = BroadcastChannel<FolderInfo>(capacity = 16)
+    private val folderStatsAndInfos = BroadcastChannel<List<Pair<FolderInfo, FolderStats>>>(capacity = Channel.CONFLATED)
     private var job: Job = Job()
 
     val isListeningPortTaken: LiveData<Boolean> = isListeningPortTakenInternal
@@ -68,6 +72,12 @@ class LibraryHandler(context: Context) {
             GlobalScope.launch (job) {
                 libraryInstance.syncthingClient.indexHandler.subscribeToOnFullIndexAcquiredEvents().consume {
                     indexUpdateCompleteMessages.send(receive())
+                }
+            }
+
+            GlobalScope.launch (job) {
+                libraryInstance.folderBrowser.folderInfoAndStatsStream().consumeEach {
+                    folderStatsAndInfos.send(it)
                 }
             }
         }
@@ -130,4 +140,5 @@ class LibraryHandler(context: Context) {
     }
 
     fun subscribeToOnFullIndexAcquiredEvents() = indexUpdateCompleteMessages.openSubscription()
+    fun subscribeToFolderStatsAndInfos() = folderStatsAndInfos.openSubscription()
 }

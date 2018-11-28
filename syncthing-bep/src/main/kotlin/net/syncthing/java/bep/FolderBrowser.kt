@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,43 +14,83 @@
  */
 package net.syncthing.java.bep
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
+import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import java.io.Closeable
 
-class FolderBrowser internal constructor(private val indexHandler: IndexHandler) : Closeable {
-    private val folderStatsCache = mutableMapOf<String, FolderStats>()
-    private val indexRepositoryEventListener = { event: IndexRepository.FolderStatsUpdatedEvent ->
-        addFolderStats(event.getFolderStats())
-    }
+class FolderBrowser internal constructor(private val indexHandler: IndexHandler, private val configuration: Configuration) : Closeable {
+    private val job = Job()
+    private val folderStats = ConflatedBroadcastChannel<Map<String, FolderStats>>()
+    private val folderStatsUpdatedEvent = Channel<IndexRepository.FolderStatsUpdatedEvent>(capacity = Channel.UNLIMITED)
 
-    fun folderInfoAndStatsList(): List<Pair<FolderInfo, FolderStats>> =
-            indexHandler.folderInfoList()
-                    .map { folderInfo -> Pair(folderInfo, getFolderStats(folderInfo.folderId)) }
-                    .sortedBy { it.first.label }
+    // FIXME: This isn't nice
+    private val indexRepositoryEventListener = { event: IndexRepository.FolderStatsUpdatedEvent ->
+        folderStatsUpdatedEvent.offer(event)
+
+        fun nothing() {
+            // used to return Unit
+        }
+
+        nothing()
+    }
 
     init {
-        indexHandler.indexRepository.setOnFolderStatsUpdatedListener(indexRepositoryEventListener)
-        addFolderStats(indexHandler.indexRepository.runInTransaction { it.findAllFolderStats() })
-    }
+        indexHandler.indexRepository.setOnFolderStatsUpdatedListener(indexRepositoryEventListener)  // TODO: remove this global state
 
-    private fun addFolderStats(folderStatsList: List<FolderStats>) {
-        for (folderStats in folderStatsList) {
-            folderStatsCache.put(folderStats.folderId, folderStats)
+        GlobalScope.launch (job) {
+            // get initial status
+            val currentFolderStats = mutableMapOf<String, FolderStats>()
+
+            indexHandler.indexRepository.runInTransaction { indexTransaction ->
+                configuration.folders.map { it.folderId }.forEach { folderId ->
+                    currentFolderStats[folderId] = indexTransaction.findFolderStats(folderId) ?: FolderStats.createDummy(folderId)
+                }
+            }
+
+            folderStats.send(currentFolderStats.toMap())
+
+            // handle changes
+            folderStatsUpdatedEvent.consumeEach {
+                it.getFolderStats().forEach { folderStats ->
+                    currentFolderStats[folderStats.folderId] = folderStats
+                }
+
+                folderStats.send(currentFolderStats.toMap())
+            }
         }
     }
 
-    fun getFolderStats(folder: String): FolderStats {
-        return folderStatsCache[folder] ?: FolderStats.createDummy(folder)
+    fun folderInfoAndStatsStream() = GlobalScope.produce {
+        folderStats.openSubscription().consumeEach { folderStats ->
+            send(
+                    configuration.folders
+                            .map { folderInfo -> folderInfo to getFolderStats(folderInfo.folderId, folderStats) }
+                            .sortedBy { it.first.label }
+            )
+        }
     }
 
-    fun getFolderInfo(folder: String): FolderInfo? {
-        return indexHandler.getFolderInfo(folder)
+    suspend fun folderInfoAndStatsList(): List<Pair<FolderInfo, FolderStats>> = folderInfoAndStatsStream().first()
+
+    suspend fun getFolderStats(folder: String): FolderStats {
+        return getFolderStats(folder, folderStats.openSubscription().first())
     }
+
+    fun getFolderStatsSync(folder: String) = runBlocking { getFolderStats(folder) }
+
+    private fun getFolderStats(folder: String, folderStats: Map<String, FolderStats>) = folderStats[folder] ?: FolderStats.createDummy(folder)
 
     override fun close() {
+        job.cancel()
         indexHandler.indexRepository.setOnFolderStatsUpdatedListener(null)
+        folderStatsUpdatedEvent.close()
     }
 }
