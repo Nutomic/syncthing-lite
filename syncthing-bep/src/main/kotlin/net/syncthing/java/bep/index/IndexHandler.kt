@@ -73,9 +73,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
     @Deprecated(message = "use configuration instead")
-    fun folderList(): List<String> = configuration.folders.map { it.folderId }
-
-    @Deprecated(message = "use configuration instead")
     fun folderInfoList(): List<FolderInfo> = configuration.folders.toList()
 
     private fun markActive() {
@@ -164,10 +161,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     @Deprecated("use config instead")
     fun getFolderInfo(folder: String): FolderInfo? {
         return configuration.folders.find { it.folderId == folder }
-    }
-
-    fun getIndexInfo(device: DeviceId, folder: String): IndexInfo? {
-        return indexRepository.runInTransaction { it.findIndexInfoByDeviceAndFolder(device, folder) }
     }
 
     fun newFolderBrowser(): FolderBrowser {
