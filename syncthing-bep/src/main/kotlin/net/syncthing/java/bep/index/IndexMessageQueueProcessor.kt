@@ -14,10 +14,13 @@
  */
 package net.syncthing.java.bep.index
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.bep.BlockExchangeProtos
@@ -96,12 +99,18 @@ class IndexMessageQueueProcessor (
         }
     }
 
-    private fun doHandleIndexMessageReceivedEvent(action: IndexUpdateAction) {
+    private suspend fun doHandleIndexMessageReceivedEvent(action: IndexUpdateAction) {
         val (message, clusterConfigInfo, peerDeviceId) = action
 
         logger.info("processing index message with {} records", message.filesCount)
 
-        indexRepository.runInTransaction { indexTransaction ->
+        val folderInfo = configuration.folders.find { it.folderId == message.folder }
+                ?: FolderInfo(
+                        folderId = message.folder,
+                        label = message.folder
+                )
+
+        val (newRecords, newIndexInfo, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
             val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)
 
             val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
@@ -113,23 +122,18 @@ class IndexMessageQueueProcessor (
 
             logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
 
-            val folderInfo = configuration.folders.find { it.folderId == message.folder } ?: FolderInfo(
-                    folderId = message.folder,
-                    label = message.folder
-            )
-
-            if (!newRecords.isEmpty()) {
-                runBlocking { onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo, newRecords, newIndexInfo)) }
-            }
-
             logger.debug("index info = {}", newIndexInfo)
 
-            if (!wasIndexAcquiredBefore) {
-                if (isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)) {
-                    logger.debug("index acquired")
-                    runBlocking { onFullIndexAcquiredEvents.send(folderInfo) }
-                }
-            }
+            Triple(newRecords, newIndexInfo, (!wasIndexAcquiredBefore) && isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction))
+        }
+
+        if (!newRecords.isEmpty()) {
+            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo, newRecords, newIndexInfo))
+        }
+
+        if (wasIndexAcquired) {
+            logger.debug("index acquired")
+            onFullIndexAcquiredEvents.send(folderInfo)
         }
 
         markActive()
