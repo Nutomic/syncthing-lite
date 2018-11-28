@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
@@ -28,6 +29,12 @@ class FoldersFragment : SyncthingFragment() {
         binding = FragmentFoldersBinding.inflate(layoutInflater, container, false)
 
         libraryHandler.isListeningPortTaken.observe(this, Observer { binding.listeningPortTaken = it })
+
+        launch {
+            libraryHandler.subscribeToOnFullIndexAcquiredEvents().consumeEach {
+                showAllFoldersListView()
+            }
+        }
 
         return binding.root
     }
@@ -57,10 +64,5 @@ class FoldersFragment : SyncthingFragment() {
                 binding.isEmpty = list.isEmpty()
             }
         }
-    }
-
-    override fun onIndexUpdateComplete(folderInfo: FolderInfo) {
-        super.onIndexUpdateComplete(folderInfo)
-        showAllFoldersListView()
     }
 }

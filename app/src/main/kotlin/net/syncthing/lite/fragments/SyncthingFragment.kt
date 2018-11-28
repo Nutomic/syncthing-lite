@@ -1,9 +1,9 @@
 package net.syncthing.lite.fragments
 
-import android.support.v4.app.Fragment
+import net.syncthing.lite.async.CoroutineFragment
 import net.syncthing.lite.library.LibraryHandler
 
-abstract class SyncthingFragment : Fragment() {
+abstract class SyncthingFragment : CoroutineFragment() {
     val libraryHandler: LibraryHandler by lazy { LibraryHandler(context = context!!)}
 
     override fun onStart() {

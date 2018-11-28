@@ -4,15 +4,15 @@ import android.app.AlertDialog
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.support.design.widget.Snackbar
-import android.support.v7.app.AppCompatActivity
 import android.view.LayoutInflater
 import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.R
+import net.syncthing.lite.async.CoroutineActivity
 import net.syncthing.lite.databinding.DialogLoadingBinding
 import net.syncthing.lite.library.LibraryHandler
 import org.slf4j.impl.HandroidLoggerAdapter
 
-abstract class SyncthingActivity : AppCompatActivity() {
+abstract class SyncthingActivity : CoroutineActivity() {
     val libraryHandler: LibraryHandler by lazy {
         LibraryHandler(
                 context = this@SyncthingActivity

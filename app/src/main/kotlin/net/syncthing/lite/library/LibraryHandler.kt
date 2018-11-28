@@ -5,9 +5,15 @@ import android.arch.lifecycle.MutableLiveData
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BroadcastChannel
+import kotlinx.coroutines.channels.consume
+import kotlinx.coroutines.launch
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
+import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.configuration.Configuration
 import org.jetbrains.anko.doAsync
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,6 +34,8 @@ class LibraryHandler(context: Context) {
     private val libraryManager = DefaultLibraryManager.with(context)
     private val isStarted = AtomicBoolean(false)
     private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
+    private val indexUpdateCompleteMessages = BroadcastChannel<FolderInfo>(capacity = 16)
+    private var job: Job = Job()
 
     val isListeningPortTaken: LiveData<Boolean> = isListeningPortTakenInternal
 
@@ -54,6 +62,14 @@ class LibraryHandler(context: Context) {
             val client = libraryInstance.syncthingClient
 
             client.discoveryHandler.registerMessageFromUnknownDeviceListener(internalMessageFromUnknownDeviceListener)
+
+            job = Job()
+
+            GlobalScope.launch (job) {
+                libraryInstance.syncthingClient.indexHandler.subscribeToOnFullIndexAcquiredEvents().consume {
+                    indexUpdateCompleteMessages.send(receive())
+                }
+            }
         }
     }
 
@@ -61,6 +77,8 @@ class LibraryHandler(context: Context) {
         if (isStarted.getAndSet(false) == false) {
             throw IllegalStateException("already stopped")
         }
+
+        job!!.cancel()
 
         syncthingClient {
             try {
@@ -110,4 +128,6 @@ class LibraryHandler(context: Context) {
     fun unregisterMessageFromUnknownDeviceListener(listener: (DeviceId) -> Unit) {
         messageFromUnknownDeviceListeners.remove(listener)
     }
+
+    fun subscribeToOnFullIndexAcquiredEvents() = indexUpdateCompleteMessages.openSubscription()
 }

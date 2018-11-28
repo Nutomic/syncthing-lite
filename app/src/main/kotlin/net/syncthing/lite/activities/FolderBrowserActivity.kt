@@ -8,10 +8,10 @@ import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.FileInfo
-import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.utils.PathUtils
 import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.R
@@ -65,6 +65,12 @@ class FolderBrowserActivity : SyncthingActivity() {
         }
 
         ReconnectIssueDialogFragment.showIfNeeded(this)
+
+        launch {
+            libraryHandler.subscribeToOnFullIndexAcquiredEvents().consumeEach {
+                updateFolderListView()
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -160,10 +166,5 @@ class FolderBrowserActivity : SyncthingActivity() {
         intent.addCategory(Intent.CATEGORY_OPENABLE)
         intent.type = "*/*"
         startActivityForResult(intent, REQUEST_SELECT_UPLOAD_FILE)
-    }
-
-    override fun onIndexUpdateComplete(folderInfo: FolderInfo) {
-        super.onIndexUpdateComplete(folderInfo)
-        updateFolderListView()
     }
 }
