@@ -34,7 +34,6 @@ import net.syncthing.java.core.interfaces.TempRepository
 import org.slf4j.LoggerFactory
 
 class IndexMessageQueueProcessor (
-        private val markActive: () -> Unit,
         private val indexRepository: IndexRepository,
         private val tempRepository: TempRepository,
         private val configuration: Configuration,
@@ -57,7 +56,6 @@ class IndexMessageQueueProcessor (
     suspend fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
         indexUpdateIncomingLock.withLock {
             logger.info("received index message event, preparing")
-            markActive()
 
             val data = BlockExchangeProtos.IndexUpdate.newBuilder()
                     .addAllFiles(filesList)
@@ -84,7 +82,6 @@ class IndexMessageQueueProcessor (
 
         GlobalScope.launch(Dispatchers.IO + job) {
             indexUpdateProcessStoredQueue.consumeEach { action ->
-                markActive()
                 logger.debug("processing index message event from temp record {}", action.updateId)
 
                 val data = tempRepository.popTempData(action.updateId)
@@ -116,8 +113,7 @@ class IndexMessageQueueProcessor (
             val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                     message = message,
                     peerDeviceId = peerDeviceId,
-                    transaction = indexTransaction,
-                    markActive = markActive
+                    transaction = indexTransaction
             )
 
             logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
@@ -135,8 +131,6 @@ class IndexMessageQueueProcessor (
             logger.debug("index acquired")
             onFullIndexAcquiredEvents.send(folderInfo)
         }
-
-        markActive()
     }
 
     fun stop() {

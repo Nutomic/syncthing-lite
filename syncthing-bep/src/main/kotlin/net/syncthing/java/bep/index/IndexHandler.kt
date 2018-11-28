@@ -41,7 +41,6 @@ data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<
 class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private var lastIndexActivity: Long = 0
     private val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
@@ -56,7 +55,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     private val indexMessageProcessor = IndexMessageQueueProcessor(
             indexRepository = indexRepository,
-            markActive = ::markActive,
             tempRepository = tempRepository,
             isRemoteIndexAcquired = ::isRemoteIndexAcquired,
             onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
@@ -67,16 +65,10 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
     fun subscribeToOnIndexRecordAcquiredEvents() = onIndexRecordAcquiredEvents.openSubscription()
 
-    private fun lastActive(): Long = System.currentTimeMillis() - lastIndexActivity
-
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
     @Deprecated(message = "use configuration instead")
     fun folderInfoList(): List<FolderInfo> = configuration.folders.toList()
-
-    private fun markActive() {
-        lastIndexActivity = System.currentTimeMillis()
-    }
 
     fun clearIndex() {
         indexRepository.runInTransaction { it.clearIndex() }

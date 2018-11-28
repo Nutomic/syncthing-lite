@@ -13,7 +13,6 @@ object NewIndexMessageProcessor {
     fun doHandleIndexMessageReceivedEvent(
             message: BlockExchangeProtos.IndexUpdate,
             peerDeviceId: DeviceId,
-            markActive: () -> Unit,
             transaction: IndexTransaction
     ): Pair<IndexInfo, List<FileInfo>> {
         val folderId = message.folder
@@ -24,8 +23,6 @@ object NewIndexMessageProcessor {
         var sequence: Long = -1
 
         for (fileInfo in message.filesList) {
-            markActive()
-
             val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo)
 
             if (newRecord != null) {
@@ -33,7 +30,6 @@ object NewIndexMessageProcessor {
             }
 
             sequence = Math.max(fileInfo.sequence, sequence)
-            markActive()
         }
 
         val newIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folderId, peerDeviceId, null, null, sequence)
