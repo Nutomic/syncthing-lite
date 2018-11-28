@@ -1,7 +1,6 @@
 package net.syncthing.java.bep.index
 
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.IndexInfo
@@ -14,7 +13,6 @@ object NewIndexMessageProcessor {
     fun doHandleIndexMessageReceivedEvent(
             message: BlockExchangeProtos.IndexUpdate,
             peerDeviceId: DeviceId,
-            indexBrowsers: Set<IndexBrowser>,
             markActive: () -> Unit,
             transaction: IndexTransaction
     ): Pair<IndexInfo, List<FileInfo>> {
@@ -28,7 +26,7 @@ object NewIndexMessageProcessor {
         for (fileInfo in message.filesList) {
             markActive()
 
-            val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo, indexBrowsers)
+            val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo)
 
             if (newRecord != null) {
                 newRecords.add(newRecord)

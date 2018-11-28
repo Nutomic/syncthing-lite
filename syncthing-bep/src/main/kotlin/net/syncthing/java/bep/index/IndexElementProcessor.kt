@@ -1,7 +1,6 @@
 package net.syncthing.java.bep.index
 
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.core.beans.BlockInfo
 import net.syncthing.java.core.beans.FileBlocks
 import net.syncthing.java.core.beans.FileInfo
@@ -13,7 +12,7 @@ import java.util.*
 object IndexElementProcessor {
     val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
 
-    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo, indexBrowsers: Set<IndexBrowser>): FileInfo? {
+    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo): FileInfo? {
         var fileBlocks: FileBlocks? = null
         val builder = FileInfo.Builder()
                 .setFolder(folder)
@@ -38,10 +37,10 @@ object IndexElementProcessor {
             }
         }
 
-        return addRecord(transaction, builder.build(), fileBlocks, indexBrowsers)
+        return addRecord(transaction, builder.build(), fileBlocks)
     }
 
-    fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?, indexBrowsers: Set<IndexBrowser>): FileInfo? {
+    fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?): FileInfo? {
         val lastModified = transaction.findFileInfoLastModified(record.folder, record.path)
         return if (lastModified != null && record.lastModified < lastModified) {
             logger.trace("discarding record = {}, modified before local record", record)
@@ -49,9 +48,7 @@ object IndexElementProcessor {
         } else {
             transaction.updateFileInfo(record, fileBlocks)
             logger.trace("loaded new record = {}", record)
-            indexBrowsers.forEach {
-                it.onIndexChangedevent(record.folder)
-            }
+
             record
         }
     }

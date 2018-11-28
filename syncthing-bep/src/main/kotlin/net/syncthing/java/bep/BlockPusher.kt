@@ -138,7 +138,8 @@ class BlockPusher(private val localDeviceId: DeviceId,
                 indexListenerStream.cancel()
                 requestHandlerRegistry.unregisterListener(requestFilter)
                 val fileInfo1 = indexHandler.indexRepository.runInTransaction {
-                    IndexElementProcessor.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single(), indexHandler.indexBrowsers)
+                    // TODO: notify the IndexBrowsers again (as it was earlier)
+                    IndexElementProcessor.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single())
                 }
                 logger.info("sent file info record = {}", fileInfo1)
             }

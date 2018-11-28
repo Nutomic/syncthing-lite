@@ -13,7 +13,10 @@
  */
 package net.syncthing.java.bep.index
 
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.BroadcastChannel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.launch
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.bep.IndexBrowser
@@ -38,12 +41,19 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     private var lastIndexActivity: Long = 0
     private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
     private val indexWaitLock = Object()
-    /* TODO: make this private again or remove it */ val indexBrowsers = mutableSetOf<IndexBrowser>()
+    private val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
 
+    init {
+        GlobalScope.launch {
+            onIndexRecordAcquiredEvents.openSubscription().consumeEach {
+                indexBrowsers.forEach { it.onIndexChangedevent(it.folder) }
+            }
+        }
+    }
+
     private val indexMessageProcessor = IndexMessageProcessor(
-            indexBrowsers = indexBrowsers,
             indexRepository = indexRepository,
             markActive = ::markActive,
             tempRepository = tempRepository,

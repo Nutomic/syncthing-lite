@@ -17,7 +17,6 @@ package net.syncthing.java.bep.index
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.runBlocking
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
@@ -35,7 +34,6 @@ class IndexMessageProcessor (
         private val markActive: () -> Unit,
         private val indexRepository: IndexRepository,
         private val tempRepository: TempRepository,
-        private val indexBrowsers: Set<IndexBrowser>,
         private val configuration: Configuration,
         private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
         private val onFullIndexAcquiredEvents: BroadcastChannel<FolderInfo>,
@@ -147,7 +145,6 @@ class IndexMessageProcessor (
                 val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                         message = message,
                         peerDeviceId = peerDeviceId,
-                        indexBrowsers = indexBrowsers,
                         transaction = indexTransaction,
                         markActive = markActive
                 )
