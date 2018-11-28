@@ -14,7 +14,6 @@
 package net.syncthing.java.bep.index
 
 import kotlinx.coroutines.channels.BroadcastChannel
-import kotlinx.coroutines.runBlocking
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.bep.IndexBrowser
@@ -26,27 +25,34 @@ import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.core.utils.NetworkUtils
-import net.syncthing.java.core.utils.awaitTerminationSafe
-import net.syncthing.java.core.utils.trySubmitLogging
 import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
 import java.io.Closeable
-import java.io.IOException
 import java.util.*
-import java.util.concurrent.Executors
 
 data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<FileInfo>, val indexInfo: IndexInfo)
 
 class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val indexMessageProcessor = IndexMessageProcessor()
     private var lastIndexActivity: Long = 0
     private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
     private val indexWaitLock = Object()
     /* TODO: make this private again or remove it */ val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
+
+    private val indexMessageProcessor = IndexMessageProcessor(
+            indexBrowsers = indexBrowsers,
+            indexRepository = indexRepository,
+            markActive = ::markActive,
+            tempRepository = tempRepository,
+            indexWaitLock = indexWaitLock,
+            isRemoteIndexAcquired = ::isRemoteIndexAcquired,
+            onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
+            onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
+            configuration = configuration
+    )
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
     fun subscribeToOnIndexRecordAcquiredEvents() = onIndexRecordAcquiredEvents.openSubscription()
@@ -174,151 +180,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         onIndexRecordAcquiredEvents.close()
         onFullIndexAcquiredEvents.close()
         indexMessageProcessor.stop()
-    }
-
-    private inner class IndexMessageProcessor {
-
-        private val executorService = Executors.newSingleThreadExecutor()
-        private var queuedMessages = 0
-        private var queuedRecords: Long = 0
-        //        private long lastRecordProcessingTime = 0;
-        //        , delay = 0;
-        //        private boolean addProcessingDelayForInterface = true;
-        //        private final int MIN_DELAY = 0, MAX_DELAY = 5000, MAX_RECORD_PER_PROCESS = 16, DELAY_FACTOR = 1;
-        private var startTime: Long? = null
-
-        fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
-            logger.info("received index message event, preparing (queued records = {} event record count = {})", queuedRecords, filesList.size)
-            markActive()
-            //            List<BlockExchangeProtos.FileInfo> fileList = event.getFilesList();
-            //            for (int index = 0; index < fileList.size(); index += MAX_RECORD_PER_PROCESS) {
-            //                BlockExchangeProtos.IndexUpdate data = BlockExchangeProtos.IndexUpdate.newBuilder()
-            //                    .addAllFiles(Iterables.limit(Iterables.skip(fileList, index), MAX_RECORD_PER_PROCESS))
-            //                    .setFolder(event.getFolder())
-            //                    .build();
-            //                if (queuedMessages > 0) {
-            //                    storeAndProcessBg(data, clusterConfigInfo, peerDeviceId);
-            //                } else {
-            //                    processBg(data, clusterConfigInfo, peerDeviceId);
-            //                }
-            //            }
-            val data = BlockExchangeProtos.IndexUpdate.newBuilder()
-                    .addAllFiles(filesList)
-                    .setFolder(folderId)
-                    .build()
-            if (queuedMessages > 0) {
-                storeAndProcessBg(data, clusterConfigInfo, peerDeviceId)
-            } else {
-                processBg(data, clusterConfigInfo, peerDeviceId)
-            }
-        }
-
-        private fun processBg(data: BlockExchangeProtos.IndexUpdate, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
-            logger.debug("received index message event, queuing for processing")
-            queuedMessages++
-            queuedRecords += data.filesCount.toLong()
-            executorService.trySubmitLogging(object : ProcessingRunnable() {
-                override fun runProcess() {
-                    doHandleIndexMessageReceivedEvent(data, clusterConfigInfo, peerDeviceId)
-                }
-            })
-        }
-
-        private fun storeAndProcessBg(data: BlockExchangeProtos.IndexUpdate, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
-            val key = tempRepository.pushTempData(data.toByteArray())
-            logger.debug("received index message event, stored to temp record {}, queuing for processing", key)
-            queuedMessages++
-            queuedRecords += data.filesCount.toLong()
-            executorService.trySubmitLogging(object : ProcessingRunnable() {
-                override fun runProcess() {
-                    try {
-                        doHandleIndexMessageReceivedEvent(key, clusterConfigInfo, peerDeviceId)
-                    } catch (ex: IOException) {
-                        logger.error("error processing index message", ex)
-                    }
-
-                }
-
-            })
-        }
-
-        private abstract inner class ProcessingRunnable : Runnable {
-
-            override fun run() {
-                startTime = System.currentTimeMillis()
-                runProcess()
-                queuedMessages--
-                //                lastRecordProcessingTime = stopwatch.elapsed(TimeUnit.MILLISECONDS) - delay;
-                //                logger.info("processed a bunch of records, {}*{} remaining", queuedMessages, MAX_RECORD_PER_PROCESS);
-                //                logger.debug("processed index message in {} secs", lastRecordProcessingTime / 1000d);
-                startTime = null
-            }
-
-            protected abstract fun runProcess()
-
-            //        private boolean isVersionOlderThanSequence(BlockExchangeProtos.FileInfo fileInfo, long localSequence) {
-            //            long fileSequence = fileInfo.getSequence();
-            //            //TODO should we check last version instead of sequence? verify
-            //            return fileSequence < localSequence;
-            //        }
-            @Throws(IOException::class)
-            protected fun doHandleIndexMessageReceivedEvent(key: String, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
-                logger.debug("processing index message event from temp record {}", key)
-                markActive()
-                val data = tempRepository.popTempData(key)
-                val message = BlockExchangeProtos.IndexUpdate.parseFrom(data)
-                doHandleIndexMessageReceivedEvent(message, clusterConfigInfo, peerDeviceId)
-            }
-
-            protected fun doHandleIndexMessageReceivedEvent(message: BlockExchangeProtos.IndexUpdate, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
-                logger.info("processing index message with {} records", message.filesCount)
-
-                indexRepository.runInTransaction { indexTransaction ->
-                    val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)
-
-                    val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
-                            message = message,
-                            peerDeviceId = peerDeviceId,
-                            indexBrowsers = indexBrowsers,
-                            transaction = indexTransaction,
-                            markActive = this@IndexHandler::markActive
-                    )
-
-                    logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
-
-                    val folderInfo = configuration.folders.find { it.folderId == message.folder } ?: FolderInfo(
-                            folderId = message.folder,
-                            label = message.folder
-                    )
-
-                    if (!newRecords.isEmpty()) {
-                        runBlocking { onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo, newRecords, newIndexInfo)) }
-                    }
-
-                    logger.debug("index info = {}", newIndexInfo)
-
-                    if (!wasIndexAcquiredBefore) {
-                        if (isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)) {
-                            logger.debug("index acquired")
-                            runBlocking { onFullIndexAcquiredEvents.send(folderInfo) }
-                        }
-                    }
-                }
-
-                markActive()
-
-                synchronized(indexWaitLock) {
-                    indexWaitLock.notifyAll()
-                }
-            }
-        }
-
-        fun stop() {
-            logger.info("stopping index record processor")
-            executorService.shutdown()
-            executorService.awaitTerminationSafe()
-        }
-
     }
 
     companion object {
