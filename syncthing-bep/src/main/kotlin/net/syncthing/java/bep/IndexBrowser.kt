@@ -17,13 +17,10 @@ import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.utils.PathUtils
-import net.syncthing.java.core.utils.awaitTerminationSafe
-import net.syncthing.java.core.utils.submitLogging
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.*
-import java.util.concurrent.Executors
 
 class IndexBrowser internal constructor(private val indexRepository: IndexRepository, private val indexHandler: IndexHandler,
                                         val folder: String, private val includeParentInList: Boolean = false,
@@ -45,20 +42,11 @@ class IndexBrowser internal constructor(private val indexRepository: IndexReposi
         private set
     private val PARENT_FILE_INFO: FileInfo
     private val ROOT_FILE_INFO: FileInfo
-    private val executorService = Executors.newSingleThreadScheduledExecutor()
-    private val preloadJobs = mutableSetOf<String>()
-    private val preloadJobsLock = Any()
     private var mOnPathChangedListener: (() -> Unit)? = null
-
-    private fun isCacheReady(): Boolean {
-        synchronized(preloadJobsLock) {
-            return preloadJobs.isEmpty()
-        }
-    }
 
     internal fun onIndexChangedevent(folder: String) {
         if (folder == this.folder) {
-            preloadFileInfoForCurrentPath()
+            // preloadFileInfoForCurrentPath()
         }
     }
 
@@ -77,55 +65,6 @@ class IndexBrowser internal constructor(private val indexRepository: IndexReposi
 
     fun setOnFolderChangedListener(onPathChangedListener: (() -> Unit)?) {
         mOnPathChangedListener = onPathChangedListener
-    }
-
-    private fun preloadFileInfoForCurrentPath() {
-        logger.debug("trigger preload for folder = '{}'", folder)
-        synchronized(preloadJobsLock) {
-            currentPath.let<String, Any> { currentPath ->
-                if (preloadJobs.contains(currentPath)) {
-                    preloadJobs.remove(currentPath)
-                    preloadJobs.add(currentPath) ///add last
-                } else {
-                    preloadJobs.add(currentPath)
-                    executorService.submitLogging(object : Runnable {
-
-                        override fun run() {
-
-                            val preloadPath =
-                                    synchronized(preloadJobsLock) {
-                                        assert(!preloadJobs.isEmpty())
-                                        preloadJobs.last() //pop last job
-                                    }
-
-                            logger.info("folder preload BEGIN for folder = '{}' path = '{}'", folder, preloadPath)
-                            getFileInfoByAbsolutePath(preloadPath)
-                            if (!PathUtils.isRoot(preloadPath)) {
-                                val parent = PathUtils.getParentPath(preloadPath)
-                                getFileInfoByAbsolutePath(parent)
-                                listFiles(parent)
-                            }
-                            for (record in listFiles(preloadPath)) {
-                                if (record.path == PARENT_FILE_INFO.path && record.isDirectory()) {
-                                    listFiles(record.path)
-                                }
-                            }
-                            logger.info("folder preload END for folder = '{}' path = '{}'", folder, preloadPath)
-                            synchronized(preloadJobsLock) {
-                                preloadJobs.remove(preloadPath)
-                                if (isCacheReady()) {
-                                    logger.info("cache ready, notify listeners")
-                                    mOnPathChangedListener?.invoke()
-                                } else {
-                                    logger.info("still {} job[s] left in cache loader", preloadJobs.size)
-                                    executorService.submitLogging(this)
-                                }
-                            }
-                        }
-                    })
-                }
-            }
-        }
     }
 
     fun listFiles(path: String = currentPath): List<FileInfo> {
@@ -174,13 +113,10 @@ class IndexBrowser internal constructor(private val indexRepository: IndexReposi
             currentPath = fileInfo.path
         }
         logger.info("navigate to path = '{}'", currentPath)
-        preloadFileInfoForCurrentPath()
     }
 
     override fun close() {
         logger.info("closing")
         indexHandler.unregisterIndexBrowser(this)
-        executorService.shutdown()
-        executorService.awaitTerminationSafe()
     }
 }
