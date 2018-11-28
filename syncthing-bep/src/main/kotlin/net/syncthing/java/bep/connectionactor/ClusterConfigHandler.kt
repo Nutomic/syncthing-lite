@@ -98,12 +98,19 @@ object ClusterConfigHandler {
             if (ourDevice != null) {
                 folderInfo = folderInfo.copy(isShared = true)
                 logger.info("folder shared from device = {} folder = {}", otherDeviceId, folderInfo)
-                val folderIds = configuration.folders.map { it.folderId }
-                if (!folderIds.contains(folderInfo.folderId)) {
-                    val fi = FolderInfo(folderInfo.folderId, folderInfo.label)
-                    configuration.folders = configuration.folders + fi
-                    newSharedFolders.add(fi)
+
+                val newFolderInfo = FolderInfo(folderInfo.folderId, folderInfo.label)
+
+                val oldFolderEntry = configuration.folders.find { it.folderId == folderInfo.folderId }
+
+                if (oldFolderEntry != null) {
+                    configuration.folders = configuration.folders + newFolderInfo
+                    newSharedFolders.add(newFolderInfo)
                     logger.info("new folder shared = {}", folderInfo)
+                } else {
+                    if (oldFolderEntry != newFolderInfo) {
+                        configuration.folders = configuration.folders.filter { it != oldFolderEntry }.toSet() + setOf(newFolderInfo)
+                    }
                 }
             } else {
                 logger.info("folder not shared from device = {} folder = {}", otherDeviceId, folderInfo)

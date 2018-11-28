@@ -40,7 +40,6 @@ data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<
 class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val folderInfoByFolder = mutableMapOf<String, FolderInfo>()
     private val indexMessageProcessor = IndexMessageProcessor()
     private var lastIndexActivity: Long = 0
     private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
@@ -56,32 +55,20 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
-    fun folderList(): List<String> = folderInfoByFolder.keys.toList()
+    @Deprecated(message = "use configuration instead")
+    fun folderList(): List<String> = configuration.folders.map { it.folderId }
 
-    fun folderInfoList(): List<FolderInfo> = folderInfoByFolder.values.toList()
+    @Deprecated(message = "use configuration instead")
+    fun folderInfoList(): List<FolderInfo> = configuration.folders.toList()
 
     private fun markActive() {
         lastIndexActivity = System.currentTimeMillis()
-    }
-
-    init {
-        loadFolderInfoFromConfig()
-    }
-
-    private fun loadFolderInfoFromConfig() {
-        synchronized(writeAccessLock) {
-            for (folderInfo in configuration.folders) {
-                folderInfoByFolder.put(folderInfo.folderId, folderInfo) //TODO reference 'folder info' repository
-            }
-        }
     }
 
     @Synchronized
     fun clearIndex() {
         synchronized(writeAccessLock) {
             indexRepository.runInTransaction { it.clearIndex() }
-            folderInfoByFolder.clear()
-            loadFolderInfoFromConfig()
         }
     }
 
@@ -117,8 +104,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             indexRepository.runInTransaction { transaction ->
                 for (folderRecord in clusterConfig.foldersList) {
                     val folder = folderRecord.id
-                    val folderInfo = updateFolderInfo(folder, folderRecord.label)
-                    logger.debug("acquired folder info from cluster config = {}", folderInfo)
+                    logger.debug("acquired folder info from cluster config = {}", folder)
                     for (deviceRecord in folderRecord.devicesList) {
                         val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
                         if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
@@ -158,17 +144,9 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    private fun updateFolderInfo(folder: String, label: String): FolderInfo {
-        var folderInfo: FolderInfo? = folderInfoByFolder[folder]
-        if (folderInfo == null) {
-            folderInfo = FolderInfo(folder, label)
-            folderInfoByFolder.put(folderInfo.folderId, folderInfo)
-        }
-        return folderInfo
-    }
-
+    @Deprecated("use config instead")
     fun getFolderInfo(folder: String): FolderInfo? {
-        return folderInfoByFolder[folder]
+        return configuration.folders.find { it.folderId == folder }
     }
 
     fun getIndexInfo(device: DeviceId, folder: String): IndexInfo? {
@@ -296,7 +274,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                 logger.info("processing index message with {} records", message.filesCount)
 
                 indexRepository.runInTransaction { indexTransaction ->
-                    val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo!!, peerDeviceId, indexTransaction)
+                    val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)
 
                     val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                             message = message,
@@ -308,10 +286,13 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
                     logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
 
-                    val folderInfo = folderInfoByFolder[message.folder]
+                    val folderInfo = configuration.folders.find { it.folderId == message.folder } ?: FolderInfo(
+                            folderId = message.folder,
+                            label = message.folder
+                    )
 
                     if (!newRecords.isEmpty()) {
-                        runBlocking { onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo!!, newRecords, newIndexInfo)) }
+                        runBlocking { onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo, newRecords, newIndexInfo)) }
                     }
 
                     logger.debug("index info = {}", newIndexInfo)
@@ -319,7 +300,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                     if (!wasIndexAcquiredBefore) {
                         if (isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)) {
                             logger.debug("index acquired")
-                            runBlocking { onFullIndexAcquiredEvents.send(folderInfo!!) }
+                            runBlocking { onFullIndexAcquiredEvents.send(folderInfo) }
                         }
                     }
                 }
