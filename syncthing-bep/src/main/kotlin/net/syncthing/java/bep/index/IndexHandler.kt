@@ -40,7 +40,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
     private var lastIndexActivity: Long = 0
-    private val writeAccessLock = Object()  // TODO: remove this; the transactions should replace it
     private val indexWaitLock = Object()
     private val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
@@ -79,11 +78,8 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         lastIndexActivity = System.currentTimeMillis()
     }
 
-    @Synchronized
     fun clearIndex() {
-        synchronized(writeAccessLock) {
-            indexRepository.runInTransaction { it.clearIndex() }
-        }
+        indexRepository.runInTransaction { it.clearIndex() }
     }
 
     private fun isRemoteIndexAcquiredWithoutTransaction(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
@@ -114,17 +110,15 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     }
 
     fun handleClusterConfigMessageProcessedEvent(clusterConfig: BlockExchangeProtos.ClusterConfig) {
-        synchronized(writeAccessLock) {
-            indexRepository.runInTransaction { transaction ->
-                for (folderRecord in clusterConfig.foldersList) {
-                    val folder = folderRecord.id
-                    logger.debug("acquired folder info from cluster config = {}", folder)
-                    for (deviceRecord in folderRecord.devicesList) {
-                        val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
-                        if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
-                            val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
-                            logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
-                        }
+        indexRepository.runInTransaction { transaction ->
+            for (folderRecord in clusterConfig.foldersList) {
+                val folder = folderRecord.id
+                logger.debug("acquired folder info from cluster config = {}", folder)
+                for (deviceRecord in folderRecord.devicesList) {
+                    val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
+                    if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
+                        val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
+                        logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
                     }
                 }
             }
