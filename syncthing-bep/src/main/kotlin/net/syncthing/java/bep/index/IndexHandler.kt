@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -53,7 +54,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    private val indexMessageProcessor = IndexMessageProcessor(
+    private val indexMessageProcessor = IndexMessageQueueProcessor(
             indexRepository = indexRepository,
             markActive = ::markActive,
             tempRepository = tempRepository,
@@ -133,7 +134,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    internal fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
+    internal suspend fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
         indexMessageProcessor.handleIndexMessageReceivedEvent(folderId, filesList, clusterConfigInfo, peerDeviceId)
     }
 
