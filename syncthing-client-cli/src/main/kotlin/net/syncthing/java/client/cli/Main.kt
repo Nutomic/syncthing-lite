@@ -15,6 +15,8 @@ package net.syncthing.java.client.cli
 
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.runBlocking
+import net.syncthing.java.bep.index.browser.DirectoryContentListing
+import net.syncthing.java.bep.index.browser.IndexBrowser
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
@@ -172,9 +174,11 @@ class Main(private val commandLine: CommandLine) {
             "L" -> {
                 waitForIndexUpdate(syncthingClient)
                 for (folder in configuration.folders) {
-                    syncthingClient.indexHandler.newIndexBrowser(folder.folderId).use { indexBrowser ->
-                        System.out.println("list folder = ${indexBrowser.folder}")
-                        for (fileInfo in indexBrowser.listFiles()) {
+                    System.out.println("list folder = ${folder}")
+                    val listing = syncthingClient.indexHandler.indexBrowser.getDirectoryListing(folder.folderId, IndexBrowser.ROOT_PATH)
+
+                    if (listing is DirectoryContentListing) {
+                        for (fileInfo in listing.entries) {
                             System.out.println("${fileInfo.type.name.substring(0, 1)}\t${fileInfo.describeSize()}\t${fileInfo.path}")
                         }
                     }
@@ -187,7 +191,7 @@ class Main(private val commandLine: CommandLine) {
                     folderInfo.append("\nfolder info: ")
                             .append(folder)
                     folderInfo.append("\nfolder stats: ")
-                            .append(syncthingClient.indexHandler.newFolderBrowser().getFolderStatsSync(folder.folderId).infoDump)
+                            .append(syncthingClient.indexHandler.folderBrowser.getFolderStatsSync(folder.folderId).infoDump)
                             .append("\n")
                 }
                 System.out.println("folders:\n$folderInfo\n")
@@ -196,7 +200,7 @@ class Main(private val commandLine: CommandLine) {
                 var folderInfo = ""
                 for (folder in configuration.folders) {
                     folderInfo += "\nfolder info: " + folder
-                    folderInfo += "\nfolder stats: " + syncthingClient.indexHandler.newFolderBrowser().getFolderStatsSync(folder.folderId).infoDump + "\n"
+                    folderInfo += "\nfolder stats: " + syncthingClient.indexHandler.folderBrowser.getFolderStatsSync(folder.folderId).infoDump + "\n"
                 }
                 System.out.println("folders:\n$folderInfo\n")
             }

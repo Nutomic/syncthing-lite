@@ -14,17 +14,14 @@
  */
 package net.syncthing.java.bep.index
 
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.consume
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.FolderBrowser
-import net.syncthing.java.bep.IndexBrowser
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
+import net.syncthing.java.bep.index.browser.IndexBrowser
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
@@ -34,24 +31,14 @@ import org.apache.commons.lang3.tuple.Pair
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
-import java.util.*
 
 data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<FileInfo>, val indexInfo: IndexInfo)
 
 class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val indexBrowsers = mutableSetOf<IndexBrowser>()
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
-
-    init {
-        GlobalScope.launch {
-            onIndexRecordAcquiredEvents.openSubscription().consumeEach {
-                indexBrowsers.forEach { it.onIndexChangedevent(it.folder) }
-            }
-        }
-    }
 
     private val indexMessageProcessor = IndexMessageQueueProcessor(
             indexRepository = indexRepository,
@@ -66,9 +53,6 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     fun subscribeToOnIndexRecordAcquiredEvents() = onIndexRecordAcquiredEvents.openSubscription()
 
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
-
-    @Deprecated(message = "use configuration instead")
-    fun folderInfoList(): List<FolderInfo> = configuration.folders.toList()
 
     fun clearIndex() {
         indexRepository.runInTransaction { it.clearIndex() }
@@ -165,25 +149,10 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    // FIXME: there should only be one instance of this
-    fun newFolderBrowser(): FolderBrowser {
-        return FolderBrowser(this, configuration)
-    }
-
-    fun newIndexBrowser(folder: String, includeParentInList: Boolean = false, allowParentInRoot: Boolean = false,
-                        ordering: Comparator<FileInfo>? = null): IndexBrowser {
-        val indexBrowser = IndexBrowser(indexRepository, this, folder, includeParentInList, allowParentInRoot, ordering)
-        indexBrowsers.add(indexBrowser)
-        return indexBrowser
-    }
-
-    internal fun unregisterIndexBrowser(indexBrowser: IndexBrowser) {
-        assert(indexBrowsers.contains(indexBrowser))
-        indexBrowsers.remove(indexBrowser)
-    }
+    val folderBrowser = FolderBrowser(this, configuration)
+    val indexBrowser = IndexBrowser(indexRepository, this)
 
     override fun close() {
-        assert(indexBrowsers.isEmpty())
         onIndexRecordAcquiredEvents.close()
         onFullIndexAcquiredEvents.close()
         indexMessageProcessor.stop()

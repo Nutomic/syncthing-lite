@@ -34,7 +34,7 @@ class LibraryHandler(context: Context) {
         private val handler = Handler(Looper.getMainLooper())
     }
 
-    private val libraryManager = DefaultLibraryManager.with(context)
+    val libraryManager = DefaultLibraryManager.with(context)
     private val isStarted = AtomicBoolean(false)
     private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
     private val indexUpdateCompleteMessages = BroadcastChannel<FolderInfo>(capacity = 16)

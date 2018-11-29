@@ -2,6 +2,12 @@ package net.syncthing.lite.library
 
 import android.os.Handler
 import android.os.Looper
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.produce
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -35,7 +41,7 @@ class LibraryManager (
     // only this Thread should access instance and userCounter
     private val startStopExecutor = Executors.newSingleThreadExecutor()
 
-    private var instance: LibraryInstance? = null
+    private val instanceStream = ConflatedBroadcastChannel<LibraryInstance?>(null)
     private var userCounter = 0
 
     fun startLibraryUsage(callback: (LibraryInstance) -> Unit) {
@@ -43,12 +49,12 @@ class LibraryManager (
             val newUserCounter = ++userCounter
             handler.post { userCounterListener(newUserCounter) }
 
-            if (instance == null) {
-                instance = synchronousInstanceCreator()
+            if (instanceStream.value == null) {
+                instanceStream.offer(synchronousInstanceCreator())
                 handler.post { isRunningListener(true) }
             }
 
-            handler.post { callback(instance!!) }
+            handler.post { callback(instanceStream.value!!) }
         }
     }
 
@@ -57,6 +63,16 @@ class LibraryManager (
             startLibraryUsage { instance ->
                 continuation.resume(instance)
             }
+        }
+    }
+
+    suspend fun <T> withLibrary(action: suspend (LibraryInstance) -> T): T {
+        val instance = startLibraryUsageCoroutine()
+
+        return try {
+            action(instance)
+        } finally {
+            stopLibraryUsage()
         }
     }
 
@@ -77,13 +93,30 @@ class LibraryManager (
     fun shutdownIfThereAreZeroUsers(listener: (wasShutdownPerformed: Boolean) -> Unit = {}) {
         startStopExecutor.submit {
             if (userCounter == 0) {
-                instance?.shutdown()
-                instance = null
+                instanceStream.value?.shutdown()
+                instanceStream.offer(null)
 
                 handler.post { isRunningListener(false) }
                 handler.post { listener(true) }
             } else {
                 handler.post { listener(false) }
+            }
+        }
+    }
+
+    fun streamDirectoryListing(folder: String, path: String) = GlobalScope.produce {
+        var job = Job()
+
+        instanceStream.openSubscription().consumeEach { instance ->
+            job.cancel()
+            job = Job()
+
+            if (instance != null) {
+                async (job) {
+                    instance.indexBrowser.streamDirectoryListing(folder, path).consumeEach {
+                        send(it)
+                    }
+                }
             }
         }
     }

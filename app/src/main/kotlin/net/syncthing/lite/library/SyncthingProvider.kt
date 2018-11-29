@@ -10,33 +10,36 @@ import android.provider.DocumentsProvider
 import android.util.Log
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
-import net.syncthing.java.bep.IndexBrowser
+import net.syncthing.java.bep.index.browser.DirectoryContentListing
+import net.syncthing.java.bep.index.browser.DirectoryNotFoundListing
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
-import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.lite.R
 import java.io.FileNotFoundException
 import java.net.URLConnection
-import java.util.concurrent.CountDownLatch
 
 class SyncthingProvider : DocumentsProvider() {
 
     companion object {
         private const val Tag = "SyncthingProvider"
+
         private val DefaultRootProjection = arrayOf(
                 Root.COLUMN_ROOT_ID,
                 Root.COLUMN_FLAGS,
                 Root.COLUMN_TITLE,
                 Root.COLUMN_SUMMARY,
                 Root.COLUMN_DOCUMENT_ID,
-                Root.COLUMN_ICON)
+                Root.COLUMN_ICON
+        )
+
         private val DefaultDocumentProjection = arrayOf(
                 Document.COLUMN_DOCUMENT_ID,
                 Document.COLUMN_DISPLAY_NAME,
                 Document.COLUMN_SIZE,
                 Document.COLUMN_MIME_TYPE,
                 Document.COLUMN_LAST_MODIFIED,
-                Document.COLUMN_FLAGS)
+                Document.COLUMN_FLAGS
+        )
     }
 
     override fun onCreate(): Boolean {
@@ -45,96 +48,122 @@ class SyncthingProvider : DocumentsProvider() {
     }
 
     // this instance is not started -> it connects and disconnects on demand
-    private val libraryHandler: LibraryHandler by lazy { LibraryHandler(context) }
     private val libraryManager: LibraryManager by lazy { DefaultLibraryManager.with(context) }
 
     override fun queryRoots(projection: Array<String>?): Cursor {
         Log.d(Tag, "queryRoots($projection)")
-        val latch = CountDownLatch(1)
-        var folders: List<Pair<FolderInfo, FolderStats>>? = null
-        libraryHandler.folderBrowser { folderBrowser ->
-            folders = runBlocking { folderBrowser.folderInfoAndStatsList() }
-            latch.countDown()
-        }
-        latch.await()
 
-        val result = MatrixCursor(projection ?: DefaultRootProjection)
-        folders!!.forEach { folder ->
-            val row = result.newRow()
-            row.add(Root.COLUMN_ROOT_ID, folder.first.folderId)
-            row.add(Root.COLUMN_SUMMARY, folder.first.label)
-            row.add(Root.COLUMN_FLAGS, 0)
-            row.add(Root.COLUMN_TITLE, context.getString(R.string.app_name))
-            row.add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(folder.first))
-            row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
+        return runBlocking {
+            libraryManager.withLibrary { instance ->
+                MatrixCursor(projection ?: DefaultRootProjection).apply {
+                    instance.folderBrowser.folderInfoAndStatsList().forEach { folder ->
+                        newRow().apply {
+                            add(Root.COLUMN_ROOT_ID, folder.first.folderId)
+                            add(Root.COLUMN_SUMMARY, folder.first.label)
+                            add(Root.COLUMN_FLAGS, 0)
+                            add(Root.COLUMN_TITLE, context.getString(R.string.app_name))
+                            add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(folder.first))
+                            add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
+                        }
+                    }
+                }
+            }
         }
-        return result
     }
 
     override fun queryChildDocuments(parentDocumentId: String, projection: Array<String>?,
                                      sortOrder: String?): Cursor {
         Log.d(Tag, "queryChildDocuments($parentDocumentId, $projection, $sortOrder)")
-        val result = MatrixCursor(projection ?: DefaultDocumentProjection)
-        getIndexBrowser(getFolderIdForDocId(parentDocumentId))
-                .listFiles(getPathForDocId(parentDocumentId))
-                .forEach { fileInfo ->
-                    includeFile(result, fileInfo)
+
+        return runBlocking {
+            libraryManager.withLibrary { instance ->
+                val listing = instance.indexBrowser.getDirectoryListing(
+                        folder = getFolderIdForDocId(parentDocumentId),
+                        path = getPathForDocId(parentDocumentId)
+                )
+
+                when (listing) {
+                    is DirectoryNotFoundListing -> throw FileNotFoundException()
+                    is DirectoryContentListing -> {
+                        val result = MatrixCursor(projection ?: DefaultDocumentProjection)
+
+                        listing.entries.forEach { entry ->
+                            includeFile(result, entry)
+                        }
+
+                        result
+                    }
                 }
-        return result
+            }
+        }
     }
 
     override fun queryDocument(documentId: String, projection: Array<String>?): Cursor {
         Log.d(Tag, "queryDocument($documentId, $projection)")
-        val result = MatrixCursor(projection ?: DefaultDocumentProjection)
-        val fileInfo = getIndexBrowser(getFolderIdForDocId(documentId))
-                .getFileInfoByAbsolutePath(getPathForDocId(documentId))
-        includeFile(result, fileInfo)
-        return result
+
+        return runBlocking {
+            libraryManager.withLibrary {  instance ->
+                val fileInfo = instance.indexBrowser.getFileInfoByAbsolutePathAllowNull(
+                        folder = getFolderIdForDocId(documentId),
+                        path = getPathForDocId(documentId)
+                ) ?: throw FileNotFoundException()
+
+                MatrixCursor(projection ?: DefaultDocumentProjection).apply {
+                    includeFile(this, fileInfo)
+                }
+            }
+        }
     }
 
     @Throws(FileNotFoundException::class)
     override fun openDocument(documentId: String, mode: String, signal: CancellationSignal?):
             ParcelFileDescriptor {
         Log.d(Tag, "openDocument($documentId, $mode, $signal)")
-        val fileInfo = getIndexBrowser(getFolderIdForDocId(documentId))
-                .getFileInfoByAbsolutePath(getPathForDocId(documentId))
+
         val accessMode = ParcelFileDescriptor.parseMode(mode)
+
         if (accessMode != ParcelFileDescriptor.MODE_READ_ONLY) {
             throw NotImplementedError()
         }
 
-        val outputFile = runBlocking {
-            signal?.setOnCancelListener {
-                this.coroutineContext.cancel()
-            }
+        return runBlocking {
+            libraryManager.withLibrary { instance ->
+                val fileInfo = instance.indexBrowser.getFileInfoByAbsolutePathAllowNull(
+                        folder = getFolderIdForDocId(documentId),
+                        path = getPathForDocId(documentId)
+                ) ?: throw FileNotFoundException()
 
-            val libraryInstance = libraryManager.startLibraryUsageCoroutine()
+                signal?.setOnCancelListener {
+                    this.coroutineContext.cancel()
+                }
 
-            try {
-                DownloadFileTask.downloadFileCoroutine(
+                val outputFile = DownloadFileTask.downloadFileCoroutine(
                         externalCacheDir = context.externalCacheDir,
-                        syncthingClient = libraryInstance.syncthingClient,
+                        syncthingClient = instance.syncthingClient,
                         fileInfo = fileInfo,
                         onProgress = { /* ignore the progress */ }
                 )
-            } finally {
-                libraryManager.stopLibraryUsage()
+
+                ParcelFileDescriptor.open(outputFile, ParcelFileDescriptor.MODE_READ_ONLY)
             }
         }
-
-        return ParcelFileDescriptor.open(outputFile, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
     private fun includeFile(result: MatrixCursor, fileInfo: FileInfo) {
-        val row = result.newRow()
-        row.add(Document.COLUMN_DOCUMENT_ID, getDocIdForFile(fileInfo))
-        row.add(Document.COLUMN_DISPLAY_NAME, fileInfo.fileName)
-        row.add(Document.COLUMN_SIZE, fileInfo.size)
-        val mime = if (fileInfo.isDirectory()) Document.MIME_TYPE_DIR
-        else URLConnection.guessContentTypeFromName(fileInfo.fileName)
-        row.add(Document.COLUMN_MIME_TYPE, mime)
-        row.add(Document.COLUMN_LAST_MODIFIED, fileInfo.lastModified)
-        row.add(Document.COLUMN_FLAGS, 0)
+        result.newRow().apply {
+            add(Document.COLUMN_DOCUMENT_ID, getDocIdForFile(fileInfo))
+            add(Document.COLUMN_DISPLAY_NAME, fileInfo.fileName)
+            add(Document.COLUMN_SIZE, fileInfo.size)
+            add(
+                    Document.COLUMN_MIME_TYPE,
+                    if (fileInfo.isDirectory())
+                        Document.MIME_TYPE_DIR
+                    else
+                        URLConnection.guessContentTypeFromName(fileInfo.fileName)
+            )
+            add(Document.COLUMN_LAST_MODIFIED, fileInfo.lastModified)
+            add(Document.COLUMN_FLAGS, 0)
+        }
     }
 
     private fun getFolderIdForDocId(docId: String) = docId.split(":")[0]
@@ -144,15 +173,4 @@ class SyncthingProvider : DocumentsProvider() {
     private fun getDocIdForFile(folderInfo: FolderInfo) = folderInfo.folderId + ":"
 
     private fun getDocIdForFile(fileInfo: FileInfo) = fileInfo.folder + ":" + fileInfo.path
-
-    private fun getIndexBrowser(folderId: String): IndexBrowser {
-        val latch = CountDownLatch(1)
-        var indexBrowser: IndexBrowser? = null
-        libraryHandler.syncthingClient {
-            indexBrowser = it.indexHandler.newIndexBrowser(folderId)
-            latch.countDown()
-        }
-        latch.await()
-        return indexBrowser!!
-    }
 }

@@ -55,10 +55,10 @@ class LibraryInstance (context: Context) {
             ),
             tempRepository = tempRepository
     )
-    val folderBrowser = syncthingClient.indexHandler.newFolderBrowser()
+    val folderBrowser = syncthingClient.indexHandler.folderBrowser
+    val indexBrowser = syncthingClient.indexHandler.indexBrowser
 
     fun shutdown() {
-        folderBrowser.close()
         syncthingClient.close()
         configuration.persistNow()
     }
