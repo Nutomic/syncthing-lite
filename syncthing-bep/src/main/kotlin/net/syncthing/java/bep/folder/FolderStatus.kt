@@ -1,6 +1,6 @@
 package net.syncthing.java.bep.folder
 
-import net.syncthing.java.bep.utils.longSumBy
+import net.syncthing.java.bep.utils.longMaxBy
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.beans.IndexInfo
@@ -18,5 +18,12 @@ data class FolderStatus(
         )
     }
 
-    val missingIndexUpdates: Long by lazy { indexInfo.longSumBy { Math.min(it.maxSequence - it.localSequence, 0) } }
+    val missingIndexUpdates: Long by lazy {
+        Math.max(
+                0,
+                indexInfo.longMaxBy ({ it.maxSequence }, 0) -
+                        indexInfo.longMaxBy ({ it.localSequence }, 0)
+
+        )
+    }
 }
