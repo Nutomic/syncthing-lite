@@ -75,7 +75,7 @@ object ClusterConfigHandler {
     }
 
     // TODO: understand this
-    internal fun handleReceivedClusterConfig(
+    internal suspend fun handleReceivedClusterConfig(
             clusterConfig: BlockExchangeProtos.ClusterConfig,
             configuration: Configuration,
             otherDeviceId: DeviceId,

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -16,7 +16,6 @@ package net.syncthing.java.bep.index
 
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.consume
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
@@ -109,27 +108,34 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
         }
     }
 
-    fun handleClusterConfigMessageProcessedEvent(clusterConfig: BlockExchangeProtos.ClusterConfig) {
-        indexRepository.runInTransaction { transaction ->
-            runBlocking {
-                for (folderRecord in clusterConfig.foldersList) {
-                    val folder = folderRecord.id
-                    logger.debug("acquired folder info from cluster config = {}", folder)
-                    for (deviceRecord in folderRecord.devicesList) {
-                        val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
-                        if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
-                            val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
-                            logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
+    suspend fun handleClusterConfigMessageProcessedEvent(clusterConfig: BlockExchangeProtos.ClusterConfig) {
+        val updatedIndexInfos = indexRepository.runInTransaction { transaction ->
+            val updatedIndexInfos = mutableListOf<IndexInfo>()
 
-                            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(
-                                    folderId = folderIndexInfo.folderId,
-                                    indexInfo = folderIndexInfo,
-                                    files = emptyList()
-                            ))
-                        }
+            for (folderRecord in clusterConfig.foldersList) {
+                val folder = folderRecord.id
+                logger.debug("acquired folder info from cluster config = {}", folder)
+                for (deviceRecord in folderRecord.devicesList) {
+                    val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
+                    if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
+                        val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
+                        logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
+                        updatedIndexInfos.add(folderIndexInfo)
                     }
                 }
             }
+
+            updatedIndexInfos
+        }
+
+        updatedIndexInfos.forEach {
+            onIndexRecordAcquiredEvents.send(
+                    IndexRecordAcquiredEvent(
+                            folderId = it.folderId,
+                            indexInfo = it,
+                            files = emptyList()
+                    )
+            )
         }
     }
 
