@@ -12,6 +12,7 @@ import net.syncthing.java.bep.index.browser.DirectoryListing
 import net.syncthing.java.bep.index.browser.DirectoryNotFoundListing
 import net.syncthing.java.bep.index.browser.IndexBrowser
 import net.syncthing.java.core.beans.FileInfo
+import net.syncthing.java.core.utils.PathUtils
 import net.syncthing.lite.R
 import net.syncthing.lite.adapters.FolderContentsAdapter
 import net.syncthing.lite.adapters.FolderContentsListener
@@ -53,7 +54,7 @@ class FolderBrowserActivity : SyncthingActivity() {
         adapter.listener = object: FolderContentsListener {
             override fun onItemClicked(fileInfo: FileInfo) {
                 if (fileInfo.isDirectory()) {
-                    path.offer(fileInfo.path.removeSuffix("/") + "/" + fileInfo.fileName)
+                    path.offer(fileInfo.path)
                 } else {
                     DownloadFileDialogFragment.newInstance(fileInfo).show(supportFragmentManager)
                 }
@@ -99,7 +100,7 @@ class FolderBrowserActivity : SyncthingActivity() {
                 if (listing == null) {
                     binding.isLoading = true
                 } else {
-                    supportActionBar?.title = listing.folder
+                    supportActionBar?.title = if (PathUtils.isRoot(listing.path)) folder else PathUtils.getFileName(listing.path)
                     binding.isLoading = false
                     adapter.data = if (listing is DirectoryContentListing) listing.entries else emptyList()
                 }
