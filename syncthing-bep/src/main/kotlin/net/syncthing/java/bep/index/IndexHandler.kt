@@ -18,9 +18,9 @@ import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.withTimeoutOrNull
 import net.syncthing.java.bep.BlockExchangeProtos
-import net.syncthing.java.bep.FolderBrowser
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
+import net.syncthing.java.bep.folder.FolderBrowser
 import net.syncthing.java.bep.index.browser.IndexBrowser
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.configuration.Configuration

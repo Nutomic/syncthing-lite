@@ -12,11 +12,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
-import net.syncthing.java.bep.FolderBrowser
+import net.syncthing.java.bep.folder.FolderBrowser
+import net.syncthing.java.bep.folder.FolderStatus
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
-import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.configuration.Configuration
 import org.jetbrains.anko.doAsync
 import java.util.concurrent.atomic.AtomicBoolean
@@ -38,7 +38,7 @@ class LibraryHandler(context: Context) {
     private val isStarted = AtomicBoolean(false)
     private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
     private val indexUpdateCompleteMessages = BroadcastChannel<FolderInfo>(capacity = 16)
-    private val folderStatsAndInfos = BroadcastChannel<List<Pair<FolderInfo, FolderStats>>>(capacity = Channel.CONFLATED)
+    private val folderStatusList = BroadcastChannel<List<FolderStatus>>(capacity = Channel.CONFLATED)
     private var job: Job = Job()
 
     val isListeningPortTaken: LiveData<Boolean> = isListeningPortTakenInternal
@@ -76,8 +76,8 @@ class LibraryHandler(context: Context) {
             }
 
             GlobalScope.launch (job) {
-                libraryInstance.folderBrowser.folderInfoAndStatsStream().consumeEach {
-                    folderStatsAndInfos.send(it)
+                libraryInstance.folderBrowser.folderInfoAndStatusStream().consumeEach {
+                    folderStatusList.send(it)
                 }
             }
         }
@@ -140,5 +140,5 @@ class LibraryHandler(context: Context) {
     }
 
     fun subscribeToOnFullIndexAcquiredEvents() = indexUpdateCompleteMessages.openSubscription()
-    fun subscribeToFolderStatsAndInfos() = folderStatsAndInfos.openSubscription()
+    fun subscribeToFolderStatusList() = folderStatusList.openSubscription()
 }

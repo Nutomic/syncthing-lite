@@ -13,4 +13,7 @@ interface FolderIndexInfoDao {
 
     @Query("SELECT * FROM folder_index_info WHERE device_id = :deviceId AND folder = :folder")
     fun findIndexInfoByDeviceAndFolder(deviceId: DeviceId, folder: String): FolderIndexInfoItem?
+
+    @Query("SELECT * FROM folder_index_info")
+    fun findAllIndexInfo(): List<FolderIndexInfoItem>
 }

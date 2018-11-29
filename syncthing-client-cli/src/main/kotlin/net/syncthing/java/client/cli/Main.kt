@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
-import java.util.concurrent.CountDownLatch
 
 class Main(private val commandLine: CommandLine) {
 
@@ -120,7 +119,6 @@ class Main(private val commandLine: CommandLine) {
                 System.out.println("file path = $path")
                 val folder = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[0]
                 path = path.split(":".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()[1]
-                val latch = CountDownLatch(1)
                 val blockPusher = syncthingClient.getBlockPusher(folder)
 
                 val observer = runBlocking {
@@ -191,7 +189,7 @@ class Main(private val commandLine: CommandLine) {
                     folderInfo.append("\nfolder info: ")
                             .append(folder)
                     folderInfo.append("\nfolder stats: ")
-                            .append(syncthingClient.indexHandler.folderBrowser.getFolderStatsSync(folder.folderId).infoDump)
+                            .append(syncthingClient.indexHandler.folderBrowser.getFolderStatusSync(folder.folderId).stats.infoDump)
                             .append("\n")
                 }
                 System.out.println("folders:\n$folderInfo\n")
@@ -200,7 +198,7 @@ class Main(private val commandLine: CommandLine) {
                 var folderInfo = ""
                 for (folder in configuration.folders) {
                     folderInfo += "\nfolder info: " + folder
-                    folderInfo += "\nfolder stats: " + syncthingClient.indexHandler.folderBrowser.getFolderStatsSync(folder.folderId).infoDump + "\n"
+                    folderInfo += "\nfolder stats: " + syncthingClient.indexHandler.folderBrowser.getFolderStatusSync(folder.folderId).stats.infoDump + "\n"
                 }
                 System.out.println("folders:\n$folderInfo\n")
             }

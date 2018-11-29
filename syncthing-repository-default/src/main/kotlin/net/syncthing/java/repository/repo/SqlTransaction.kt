@@ -106,6 +106,19 @@ class SqlTransaction(
         }
     }
 
+    override fun findAllIndexInfos(): List<IndexInfo> = runIfAllowed {
+        connection.prepareStatement("SELECT * FROM folder_index_info").use { prepareStatement ->
+            val resultSet = prepareStatement.executeQuery()
+            val list = mutableListOf<IndexInfo>()
+
+            while (resultSet.next()) {
+                list.add(readFolderIndexInfo(resultSet))
+            }
+
+            list
+        }
+    }
+
     @Throws(SQLException::class)
     override fun findFileInfo(folder: String, path: String): FileInfo? = runIfAllowed {
         connection.prepareStatement("SELECT * FROM file_info WHERE folder=? AND path=?").use { prepareStatement ->

@@ -163,6 +163,10 @@ class SqliteTransaction(
         database.folderIndexInfo().findIndexInfoByDeviceAndFolder(deviceId, folder)?.native
     }
 
+    override fun findAllIndexInfos(): List<IndexInfo> = runIfAllowed {
+        database.folderIndexInfo().findAllIndexInfo().map { it.native }
+    }
+
     // managment
 
     override fun clearIndex() {

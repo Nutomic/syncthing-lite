@@ -56,4 +56,5 @@
         This does not apply to local discovery connections.
     </string>
     <string name="dialog_file_save_as">Save as</string>
+    <string name="pending_index_updates">%d index updates pending</string>
 </resources>

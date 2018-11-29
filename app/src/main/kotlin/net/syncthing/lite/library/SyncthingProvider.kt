@@ -56,13 +56,13 @@ class SyncthingProvider : DocumentsProvider() {
         return runBlocking {
             libraryManager.withLibrary { instance ->
                 MatrixCursor(projection ?: DefaultRootProjection).apply {
-                    instance.folderBrowser.folderInfoAndStatsList().forEach { folder ->
+                    instance.folderBrowser.folderInfoAndStatusList().forEach { folder ->
                         newRow().apply {
-                            add(Root.COLUMN_ROOT_ID, folder.first.folderId)
-                            add(Root.COLUMN_SUMMARY, folder.first.label)
+                            add(Root.COLUMN_ROOT_ID, folder.info.folderId)
+                            add(Root.COLUMN_SUMMARY, folder.info.label)
                             add(Root.COLUMN_FLAGS, 0)
                             add(Root.COLUMN_TITLE, context.getString(R.string.app_name))
-                            add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(folder.first))
+                            add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(folder.info))
                             add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
                         }
                     }

@@ -13,6 +13,13 @@
         <variable
             name="info"
             type="String" />
+
+        <variable
+            name="info2"
+            type="String" />
+
+        <import type="android.view.View" />
+        <import type="android.text.TextUtils" />
     </data>
 
     <LinearLayout
@@ -56,6 +63,15 @@
             android:maxLines="1"
             android:textSize="14sp" />
 
+        <TextView
+            android:visibility="@{TextUtils.isEmpty(info2) ? View.GONE : View.VISIBLE}"
+            tools:text="Index Update Progress"
+            android:text="@{info2}"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="14sp" />
 
     </LinearLayout>
 

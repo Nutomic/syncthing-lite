@@ -22,6 +22,8 @@ interface IndexTransaction {
 
     fun updateIndexInfo(indexInfo: IndexInfo)
 
+    fun findAllIndexInfos(): List<IndexInfo>
+
     fun findIndexInfoByDeviceAndFolder(deviceId: DeviceId, folder: String): IndexInfo?
 
     fun findFileInfo(folder: String, path: String): FileInfo?

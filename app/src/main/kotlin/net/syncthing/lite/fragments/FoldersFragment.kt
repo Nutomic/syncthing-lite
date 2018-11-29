@@ -34,7 +34,7 @@ class FoldersFragment : SyncthingFragment() {
         libraryHandler.isListeningPortTaken.observe(this, Observer { binding.listeningPortTaken = it })
 
         launch {
-            libraryHandler.subscribeToFolderStatsAndInfos().consumeEach {
+            libraryHandler.subscribeToFolderStatusList().consumeEach {
                 adapter.data = it
                 binding.isEmpty = it.isEmpty()
             }
