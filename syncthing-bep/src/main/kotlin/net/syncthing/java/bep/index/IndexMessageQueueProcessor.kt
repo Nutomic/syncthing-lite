@@ -45,6 +45,7 @@ class IndexMessageQueueProcessor (
 
     companion object {
         private val logger = LoggerFactory.getLogger(IndexMessageQueueProcessor::class.java)
+        private const val BATCH_SIZE = 128
     }
 
     private val job = Job()
@@ -53,6 +54,12 @@ class IndexMessageQueueProcessor (
     private val indexUpdateProcessingQueue = Channel<IndexUpdateAction>(capacity = Channel.RENDEZVOUS)
 
     suspend fun handleIndexMessageReceivedEvent(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
+        filesList.chunked(BATCH_SIZE).forEach { chunck ->
+            handleIndexMessageReceivedEventWithoutChuncking(folderId, chunck, clusterConfigInfo, peerDeviceId)
+        }
+    }
+
+    suspend fun handleIndexMessageReceivedEventWithoutChuncking(folderId: String, filesList: List<BlockExchangeProtos.FileInfo>, clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId) {
         indexUpdateIncomingLock.withLock {
             logger.info("received index message event, preparing")
 
