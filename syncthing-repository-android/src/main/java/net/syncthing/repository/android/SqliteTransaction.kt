@@ -1,18 +1,17 @@
 package net.syncthing.repository.android
 
 import net.syncthing.java.core.beans.*
-import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.Sequencer
 import net.syncthing.repository.android.database.RepositoryDatabase
 import net.syncthing.repository.android.database.item.*
 import java.util.*
+import java.util.concurrent.Callable
 
 class SqliteTransaction(
         private val database: RepositoryDatabase,
         private val threadId: Long,
-        private val clearTempStorageHook: () -> Unit,
-        private val folderStatsChangeListener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)?
+        private val clearTempStorageHook: () -> Unit
 ): IndexTransaction {
     private var finished = false
 
@@ -61,12 +60,12 @@ class SqliteTransaction(
         database.fileInfo().countFileInfoBySearchTerm(query)
     }
 
-    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?) {
-        runIfAllowed {
-            val newFileInfo = fileInfo
-            val newFileBlocks = fileBlocks
+    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): FolderStats = runIfAllowed {
+        val newFileInfo = fileInfo
+        val newFileBlocks = fileBlocks
 
-            database.runInTransaction {
+        database.runInTransaction(object: Callable<FolderStats> {
+            override fun call(): FolderStats {
                 if (newFileBlocks != null) {
                     FileInfo.checkBlocks(newFileInfo, newFileBlocks)
 
@@ -128,13 +127,9 @@ class SqliteTransaction(
                     database.folderStats().getFolderStats(newFileInfo.folder)!!
                 }
 
-                folderStatsChangeListener?.invoke(object : IndexRepository.FolderStatsUpdatedEvent() {
-                    override fun getFolderStats(): List<FolderStats> {
-                        return listOf(newFolderStats.native)
-                    }
-                })
+                return newFolderStats.native
             }
-        }
+        })
     }
 
     // FileBlocks

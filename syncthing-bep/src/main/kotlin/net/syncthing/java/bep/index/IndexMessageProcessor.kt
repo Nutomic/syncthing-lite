@@ -13,7 +13,8 @@ object NewIndexMessageProcessor {
     fun doHandleIndexMessageReceivedEvent(
             message: BlockExchangeProtos.IndexUpdate,
             peerDeviceId: DeviceId,
-            transaction: IndexTransaction
+            transaction: IndexTransaction,
+            folderStatsUpdateCollector: FolderStatsUpdateCollector
     ): Pair<IndexInfo, List<FileInfo>> {
         val folderId = message.folder
 
@@ -23,7 +24,7 @@ object NewIndexMessageProcessor {
         var sequence: Long = -1
 
         for (fileInfo in message.filesList) {
-            val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo)
+            val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo, folderStatsUpdateCollector)
 
             if (newRecord != null) {
                 newRecords.add(newRecord)

@@ -12,7 +12,7 @@ import java.util.*
 object IndexElementProcessor {
     val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
 
-    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo): FileInfo? {
+    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo, folderStatsUpdateCollector: FolderStatsUpdateCollector): FileInfo? {
         var fileBlocks: FileBlocks? = null
         val builder = FileInfo.Builder()
                 .setFolder(folder)
@@ -37,16 +37,16 @@ object IndexElementProcessor {
             }
         }
 
-        return addRecord(transaction, builder.build(), fileBlocks)
+        return addRecord(transaction, builder.build(), fileBlocks, folderStatsUpdateCollector)
     }
 
-    fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?): FileInfo? {
+    fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?, folderStatsUpdateCollector: FolderStatsUpdateCollector): FileInfo? {
         val lastModified = transaction.findFileInfoLastModified(record.folder, record.path)
         return if (lastModified != null && record.lastModified < lastModified) {
             logger.trace("discarding record = {}, modified before local record", record)
             null
         } else {
-            transaction.updateFileInfo(record, fileBlocks)
+            folderStatsUpdateCollector.put(transaction.updateFileInfo(record, fileBlocks))
             logger.trace("loaded new record = {}", record)
 
             record

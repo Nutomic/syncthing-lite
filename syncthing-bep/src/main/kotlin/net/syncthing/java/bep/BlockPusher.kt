@@ -19,8 +19,10 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
+import net.syncthing.java.bep.index.FolderStatsUpdateCollector
 import net.syncthing.java.bep.index.IndexElementProcessor
 import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.BlockInfo
@@ -137,10 +139,12 @@ class BlockPusher(private val localDeviceId: DeviceId,
                 monitoringProcessExecutorService.shutdown()
                 indexListenerStream.cancel()
                 requestHandlerRegistry.unregisterListener(requestFilter)
+                val folderStatsUpdateCollector = FolderStatsUpdateCollector()
                 val fileInfo1 = indexHandler.indexRepository.runInTransaction {
                     // TODO: notify the IndexBrowsers again (as it was earlier)
-                    IndexElementProcessor.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single())
+                    IndexElementProcessor.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single(), folderStatsUpdateCollector)
                 }
+                runBlocking { indexHandler.handleFolderStatsUpdates(folderStatsUpdateCollector) }
                 logger.info("sent file info record = {}", fileInfo1)
             }
 

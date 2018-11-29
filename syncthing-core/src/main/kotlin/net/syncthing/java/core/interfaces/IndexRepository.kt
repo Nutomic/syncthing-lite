@@ -14,19 +14,8 @@
  */
 package net.syncthing.java.core.interfaces
 
-import net.syncthing.java.core.beans.FolderStats
 import java.io.Closeable
 
 interface IndexRepository: Closeable {
-
-    fun setOnFolderStatsUpdatedListener(listener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)?)
-
     fun <T> runInTransaction(action: (IndexTransaction) -> T): T
-
-    abstract class FolderStatsUpdatedEvent {
-
-        abstract fun getFolderStats(): List<FolderStats>
-
-    }
-
 }

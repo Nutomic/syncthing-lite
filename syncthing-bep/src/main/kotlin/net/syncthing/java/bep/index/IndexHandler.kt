@@ -39,6 +39,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     private val logger = LoggerFactory.getLogger(javaClass)
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
+    private val onFolderStatsUpdatedEvents = BroadcastChannel<FolderStats>(capacity = 16)
 
     private val indexMessageProcessor = IndexMessageQueueProcessor(
             indexRepository = indexRepository,
@@ -46,11 +47,13 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             isRemoteIndexAcquired = ::isRemoteIndexAcquired,
             onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
             onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
+            onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents,
             configuration = configuration
     )
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
     fun subscribeToOnIndexRecordAcquiredEvents() = onIndexRecordAcquiredEvents.openSubscription()
+    fun subscribeFolderStatsUpdatedEvents() = onFolderStatsUpdatedEvents.openSubscription()
 
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
@@ -151,6 +154,12 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     val folderBrowser = FolderBrowser(this, configuration)
     val indexBrowser = IndexBrowser(indexRepository, this)
+
+    suspend fun handleFolderStatsUpdates(folderStatsUpdateCollector: FolderStatsUpdateCollector) {
+        folderStatsUpdateCollector.query().forEach {
+            onFolderStatsUpdatedEvents.send(it)
+        }
+    }
 
     override fun close() {
         onIndexRecordAcquiredEvents.close()

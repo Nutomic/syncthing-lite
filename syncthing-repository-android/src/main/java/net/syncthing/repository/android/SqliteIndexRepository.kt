@@ -10,8 +10,6 @@ class SqliteIndexRepository(
         private val closeDatabaseOnClose: Boolean,
         private val clearTempStorageHook: () -> Unit
 ): IndexRepository {
-    // TODO: remove this if possible
-    private var folderStatsChangeListener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)? = null
 
     override fun <T> runInTransaction(action: (IndexTransaction) -> T): T {
             return database.runInTransaction (object: Callable<T> {
@@ -19,8 +17,7 @@ class SqliteIndexRepository(
                     val transaction = SqliteTransaction(
                             database = database,
                             threadId = Thread.currentThread().id,
-                            clearTempStorageHook = clearTempStorageHook,
-                            folderStatsChangeListener = folderStatsChangeListener
+                            clearTempStorageHook = clearTempStorageHook
                     )
 
                     return try {
@@ -36,9 +33,5 @@ class SqliteIndexRepository(
         if (closeDatabaseOnClose) {
             database.close()
         }
-    }
-
-    override fun setOnFolderStatsUpdatedListener(listener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)?) {
-        folderStatsChangeListener = listener
     }
 }

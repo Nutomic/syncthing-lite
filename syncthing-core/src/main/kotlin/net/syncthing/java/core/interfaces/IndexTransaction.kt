@@ -34,7 +34,7 @@ interface IndexTransaction {
 
     fun findFileBlocks(folder: String, path: String): FileBlocks?
 
-    fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?)
+    fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): FolderStats
 
     fun findNotDeletedFilesByFolderAndParent(folder: String, parentPath: String): List<FileInfo>
 

@@ -15,34 +15,22 @@
 package net.syncthing.java.bep.folder
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.first
+import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.configuration.Configuration
-import net.syncthing.java.core.interfaces.IndexRepository
 import java.io.Closeable
 
 class FolderBrowser internal constructor(private val indexHandler: IndexHandler, private val configuration: Configuration) : Closeable {
     private val job = Job()
     private val foldersStatus = ConflatedBroadcastChannel<Map<String, FolderStatus>>()
-    private val folderStatsUpdatedEvent = Channel<IndexRepository.FolderStatsUpdatedEvent>(capacity = Channel.UNLIMITED)
-
-    // FIXME: This isn't nice
-    private val indexRepositoryEventListener = { event: IndexRepository.FolderStatsUpdatedEvent ->
-        folderStatsUpdatedEvent.offer(event)
-
-        fun nothing() {
-            // used to return Unit
-        }
-
-        nothing()
-    }
 
     init {
-        indexHandler.indexRepository.setOnFolderStatsUpdatedListener(indexRepositoryEventListener)  // TODO: remove this global state
-
         GlobalScope.launch (job) {
             // get initial status
             val currentFolderStats = mutableMapOf<String, FolderStats>()
@@ -74,11 +62,9 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler,
             val updateLock = Mutex()
 
             async {
-                folderStatsUpdatedEvent.consumeEach {
+                indexHandler.subscribeFolderStatsUpdatedEvents().consumeEach { folderStats ->
                     updateLock.withLock {
-                        it.getFolderStats().forEach { folderStats ->
-                            currentFolderStats[folderStats.folderId] = folderStats
-                        }
+                        currentFolderStats[folderStats.folderId] = folderStats
 
                         dispatch()
                     }
@@ -121,7 +107,5 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler,
 
     override fun close() {
         job.cancel()
-        indexHandler.indexRepository.setOnFolderStatsUpdatedListener(null)
-        folderStatsUpdatedEvent.close()
     }
 }

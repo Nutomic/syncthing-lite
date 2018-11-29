@@ -27,6 +27,7 @@ import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderInfo
+import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
@@ -39,6 +40,7 @@ class IndexMessageQueueProcessor (
         private val configuration: Configuration,
         private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
         private val onFullIndexAcquiredEvents: BroadcastChannel<FolderInfo>,
+        private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStats>,
         private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean
 ) {
     private data class IndexUpdateAction(val update: BlockExchangeProtos.IndexUpdate, val clusterConfigInfo: ClusterConfigInfo, val peerDeviceId: DeviceId)
@@ -107,13 +109,16 @@ class IndexMessageQueueProcessor (
                         label = message.folder
                 )
 
+        val folderStatsUpdateCollector = FolderStatsUpdateCollector()
+
         val (newRecords, newIndexInfo, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
             val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)
 
             val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                     message = message,
                     peerDeviceId = peerDeviceId,
-                    transaction = indexTransaction
+                    transaction = indexTransaction,
+                    folderStatsUpdateCollector = folderStatsUpdateCollector
             )
 
             logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
@@ -125,6 +130,10 @@ class IndexMessageQueueProcessor (
 
         if (!newRecords.isEmpty()) {
             onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo, newRecords, newIndexInfo))
+        }
+
+        folderStatsUpdateCollector.query().forEach {
+            onFolderStatsUpdatedEvents.send(it)
         }
 
         if (wasIndexAcquired) {
