@@ -46,10 +46,11 @@ class IndexBrowser internal constructor(
 
     fun getDirectoryListing(folder: String, path: String): DirectoryListing = indexRepository.runInTransaction { indexTransaction ->
         val entries = indexTransaction.findNotDeletedFilesByFolderAndParent(folder, path)
+        val parentPath = if (PathUtils.isRoot(path)) null else PathUtils.getParentPath(path)
         val parentEntry = if (PathUtils.isRoot(path)) null else getFileInfoByPathAllowNull(folder, PathUtils.getParentPath(path), indexTransaction)
         val directoryInfo = getFileInfoByPathAllowNull(folder, path, indexTransaction)
 
-        if (parentEntry == null || directoryInfo == null || directoryInfo.type != FileInfo.FileType.DIRECTORY) {
+        if ((parentPath != null && parentEntry == null) || directoryInfo == null || directoryInfo.type != FileInfo.FileType.DIRECTORY) {
             DirectoryNotFoundListing(folder, path)
         } else {
             DirectoryContentListing(
