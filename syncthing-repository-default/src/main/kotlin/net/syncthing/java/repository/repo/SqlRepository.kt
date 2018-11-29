@@ -30,7 +30,6 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
     private val logger = LoggerFactory.getLogger(javaClass)
     private val dataSource: HikariDataSource
     //    private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-    private var onFolderStatsUpdatedListener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)? = null
 
     @Throws(SQLException::class)
     private fun getConnection() = dataSource.connection
@@ -64,10 +63,6 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
         //            }
         //        }, 15, 30, TimeUnit.SECONDS);
         logger.debug("database ready")
-    }
-
-    override fun setOnFolderStatsUpdatedListener(listener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)?) {
-        onFolderStatsUpdatedListener = listener
     }
 
     private fun checkDb() {
@@ -154,7 +149,7 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
 
     override fun <T> runInTransaction(action: (IndexTransaction) -> T): T {
         return getConnection().use {  connection ->
-            val transaction = SqlTransaction(connection, onFolderStatsUpdatedListener, ::initDb)
+            val transaction = SqlTransaction(connection, ::initDb)
 
             try {
                 connection.autoCommit = false

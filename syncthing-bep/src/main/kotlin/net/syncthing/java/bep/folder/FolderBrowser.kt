@@ -74,9 +74,9 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler,
             async {
                 indexHandler.subscribeToOnIndexRecordAcquiredEvents().consumeEach { event ->
                     updateLock.withLock {
-                        val oldList = currentIndexInfo[event.folderInfo.folderId] ?: emptyList()
+                        val oldList = currentIndexInfo[event.folderId] ?: emptyList()
                         val newList = oldList.filter { it.deviceId != event.indexInfo.deviceId } + event.indexInfo
-                        currentIndexInfo[event.folderInfo.folderId] = newList
+                        currentIndexInfo[event.folderId] = newList
 
                         dispatch()
                     }

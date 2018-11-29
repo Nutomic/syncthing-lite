@@ -105,7 +105,7 @@ class IndexBrowser internal constructor(
             for (event in this) {
                 var hadChanges = false
 
-                if (event.folderInfo.folderId == folder) {
+                if (event.folderId == folder) {
                     event.files.forEach { fileUpdate ->
                         // entry change
                         if (fileUpdate.parent == path) {

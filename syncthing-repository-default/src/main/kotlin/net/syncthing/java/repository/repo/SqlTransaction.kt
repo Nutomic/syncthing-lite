@@ -19,7 +19,6 @@ import com.google.protobuf.InvalidProtocolBufferException
 import net.syncthing.java.bep.BlockExchangeExtraProtos
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.core.beans.*
-import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.Sequencer
 import org.bouncycastle.util.encoders.Hex
@@ -31,7 +30,6 @@ import java.util.*
 
 class SqlTransaction(
         private val connection: Connection,
-        private val onFolderStatsUpdatedListener: ((IndexRepository.FolderStatsUpdatedEvent) -> Unit)?,
         private val initDb: (Connection) -> Unit
 ): IndexTransaction, Sequencer {
     private var closed = false
@@ -210,7 +208,7 @@ class SqlTransaction(
     }
 
     @Throws(SQLException::class)
-    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): Unit = runIfAllowed {
+    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): FolderStats = runIfAllowed {
         val version = fileInfo.versionList.last()
 
         if (fileBlocks != null) {
@@ -283,13 +281,8 @@ class SqlTransaction(
                 deltaDirCount++
             }
         }
-        val folderStats = updateFolderStats(connection, fileInfo.folder, deltaFileCount, deltaDirCount, deltaSize, fileInfo.lastModified)
 
-        onFolderStatsUpdatedListener?.invoke(object : IndexRepository.FolderStatsUpdatedEvent() {
-            override fun getFolderStats(): List<FolderStats> {
-                return listOf(folderStats)
-            }
-        })
+        updateFolderStats(connection, fileInfo.folder, deltaFileCount, deltaDirCount, deltaSize, fileInfo.lastModified)
     }
 
     @Throws(SQLException::class)

@@ -108,8 +108,8 @@ class BlockPusher(private val localDeviceId: DeviceId,
         logger.debug("send index update for file = {}", targetPath)
         val indexListenerStream = indexHandler.subscribeToOnIndexRecordAcquiredEvents()
         GlobalScope.launch {
-            indexListenerStream.consumeEach { (folderInfo, newRecords, _) ->
-                if (folderInfo.folderId == folderId) {
+            indexListenerStream.consumeEach { (indexFolderId, newRecords, _) ->
+                if (indexFolderId == folderId) {
                     for (fileInfo2 in newRecords) {
                         if (fileInfo2.path == targetPath && fileInfo2.hash == dataSource.getHash()) { //TODO check not invalid
                             //                                sentBlocks.addAll(dataSource.getHashes());

@@ -26,9 +26,7 @@ import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.core.beans.DeviceId
-import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.beans.FolderStats
-import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
@@ -37,9 +35,8 @@ import org.slf4j.LoggerFactory
 class IndexMessageQueueProcessor (
         private val indexRepository: IndexRepository,
         private val tempRepository: TempRepository,
-        private val configuration: Configuration,
         private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
-        private val onFullIndexAcquiredEvents: BroadcastChannel<FolderInfo>,
+        private val onFullIndexAcquiredEvents: BroadcastChannel<String>,
         private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStats>,
         private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean
 ) {
@@ -103,12 +100,6 @@ class IndexMessageQueueProcessor (
 
         logger.info("processing index message with {} records", message.filesCount)
 
-        val folderInfo = configuration.folders.find { it.folderId == message.folder }
-                ?: FolderInfo(
-                        folderId = message.folder,
-                        label = message.folder
-                )
-
         val folderStatsUpdateCollector = FolderStatsUpdateCollector()
 
         val (newRecords, newIndexInfo, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
@@ -129,7 +120,7 @@ class IndexMessageQueueProcessor (
         }
 
         if (!newRecords.isEmpty()) {
-            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(folderInfo, newRecords, newIndexInfo))
+            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(message.folder, newRecords, newIndexInfo))
         }
 
         folderStatsUpdateCollector.query().forEach {
@@ -138,7 +129,7 @@ class IndexMessageQueueProcessor (
 
         if (wasIndexAcquired) {
             logger.debug("index acquired")
-            onFullIndexAcquiredEvents.send(folderInfo)
+            onFullIndexAcquiredEvents.send(message.folder)
         }
     }
 

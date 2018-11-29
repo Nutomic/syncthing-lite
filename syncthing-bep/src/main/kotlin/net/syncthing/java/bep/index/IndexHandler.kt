@@ -16,6 +16,7 @@ package net.syncthing.java.bep.index
 
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.consume
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
@@ -32,13 +33,13 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
 
-data class IndexRecordAcquiredEvent(val folderInfo: FolderInfo, val files: List<FileInfo>, val indexInfo: IndexInfo)
+data class IndexRecordAcquiredEvent(val folderId: String, val files: List<FileInfo>, val indexInfo: IndexInfo)
 
 class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
                    private val tempRepository: TempRepository) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
-    private val onFullIndexAcquiredEvents = BroadcastChannel<FolderInfo>(capacity = 16)
+    private val onFullIndexAcquiredEvents = BroadcastChannel<String>(capacity = 16)
     private val onFolderStatsUpdatedEvents = BroadcastChannel<FolderStats>(capacity = 16)
 
     private val indexMessageProcessor = IndexMessageQueueProcessor(
@@ -47,8 +48,7 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             isRemoteIndexAcquired = ::isRemoteIndexAcquired,
             onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
             onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
-            onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents,
-            configuration = configuration
+            onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents
     )
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
@@ -111,14 +111,22 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
 
     fun handleClusterConfigMessageProcessedEvent(clusterConfig: BlockExchangeProtos.ClusterConfig) {
         indexRepository.runInTransaction { transaction ->
-            for (folderRecord in clusterConfig.foldersList) {
-                val folder = folderRecord.id
-                logger.debug("acquired folder info from cluster config = {}", folder)
-                for (deviceRecord in folderRecord.devicesList) {
-                    val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
-                    if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
-                        val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
-                        logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
+            runBlocking {
+                for (folderRecord in clusterConfig.foldersList) {
+                    val folder = folderRecord.id
+                    logger.debug("acquired folder info from cluster config = {}", folder)
+                    for (deviceRecord in folderRecord.devicesList) {
+                        val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
+                        if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
+                            val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
+                            logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
+
+                            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(
+                                    folderId = folderIndexInfo.folderId,
+                                    indexInfo = folderIndexInfo,
+                                    files = emptyList()
+                            ))
+                        }
                     }
                 }
             }

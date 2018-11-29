@@ -16,7 +16,6 @@ import net.syncthing.java.bep.folder.FolderBrowser
 import net.syncthing.java.bep.folder.FolderStatus
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.beans.DeviceId
-import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.java.core.configuration.Configuration
 import org.jetbrains.anko.doAsync
 import java.util.concurrent.atomic.AtomicBoolean
@@ -37,7 +36,7 @@ class LibraryHandler(context: Context) {
     val libraryManager = DefaultLibraryManager.with(context)
     private val isStarted = AtomicBoolean(false)
     private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
-    private val indexUpdateCompleteMessages = BroadcastChannel<FolderInfo>(capacity = 16)
+    private val indexUpdateCompleteMessages = BroadcastChannel<String>(capacity = 16)
     private val folderStatusList = BroadcastChannel<List<FolderStatus>>(capacity = Channel.CONFLATED)
     private var job: Job = Job()
 
