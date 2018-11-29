@@ -37,7 +37,7 @@ object UpdateIndexInfo {
             newIndexSequenceInfo = newIndexSequenceInfo.copy(maxSequence = maxSequence)
         }
 
-        if (localSequence != null && localSequence > newIndexSequenceInfo.maxSequence) {
+        if (localSequence != null && localSequence > newIndexSequenceInfo.localSequence) {
             newIndexSequenceInfo = newIndexSequenceInfo.copy(localSequence = localSequence)
         }
 
