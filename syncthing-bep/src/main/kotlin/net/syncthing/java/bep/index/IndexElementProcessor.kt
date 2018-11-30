@@ -82,7 +82,7 @@ object IndexElementProcessor {
         val oldMissing = oldRecord == null || oldRecord.isDeleted
         val newMissing = newRecord.isDeleted
         val oldSizeMissing = oldMissing || !oldRecord!!.isFile()
-        val newSizeMissing = newMissing || !oldRecord!!.isFile()
+        val newSizeMissing = newMissing || !newRecord.isFile()
 
         if (!oldSizeMissing) {
             folderStatsUpdateCollector.deltaSize -= oldRecord!!.size!!
