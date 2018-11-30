@@ -112,6 +112,8 @@ class IndexMessageQueueProcessor (
         val (newRecords, newIndexInfo, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
             val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)
 
+            val startTime = System.currentTimeMillis()
+
             val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                     message = message,
                     peerDeviceId = peerDeviceId,
@@ -119,7 +121,9 @@ class IndexMessageQueueProcessor (
                     folderStatsUpdateCollector = folderStatsUpdateCollector
             )
 
-            logger.info("processed {} index records, acquired {}", message.filesCount, newRecords.size)
+            val endTime = System.currentTimeMillis()
+
+            logger.info("processed {} index records, acquired {} in ${endTime - startTime} ms", message.filesCount, newRecords.size)
 
             logger.debug("index info = {}", newIndexInfo)
 
