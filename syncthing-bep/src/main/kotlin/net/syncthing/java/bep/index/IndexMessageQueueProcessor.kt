@@ -107,36 +107,31 @@ class IndexMessageQueueProcessor (
 
         logger.info("processing index message with {} records", message.filesCount)
 
-        val folderStatsUpdateCollector = FolderStatsUpdateCollector()
-
-        val (newRecords, newIndexInfo, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
+        val (indexResult, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
             val wasIndexAcquiredBefore = isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction)
 
             val startTime = System.currentTimeMillis()
 
-            val (newIndexInfo, newRecords) = NewIndexMessageProcessor.doHandleIndexMessageReceivedEvent(
+            val indexResult = IndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                     message = message,
                     peerDeviceId = peerDeviceId,
-                    transaction = indexTransaction,
-                    folderStatsUpdateCollector = folderStatsUpdateCollector
+                    transaction = indexTransaction
             )
 
             val endTime = System.currentTimeMillis()
 
-            logger.info("processed {} index records, acquired {} in ${endTime - startTime} ms", message.filesCount, newRecords.size)
+            logger.info("processed {} index records, acquired {} in ${endTime - startTime} ms", message.filesCount, indexResult.updatedFiles.size)
 
-            logger.debug("index info = {}", newIndexInfo)
+            logger.debug("index info = {}", indexResult.newIndexInfo)
 
-            Triple(newRecords, newIndexInfo, (!wasIndexAcquiredBefore) && isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction))
+            indexResult to ((!wasIndexAcquiredBefore) && isRemoteIndexAcquired(clusterConfigInfo, peerDeviceId, indexTransaction))
         }
 
-        if (!newRecords.isEmpty()) {
-            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(message.folder, newRecords, newIndexInfo))
+        if (indexResult.updatedFiles.isNotEmpty()) {
+            onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(message.folder, indexResult.updatedFiles, indexResult.newIndexInfo))
         }
 
-        folderStatsUpdateCollector.query().forEach {
-            onFolderStatsUpdatedEvents.send(it)
-        }
+        onFolderStatsUpdatedEvents.send(indexResult.newFolderStats)
 
         if (wasIndexAcquired) {
             logger.debug("index acquired")

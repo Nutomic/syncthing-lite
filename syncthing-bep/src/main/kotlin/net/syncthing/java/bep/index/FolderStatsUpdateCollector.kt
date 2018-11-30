@@ -1,13 +1,17 @@
 package net.syncthing.java.bep.index
 
-import net.syncthing.java.core.beans.FolderStats
+import java.util.*
 
-class FolderStatsUpdateCollector {
-    private val updates = mutableMapOf<String, FolderStats>()
+class FolderStatsUpdateCollector (val folderId: String) {
+    var deltaFileCount = 0L
+    var deltaDirCount = 0L
+    var deltaSize = 0L
+    var lastModified = Date(0)
 
-    fun put(folderStats: FolderStats) {
-        updates[folderStats.folderId] = folderStats
-    }
-
-    fun query() = updates.values.toList()
+    fun isEmpty() = (
+            deltaFileCount == 0L &&
+                    deltaDirCount == 0L &&
+                    deltaSize == 0L &&
+                    lastModified.time == 0L
+            )
 }

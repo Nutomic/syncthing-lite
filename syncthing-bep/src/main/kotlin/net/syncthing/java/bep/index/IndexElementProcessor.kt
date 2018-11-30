@@ -65,10 +65,49 @@ object IndexElementProcessor {
             logger.trace("discarding record = {}, modified before local record", newRecord)
             null
         } else {
-            folderStatsUpdateCollector.put(transaction.updateFileInfo(newRecord, fileBlocks))
             logger.trace("loaded new record = {}", newRecord)
+
+            transaction.updateFileInfo(newRecord, fileBlocks)
+            updateFolderStatsCollector(oldRecord, newRecord, folderStatsUpdateCollector)
 
             newRecord
         }
+    }
+
+    private fun updateFolderStatsCollector(
+            oldRecord: FileInfo?,
+            newRecord: FileInfo,
+            folderStatsUpdateCollector: FolderStatsUpdateCollector
+    ) {
+        val oldMissing = oldRecord == null || oldRecord.isDeleted
+        val newMissing = newRecord.isDeleted
+        val oldSizeMissing = oldMissing || !oldRecord!!.isFile()
+        val newSizeMissing = newMissing || !oldRecord!!.isFile()
+
+        if (!oldSizeMissing) {
+            folderStatsUpdateCollector.deltaSize -= oldRecord!!.size!!
+        }
+
+        if (!newSizeMissing) {
+            folderStatsUpdateCollector.deltaSize += newRecord.size!!
+        }
+
+        if (!oldMissing) {
+            if (oldRecord!!.isFile()) {
+                folderStatsUpdateCollector.deltaFileCount--
+            } else if (oldRecord.isDirectory()) {
+                folderStatsUpdateCollector.deltaDirCount--
+            }
+        }
+
+        if (!newMissing) {
+            if (newRecord.isFile()) {
+                folderStatsUpdateCollector.deltaFileCount++
+            } else if (newRecord.isDirectory()) {
+                folderStatsUpdateCollector.deltaDirCount++
+            }
+        }
+
+        folderStatsUpdateCollector.lastModified = newRecord.lastModified
     }
 }

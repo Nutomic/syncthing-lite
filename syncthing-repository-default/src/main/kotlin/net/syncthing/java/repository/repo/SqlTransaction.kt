@@ -226,7 +226,7 @@ class SqlTransaction(
     }
 
     @Throws(SQLException::class)
-    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): FolderStats = runIfAllowed {
+    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): Unit = runIfAllowed {
         val version = fileInfo.versionList.last()
 
         if (fileBlocks != null) {
@@ -249,7 +249,7 @@ class SqlTransaction(
                 prepareStatement.executeUpdate()
             }
         }
-        val oldFileInfo = findFileInfo(fileInfo.folder, fileInfo.path)
+
         connection.prepareStatement("MERGE INTO file_info"
                 + " (folder,path,file_name,parent,size,hash,last_modified,file_type,version_id,version_value,is_deleted)"
                 + " VALUES (?,?,?,?,?,?,?,?,?,?,?)").use { prepareStatement ->
@@ -271,36 +271,6 @@ class SqlTransaction(
             }
             prepareStatement.executeUpdate()
         }
-        //update stats
-        var deltaFileCount: Long = 0
-        var deltaDirCount: Long = 0
-        var deltaSize: Long = 0
-        val oldMissing = oldFileInfo == null || oldFileInfo.isDeleted
-        val newMissing = fileInfo.isDeleted
-        val oldSizeMissing = oldMissing || !oldFileInfo!!.isFile()
-        val newSizeMissing = newMissing || !fileInfo.isFile()
-        if (!oldSizeMissing) {
-            deltaSize -= oldFileInfo!!.size!!
-        }
-        if (!newSizeMissing) {
-            deltaSize += fileInfo.size!!
-        }
-        if (!oldMissing) {
-            if (oldFileInfo!!.isFile()) {
-                deltaFileCount--
-            } else if (oldFileInfo.isDirectory()) {
-                deltaDirCount--
-            }
-        }
-        if (!newMissing) {
-            if (fileInfo.isFile()) {
-                deltaFileCount++
-            } else if (fileInfo.isDirectory()) {
-                deltaDirCount++
-            }
-        }
-
-        updateFolderStats(connection, fileInfo.folder, deltaFileCount, deltaDirCount, deltaSize, fileInfo.lastModified)
     }
 
     @Throws(SQLException::class)
@@ -395,6 +365,10 @@ class SqlTransaction(
 
             list
         }
+    }
+
+    override fun updateOrInsertFolderStats(folder: String, deltaFileCount: Long, deltaDirCount: Long, deltaSize: Long, lastUpdate: Date) {
+        updateFolderStats(connection, folder, deltaFileCount, deltaDirCount, deltaSize, lastUpdate)
     }
 
     @Throws(SQLException::class)

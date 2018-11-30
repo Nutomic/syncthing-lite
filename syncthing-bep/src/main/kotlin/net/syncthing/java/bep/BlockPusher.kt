@@ -25,9 +25,11 @@ import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
 import net.syncthing.java.bep.index.FolderStatsUpdateCollector
 import net.syncthing.java.bep.index.IndexElementProcessor
 import net.syncthing.java.bep.index.IndexHandler
+import net.syncthing.java.bep.index.IndexMessageProcessor
 import net.syncthing.java.core.beans.BlockInfo
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo.Version
+import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.utils.BlockUtils
 import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.io.IOUtils
@@ -139,18 +141,25 @@ class BlockPusher(private val localDeviceId: DeviceId,
                 monitoringProcessExecutorService.shutdown()
                 indexListenerStream.cancel()
                 requestHandlerRegistry.unregisterListener(requestFilter)
-                val folderStatsUpdateCollector = FolderStatsUpdateCollector()
-                val fileInfo1 = indexHandler.indexRepository.runInTransaction {
+                val (fileInfo1, folderStatsUpdate) = indexHandler.indexRepository.runInTransaction {
+                    val folderStatsUpdateCollector = FolderStatsUpdateCollector(folderId)
+
                     // TODO: notify the IndexBrowsers again (as it was earlier)
-                    IndexElementProcessor.pushRecord(
+                    val fileInfo = IndexElementProcessor.pushRecord(
                             it,
                             indexUpdate.folder,
                             indexUpdate.filesList.single(),
                             folderStatsUpdateCollector,
                             it.findFileInfo(folderId, indexUpdate.filesList.single().name)
                     )
+
+                    IndexMessageProcessor.handleFolderStatsUpdate(it, folderStatsUpdateCollector)
+                    val folderStatsUpdate = it.findFolderStats(folderId) ?: FolderStats.createDummy(folderId)
+
+                    fileInfo to folderStatsUpdate
                 }
-                runBlocking { indexHandler.handleFolderStatsUpdates(folderStatsUpdateCollector) }
+
+                runBlocking { indexHandler.sendFolderStatsUpdate(folderStatsUpdate) }
                 logger.info("sent file info record = {}", fileInfo1)
             }
 

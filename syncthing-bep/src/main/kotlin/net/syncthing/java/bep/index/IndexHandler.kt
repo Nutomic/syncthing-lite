@@ -169,10 +169,8 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
     val folderBrowser = FolderBrowser(this, configuration)
     val indexBrowser = IndexBrowser(indexRepository, this)
 
-    suspend fun handleFolderStatsUpdates(folderStatsUpdateCollector: FolderStatsUpdateCollector) {
-        folderStatsUpdateCollector.query().forEach {
-            onFolderStatsUpdatedEvents.send(it)
-        }
+    suspend fun sendFolderStatsUpdate(event: FolderStats) {
+        onFolderStatsUpdatedEvents.send(event)
     }
 
     override fun close() {

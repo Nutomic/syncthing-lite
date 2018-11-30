@@ -6,7 +6,6 @@ import net.syncthing.java.core.interfaces.Sequencer
 import net.syncthing.repository.android.database.RepositoryDatabase
 import net.syncthing.repository.android.database.item.*
 import java.util.*
-import java.util.concurrent.Callable
 
 class SqliteTransaction(
         private val database: RepositoryDatabase,
@@ -66,76 +65,16 @@ class SqliteTransaction(
         database.fileInfo().countFileInfoBySearchTerm(query)
     }
 
-    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?): FolderStats = runIfAllowed {
-        val newFileInfo = fileInfo
-        val newFileBlocks = fileBlocks
+    override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?) = runIfAllowed {
+        database.runInTransaction {
+            if (fileBlocks != null) {
+                FileInfo.checkBlocks(fileInfo, fileBlocks)
 
-        database.runInTransaction(object: Callable<FolderStats> {
-            override fun call(): FolderStats {
-                if (newFileBlocks != null) {
-                    FileInfo.checkBlocks(newFileInfo, newFileBlocks)
-
-                    database.fileBlocks().mergeBlock(FileBlocksItem.fromNative(newFileBlocks))
-                }
-
-                val oldFileInfo = findFileInfo(newFileInfo.folder, newFileInfo.path)
-
-                database.fileInfo().updateFileInfo(FileInfoItem.fromNative(newFileInfo))
-
-                //update stats
-                var deltaFileCount = 0L
-                var deltaDirCount = 0L
-                var deltaSize = 0L
-                val oldMissing = oldFileInfo == null || oldFileInfo.isDeleted
-                val newMissing = newFileInfo.isDeleted
-                val oldSizeMissing = oldMissing || !oldFileInfo!!.isFile()
-                val newSizeMissing = newMissing || !newFileInfo.isFile()
-                if (!oldSizeMissing) {
-                    deltaSize -= oldFileInfo!!.size!!
-                }
-                if (!newSizeMissing) {
-                    deltaSize += newFileInfo.size!!
-                }
-                if (!oldMissing) {
-                    if (oldFileInfo!!.isFile()) {
-                        deltaFileCount--
-                    } else if (oldFileInfo.isDirectory()) {
-                        deltaDirCount--
-                    }
-                }
-                if (!newMissing) {
-                    if (newFileInfo.isFile()) {
-                        deltaFileCount++
-                    } else if (newFileInfo.isDirectory()) {
-                        deltaDirCount++
-                    }
-                }
-
-                val newFolderStats = kotlin.run {
-                    val updatedRows = database.folderStats().updateFolderStats(
-                            folder = newFileInfo.folder,
-                            deltaDirCount = deltaDirCount,
-                            deltaFileCount = deltaFileCount,
-                            deltaSize = deltaSize,
-                            lastUpdate = newFileInfo.lastModified
-                    )
-
-                    if (updatedRows == 0L) {
-                        database.folderStats().insertFolderStats(FolderStatsItem(
-                                folder = newFileInfo.folder,
-                                dirCount = deltaDirCount,
-                                fileCount = deltaFileCount,
-                                size = deltaSize,
-                                lastUpdate = newFileInfo.lastModified
-                        ))
-                    }
-
-                    database.folderStats().getFolderStats(newFileInfo.folder)!!
-                }
-
-                return newFolderStats.native
+                database.fileBlocks().mergeBlock(FileBlocksItem.fromNative(fileBlocks))
             }
-        })
+
+            database.fileInfo().updateFileInfo(FileInfoItem.fromNative(fileInfo))
+        }
     }
 
     // FileBlocks
@@ -152,6 +91,12 @@ class SqliteTransaction(
 
     override fun findFolderStats(folder: String): FolderStats? = runIfAllowed {
         database.folderStats().findFolderStats(folder)?.native
+    }
+
+    override fun updateOrInsertFolderStats(folder: String, deltaFileCount: Long, deltaDirCount: Long, deltaSize: Long, lastUpdate: Date) {
+        if (database.folderStats().updateFolderStats(folder, deltaFileCount, deltaDirCount, deltaSize, lastUpdate) == 0L) {
+            database.folderStats().insertFolderStats(FolderStatsItem(folder, deltaFileCount, deltaDirCount, lastUpdate, deltaSize))
+        }
     }
 
     // IndexInfo

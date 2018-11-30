@@ -3,19 +3,19 @@ package net.syncthing.java.bep.index
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo
+import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.beans.IndexInfo
 import net.syncthing.java.core.interfaces.IndexTransaction
 import org.slf4j.LoggerFactory
 
-object NewIndexMessageProcessor {
-    private val logger = LoggerFactory.getLogger(NewIndexMessageProcessor::class.java)
+object IndexMessageProcessor {
+    private val logger = LoggerFactory.getLogger(IndexMessageProcessor::class.java)
 
     fun doHandleIndexMessageReceivedEvent(
             message: BlockExchangeProtos.IndexUpdate,
             peerDeviceId: DeviceId,
-            transaction: IndexTransaction,
-            folderStatsUpdateCollector: FolderStatsUpdateCollector
-    ): Pair<IndexInfo, List<FileInfo>> {
+            transaction: IndexTransaction
+    ): Result {
         val folderId = message.folder
 
         logger.debug("processing {} index records for folder {}", message.filesList.size, folderId)
@@ -32,6 +32,7 @@ object NewIndexMessageProcessor {
                 .toList()
 
         val relatedFileInfo = transaction.findFileInfo(folderId, filesToProcess.map { it.name })
+        val folderStatsUpdateCollector = FolderStatsUpdateCollector(message.folder)
 
         for (fileInfo in filesToProcess) {
             val newRecord = IndexElementProcessor.pushRecord(
@@ -49,8 +50,26 @@ object NewIndexMessageProcessor {
             sequence = Math.max(fileInfo.sequence, sequence)
         }
 
+        handleFolderStatsUpdate(transaction, folderStatsUpdateCollector)
+
         val newIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folderId, peerDeviceId, null, null, sequence)
 
-        return newIndexInfo to newRecords.toList()
+        return Result(newIndexInfo, newRecords.toList(), transaction.findFolderStats(folderId) ?: FolderStats.createDummy(folderId))
     }
+
+    fun handleFolderStatsUpdate(transaction: IndexTransaction, folderStatsUpdateCollector: FolderStatsUpdateCollector) {
+        if (folderStatsUpdateCollector.isEmpty()) {
+            return
+        }
+
+        transaction.updateOrInsertFolderStats(
+                folder = folderStatsUpdateCollector.folderId,
+                deltaSize = folderStatsUpdateCollector.deltaSize,
+                deltaFileCount = folderStatsUpdateCollector.deltaFileCount,
+                deltaDirCount = folderStatsUpdateCollector.deltaDirCount,
+                lastUpdate = folderStatsUpdateCollector.lastModified
+        )
+    }
+
+    data class Result(val newIndexInfo: IndexInfo, val updatedFiles: List<FileInfo>, val newFolderStats: FolderStats)
 }
