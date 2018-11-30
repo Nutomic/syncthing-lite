@@ -132,6 +132,24 @@ class SqlTransaction(
         }
     }
 
+    override fun findFileInfo(folder: String, path: List<String>): Map<String, FileInfo> = runIfAllowed {
+        connection.prepareStatement("SELECT * FROM folder_index_info WHERE folder=? AND PATH IN ?").use { prepareStatement ->
+            prepareStatement.setString(1, folder)
+            prepareStatement.setArray(2, connection.createArrayOf("VARCHAR", path.toTypedArray()))
+
+            val resultSet = prepareStatement.executeQuery()
+            val map = mutableMapOf<String, FileInfo>()
+
+            while (resultSet.next()) {
+                val item = readFileInfo(resultSet)
+
+                map[item.path] = item
+            }
+
+            map
+        }
+    }
+
     @Throws(SQLException::class)
     override fun findFileInfoLastModified(folder: String, path: String): Date? = runIfAllowed {
         connection.prepareStatement("SELECT last_modified FROM file_info WHERE folder=? AND path=?").use { prepareStatement ->

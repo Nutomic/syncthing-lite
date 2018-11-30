@@ -28,6 +28,9 @@ interface IndexTransaction {
 
     fun findFileInfo(folder: String, path: String): FileInfo?
 
+    // path to FileInfo
+    fun findFileInfo(folder: String, path: List<String>): Map<String, FileInfo>
+
     fun findFileInfoLastModified(folder: String, path: String): Date?
 
     fun findNotDeletedFileInfo(folder: String, path: String): FileInfo?

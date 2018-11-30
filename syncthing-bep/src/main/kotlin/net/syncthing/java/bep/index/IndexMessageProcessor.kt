@@ -31,8 +31,16 @@ object NewIndexMessageProcessor {
                 .reversed()
                 .toList()
 
+        val relatedFileInfo = transaction.findFileInfo(folderId, filesToProcess.map { it.name })
+
         for (fileInfo in filesToProcess) {
-            val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo, folderStatsUpdateCollector)
+            val newRecord = IndexElementProcessor.pushRecord(
+                    transaction = transaction,
+                    folder = folderId,
+                    bepFileInfo = fileInfo,
+                    folderStatsUpdateCollector = folderStatsUpdateCollector,
+                    oldRecord = relatedFileInfo[fileInfo.name]
+            )
 
             if (newRecord != null) {
                 newRecords.add(newRecord)

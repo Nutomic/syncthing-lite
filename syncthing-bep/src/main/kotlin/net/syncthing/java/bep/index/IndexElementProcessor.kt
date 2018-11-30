@@ -12,7 +12,13 @@ import java.util.*
 object IndexElementProcessor {
     val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
 
-    fun pushRecord(transaction: IndexTransaction, folder: String, bepFileInfo: BlockExchangeProtos.FileInfo, folderStatsUpdateCollector: FolderStatsUpdateCollector): FileInfo? {
+    fun pushRecord(
+            transaction: IndexTransaction,
+            folder: String,
+            bepFileInfo: BlockExchangeProtos.FileInfo,
+            folderStatsUpdateCollector: FolderStatsUpdateCollector,
+            oldRecord: FileInfo?
+    ): FileInfo? {
         var fileBlocks: FileBlocks? = null
         val builder = FileInfo.Builder()
                 .setFolder(folder)
@@ -37,19 +43,32 @@ object IndexElementProcessor {
             }
         }
 
-        return addRecord(transaction, builder.build(), fileBlocks, folderStatsUpdateCollector)
+        return addRecord(
+                transaction = transaction,
+                newRecord = builder.build(),
+                fileBlocks = fileBlocks,
+                folderStatsUpdateCollector = folderStatsUpdateCollector,
+                oldRecord = oldRecord
+        )
     }
 
-    fun addRecord(transaction: IndexTransaction, record: FileInfo, fileBlocks: FileBlocks?, folderStatsUpdateCollector: FolderStatsUpdateCollector): FileInfo? {
-        val lastModified = transaction.findFileInfoLastModified(record.folder, record.path)
-        return if (lastModified != null && record.lastModified < lastModified) {
-            logger.trace("discarding record = {}, modified before local record", record)
+    private fun addRecord(
+            transaction: IndexTransaction,
+            newRecord: FileInfo,
+            oldRecord: FileInfo?,
+            fileBlocks: FileBlocks?,
+            folderStatsUpdateCollector: FolderStatsUpdateCollector
+    ): FileInfo? {
+        val lastModified = oldRecord?.lastModified
+
+        return if (lastModified != null && newRecord.lastModified < lastModified) {
+            logger.trace("discarding record = {}, modified before local record", newRecord)
             null
         } else {
-            folderStatsUpdateCollector.put(transaction.updateFileInfo(record, fileBlocks))
-            logger.trace("loaded new record = {}", record)
+            folderStatsUpdateCollector.put(transaction.updateFileInfo(newRecord, fileBlocks))
+            logger.trace("loaded new record = {}", newRecord)
 
-            record
+            newRecord
         }
     }
 }

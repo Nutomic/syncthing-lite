@@ -12,6 +12,9 @@ interface FileInfoDao {
     @Query("SELECT * FROM file_info WHERE folder = :folder AND path = :path")
     fun findFileInfo(folder: String, path: String): FileInfoItem?
 
+    @Query("SELECT * FROM file_info WHERE folder = :folder AND path IN (:path)")
+    fun findFileInfo(folder: String, path: List<String>): List<FileInfoItem>
+
     @Query("SELECT last_modified FROM file_info WHERE folder = :folder AND path = :path")
     fun findFileInfoLastModified(folder: String, path: String): FileInfoLastModified?
 

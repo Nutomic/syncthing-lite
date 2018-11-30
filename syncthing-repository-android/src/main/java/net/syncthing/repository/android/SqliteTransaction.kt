@@ -40,6 +40,12 @@ class SqliteTransaction(
         database.fileInfo().findFileInfo(folder, path)?.native
     }
 
+    override fun findFileInfo(folder: String, path: List<String>): Map<String, FileInfo> = runIfAllowed {
+        database.fileInfo().findFileInfo(folder, path)
+                .map { it.native }
+                .associateBy { it.path }
+    }
+
     override fun findFileInfoBySearchTerm(query: String) = runIfAllowed {
         database.fileInfo().findFileInfoBySearchTerm(query).map { it.native }
     }

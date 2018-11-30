@@ -142,7 +142,13 @@ class BlockPusher(private val localDeviceId: DeviceId,
                 val folderStatsUpdateCollector = FolderStatsUpdateCollector()
                 val fileInfo1 = indexHandler.indexRepository.runInTransaction {
                     // TODO: notify the IndexBrowsers again (as it was earlier)
-                    IndexElementProcessor.pushRecord(it, indexUpdate.folder, indexUpdate.filesList.single(), folderStatsUpdateCollector)
+                    IndexElementProcessor.pushRecord(
+                            it,
+                            indexUpdate.folder,
+                            indexUpdate.filesList.single(),
+                            folderStatsUpdateCollector,
+                            it.findFileInfo(folderId, indexUpdate.filesList.single().name)
+                    )
                 }
                 runBlocking { indexHandler.handleFolderStatsUpdates(folderStatsUpdateCollector) }
                 logger.info("sent file info record = {}", fileInfo1)
