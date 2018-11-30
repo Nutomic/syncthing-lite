@@ -66,14 +66,22 @@ class SqliteTransaction(
     }
 
     override fun updateFileInfo(fileInfo: FileInfo, fileBlocks: FileBlocks?) = runIfAllowed {
-        database.runInTransaction {
-            if (fileBlocks != null) {
-                FileInfo.checkBlocks(fileInfo, fileBlocks)
+        if (fileBlocks != null) {
+            FileInfo.checkBlocks(fileInfo, fileBlocks)
 
-                database.fileBlocks().mergeBlock(FileBlocksItem.fromNative(fileBlocks))
-            }
+            database.fileBlocks().mergeBlock(FileBlocksItem.fromNative(fileBlocks))
+        }
 
-            database.fileInfo().updateFileInfo(FileInfoItem.fromNative(fileInfo))
+        database.fileInfo().updateFileInfo(FileInfoItem.fromNative(fileInfo))
+    }
+
+    override fun updateFileInfoAndBlocks(fileInfos: List<FileInfo>, fileBlocks: List<FileBlocks>) = runIfAllowed {
+        if (fileInfos.isNotEmpty()) {
+            database.fileInfo().updateFileInfo(fileInfos.map { FileInfoItem.fromNative(it) })
+        }
+
+        if (fileBlocks.isNotEmpty()) {
+            database.fileBlocks().mergeBlocks(fileBlocks.map { FileBlocksItem.fromNative(it) })
         }
     }
 

@@ -29,8 +29,12 @@ object IndexElementProcessor {
         val preparedUpdates = filesToProcess.mapNotNull { prepareUpdate(folder, it) }
         val updatesToApply = preparedUpdates.filter { shouldUpdateRecord(oldRecords[it.first.path], it.first) }
 
-        for ((newRecord, fileBlocks) in updatesToApply) {
-            transaction.updateFileInfo(newRecord, fileBlocks)
+        transaction.updateFileInfoAndBlocks(
+                fileInfos = updatesToApply.map { it.first },
+                fileBlocks = updatesToApply.mapNotNull { it.second }
+        )
+
+        for ((newRecord) in updatesToApply) {
             updateFolderStatsCollector(oldRecords[newRecord.path], newRecord, folderStatsUpdateCollector)
         }
 

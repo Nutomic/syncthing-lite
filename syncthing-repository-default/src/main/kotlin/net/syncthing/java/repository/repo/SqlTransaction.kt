@@ -273,6 +273,56 @@ class SqlTransaction(
         }
     }
 
+    override fun updateFileInfoAndBlocks(fileInfos: List<FileInfo>, fileBlocks: List<FileBlocks>) {
+        connection.prepareStatement("MERGE INTO file_blocks"
+                + " (folder,path,hash,size,blocks)"
+                + " VALUES (?,?,?,?,?)").use { prepareStatement ->
+
+            fileBlocks.forEach { block ->
+                prepareStatement.setString(1, block.folder)
+                prepareStatement.setString(2, block.path)
+                prepareStatement.setString(3, block.hash)
+                prepareStatement.setLong(4, block.size)
+                prepareStatement.setBytes(5, BlockExchangeExtraProtos.Blocks.newBuilder()
+                        .addAllBlocks(block.blocks.map { input ->
+                            BlockExchangeProtos.BlockInfo.newBuilder()
+                                    .setOffset(input.offset)
+                                    .setSize(input.size)
+                                    .setHash(ByteString.copyFrom(Hex.decode(input.hash)))
+                                    .build()
+                        }).build().toByteArray())
+                prepareStatement.executeUpdate()
+            }
+        }
+
+        connection.prepareStatement("MERGE INTO file_info"
+                + " (folder,path,file_name,parent,size,hash,last_modified,file_type,version_id,version_value,is_deleted)"
+                + " VALUES (?,?,?,?,?,?,?,?,?,?,?)").use { prepareStatement ->
+
+            fileInfos.forEach { fileInfo ->
+                val version = fileInfo.versionList.last()
+
+                prepareStatement.setString(1, fileInfo.folder)
+                prepareStatement.setString(2, fileInfo.path)
+                prepareStatement.setString(3, fileInfo.fileName)
+                prepareStatement.setString(4, fileInfo.parent)
+                prepareStatement.setLong(7, fileInfo.lastModified.time)
+                prepareStatement.setString(8, fileInfo.type.name)
+                prepareStatement.setLong(9, version.id)
+                prepareStatement.setLong(10, version.value)
+                prepareStatement.setBoolean(11, fileInfo.isDeleted)
+                if (fileInfo.isDirectory()) {
+                    prepareStatement.setNull(5, Types.BIGINT)
+                    prepareStatement.setNull(6, Types.VARCHAR)
+                } else {
+                    prepareStatement.setLong(5, fileInfo.size!!)
+                    prepareStatement.setString(6, fileInfo.hash)
+                }
+                prepareStatement.executeUpdate()
+            }
+        }
+    }
+
     @Throws(SQLException::class)
     override fun findNotDeletedFilesByFolderAndParent(folder: String, parentPath: String): MutableList<FileInfo> = runIfAllowed {
         connection.prepareStatement("SELECT * FROM file_info WHERE folder=? AND parent=? AND is_deleted=FALSE").use { prepareStatement ->

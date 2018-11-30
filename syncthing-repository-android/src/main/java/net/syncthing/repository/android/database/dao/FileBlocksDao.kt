@@ -13,4 +13,7 @@ interface FileBlocksDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun mergeBlock(blocksItem: FileBlocksItem)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun mergeBlocks(blocksItem: List<FileBlocksItem>)
 }

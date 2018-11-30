@@ -34,4 +34,7 @@ interface FileInfoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun updateFileInfo(info: FileInfoItem)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun updateFileInfo(info: List<FileInfoItem>)
 }
