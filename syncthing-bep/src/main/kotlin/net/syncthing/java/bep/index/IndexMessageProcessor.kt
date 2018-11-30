@@ -23,7 +23,15 @@ object NewIndexMessageProcessor {
         val newRecords = mutableListOf<FileInfo>()
         var sequence: Long = -1
 
-        for (fileInfo in message.filesList) {
+        // this always keeps the last version per path
+        val filesToProcess = message.filesList
+                .sortedBy { it.sequence }
+                .reversed()
+                .distinctBy { it.name /* this is the whole path */ }
+                .reversed()
+                .toList()
+
+        for (fileInfo in filesToProcess) {
             val newRecord = IndexElementProcessor.pushRecord(transaction, folderId, fileInfo, folderStatsUpdateCollector)
 
             if (newRecord != null) {
