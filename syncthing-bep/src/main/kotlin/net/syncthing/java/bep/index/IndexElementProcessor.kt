@@ -19,13 +19,34 @@ object IndexElementProcessor {
             folderStatsUpdateCollector: FolderStatsUpdateCollector,
             oldRecord: FileInfo?
     ): FileInfo? {
-        var fileBlocks: FileBlocks? = null
+        val update = prepareUpdate(folder, bepFileInfo)
+
+        return if (update != null) {
+            addRecord(
+                    transaction = transaction,
+                    newRecord = update.first,
+                    fileBlocks = update.second,
+                    folderStatsUpdateCollector = folderStatsUpdateCollector,
+                    oldRecord = oldRecord
+            )
+        } else {
+            null
+        }
+    }
+
+    private fun prepareUpdate(
+            folder: String,
+            bepFileInfo: BlockExchangeProtos.FileInfo
+    ): Pair<FileInfo, FileBlocks?>? {
         val builder = FileInfo.Builder()
                 .setFolder(folder)
                 .setPath(bepFileInfo.name)
                 .setLastModified(Date(bepFileInfo.modifiedS * 1000 + bepFileInfo.modifiedNs / 1000000))
                 .setVersionList((if (bepFileInfo.hasVersion()) bepFileInfo.version.countersList else null ?: emptyList()).map { record -> FileInfo.Version(record.id, record.value) })
                 .setDeleted(bepFileInfo.deleted)
+
+        var fileBlocks: FileBlocks? = null
+
         when (bepFileInfo.type) {
             BlockExchangeProtos.FileInfoType.FILE -> {
                 fileBlocks = FileBlocks(folder, builder.getPath()!!, ((bepFileInfo.blocksList ?: emptyList())).map { record ->
@@ -43,14 +64,13 @@ object IndexElementProcessor {
             }
         }
 
-        return addRecord(
-                transaction = transaction,
-                newRecord = builder.build(),
-                fileBlocks = fileBlocks,
-                folderStatsUpdateCollector = folderStatsUpdateCollector,
-                oldRecord = oldRecord
-        )
+        return builder.build() to fileBlocks
     }
+
+    private fun shouldUpdateRecord(
+            oldRecord: FileInfo?,
+            newRecord: FileInfo
+    ) = oldRecord == null || newRecord.lastModified >= oldRecord.lastModified
 
     private fun addRecord(
             transaction: IndexTransaction,
@@ -59,9 +79,7 @@ object IndexElementProcessor {
             fileBlocks: FileBlocks?,
             folderStatsUpdateCollector: FolderStatsUpdateCollector
     ): FileInfo? {
-        val lastModified = oldRecord?.lastModified
-
-        return if (lastModified != null && newRecord.lastModified < lastModified) {
+        return if (shouldUpdateRecord(oldRecord, newRecord)) {
             logger.trace("discarding record = {}, modified before local record", newRecord)
             null
         } else {
