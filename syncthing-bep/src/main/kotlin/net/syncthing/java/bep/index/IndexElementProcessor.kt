@@ -12,6 +12,31 @@ import java.util.*
 object IndexElementProcessor {
     val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
 
+    fun pushRecords(
+            transaction: IndexTransaction,
+            folder: String,
+            updates: List<BlockExchangeProtos.FileInfo>,
+            oldRecords: Map<String, FileInfo>,
+            folderStatsUpdateCollector: FolderStatsUpdateCollector
+    ): List<FileInfo> {
+        // this always keeps the last version per path
+        val filesToProcess = updates
+                .sortedBy { it.sequence }
+                .reversed()
+                .distinctBy { it.name /* this is the whole path */ }
+                .reversed()
+
+        val preparedUpdates = filesToProcess.mapNotNull { prepareUpdate(folder, it) }
+        val updatesToApply = preparedUpdates.filter { shouldUpdateRecord(oldRecords[it.first.path], it.first) }
+
+        for ((newRecord, fileBlocks) in updatesToApply) {
+            transaction.updateFileInfo(newRecord, fileBlocks)
+            updateFolderStatsCollector(oldRecords[newRecord.path], newRecord, folderStatsUpdateCollector)
+        }
+
+        return updatesToApply.map { it.first }
+    }
+
     fun pushRecord(
             transaction: IndexTransaction,
             folder: String,

@@ -20,34 +20,21 @@ object IndexMessageProcessor {
 
         logger.debug("processing {} index records for folder {}", message.filesList.size, folderId)
 
-        val newRecords = mutableListOf<FileInfo>()
-        var sequence: Long = -1
-
-        // this always keeps the last version per path
-        val filesToProcess = message.filesList
-                .sortedBy { it.sequence }
-                .reversed()
-                .distinctBy { it.name /* this is the whole path */ }
-                .reversed()
-                .toList()
-
-        val relatedFileInfo = transaction.findFileInfo(folderId, filesToProcess.map { it.name })
+        val oldRecords = transaction.findFileInfo(folderId, message.filesList.map { it.name })
         val folderStatsUpdateCollector = FolderStatsUpdateCollector(message.folder)
 
-        for (fileInfo in filesToProcess) {
-            val newRecord = IndexElementProcessor.pushRecord(
-                    transaction = transaction,
-                    folder = folderId,
-                    bepFileInfo = fileInfo,
-                    folderStatsUpdateCollector = folderStatsUpdateCollector,
-                    oldRecord = relatedFileInfo[fileInfo.name]
-            )
+        val newRecords = IndexElementProcessor.pushRecords(
+                transaction = transaction,
+                oldRecords = oldRecords,
+                folder = folderId,
+                folderStatsUpdateCollector = folderStatsUpdateCollector,
+                updates = message.filesList
+        )
 
-            if (newRecord != null) {
-                newRecords.add(newRecord)
-            }
+        var sequence: Long = -1
 
-            sequence = Math.max(fileInfo.sequence, sequence)
+        for (newRecord in message.filesList) {
+            sequence = Math.max(newRecord.sequence, sequence)
         }
 
         handleFolderStatsUpdate(transaction, folderStatsUpdateCollector)
