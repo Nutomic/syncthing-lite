@@ -14,9 +14,11 @@
  */
 package net.syncthing.java.bep.index.browser
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.withContext
 import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.IndexRepository
@@ -69,12 +71,14 @@ class IndexBrowser internal constructor(
             val parentParentPath = if (parentPath == null || PathUtils.isRoot(parentPath)) null else PathUtils.getParentPath(parentPath)
 
             // get the initial state
-            var (entries, parentEntry, directoryInfo) = indexRepository.runInTransaction { indexTransaction ->
-                val entries = indexTransaction.findNotDeletedFilesByFolderAndParent(folder, path)
-                val parentEntry = if (PathUtils.isRoot(path)) null else getFileInfoByPathAllowNull(folder, PathUtils.getParentPath(path), indexTransaction)
-                val directoryInfo = getFileInfoByPathAllowNull(folder, path, indexTransaction)
+            var (entries, parentEntry, directoryInfo) = withContext (Dispatchers.IO) {
+                indexRepository.runInTransaction { indexTransaction ->
+                    val entries = indexTransaction.findNotDeletedFilesByFolderAndParent(folder, path)
+                    val parentEntry = if (PathUtils.isRoot(path)) null else getFileInfoByPathAllowNull(folder, PathUtils.getParentPath(path), indexTransaction)
+                    val directoryInfo = getFileInfoByPathAllowNull(folder, path, indexTransaction)
 
-                Triple(entries, parentEntry, directoryInfo)
+                    Triple(entries, parentEntry, directoryInfo)
+                }
             }
 
             var previousStatus: DirectoryListing? = null

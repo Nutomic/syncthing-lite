@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2016 Davide Imbriaco
  * Copyright (C) 2018 Jonas Lochmann
  *
@@ -35,12 +35,14 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler,
             // get initial status
             val currentFolderStats = mutableMapOf<String, FolderStats>()
 
-            var currentIndexInfo = indexHandler.indexRepository.runInTransaction { indexTransaction ->
-                configuration.folders.map { it.folderId }.forEach { folderId ->
-                    currentFolderStats[folderId] = indexTransaction.findFolderStats(folderId) ?: FolderStats.createDummy(folderId)
-                }
+            var currentIndexInfo = withContext(Dispatchers.IO) {
+                indexHandler.indexRepository.runInTransaction { indexTransaction ->
+                    configuration.folders.map { it.folderId }.forEach { folderId ->
+                        currentFolderStats[folderId] = indexTransaction.findFolderStats(folderId) ?: FolderStats.createDummy(folderId)
+                    }
 
-                indexTransaction.findAllIndexInfos().groupBy { it.folderId }.toMutableMap()
+                    indexTransaction.findAllIndexInfos().groupBy { it.folderId }.toMutableMap()
+                }
             }
 
             // send status

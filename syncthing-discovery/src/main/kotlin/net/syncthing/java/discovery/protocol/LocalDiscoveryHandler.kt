@@ -14,6 +14,7 @@
  */
 package net.syncthing.java.discovery.protocol
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.consumeEach
@@ -32,7 +33,7 @@ internal class LocalDiscoveryHandler(private val configuration: Configuration,
     private val job = Job()
 
     fun sendAnnounceMessage() {
-        GlobalScope.launch {
+        GlobalScope.launch (Dispatchers.IO) {
             LocalDiscoveryUtil.sendAnnounceMessage(
                     ownDeviceId = configuration.localDeviceId,
                     instanceId = configuration.instanceId
