@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import java.util.*
 
 object IndexElementProcessor {
-    val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
+    private val logger = LoggerFactory.getLogger(IndexElementProcessor::class.java)
 
     fun pushRecords(
             transaction: IndexTransaction,
