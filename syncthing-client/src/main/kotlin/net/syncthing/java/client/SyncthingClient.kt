@@ -36,9 +36,10 @@ import java.util.*
 class SyncthingClient(
         private val configuration: Configuration,
         private val repository: IndexRepository,
-        private val tempRepository: TempRepository
+        private val tempRepository: TempRepository,
+        enableDetailedException: Boolean = false
 ) : Closeable {
-    val indexHandler = IndexHandler(configuration, repository, tempRepository)
+    val indexHandler = IndexHandler(configuration, repository, tempRepository, enableDetailedException)
     val discoveryHandler = DiscoveryHandler(configuration)
     private val onConnectionChangedListeners = Collections.synchronizedList(mutableListOf<(DeviceId) -> Unit>())
 

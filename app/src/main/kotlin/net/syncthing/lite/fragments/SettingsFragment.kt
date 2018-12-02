@@ -13,6 +13,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         val localDeviceName = findPreference("local_device_name") as EditTextPreference
         val appVersion      = findPreference("app_version")
+        val forceStop       = findPreference("force_stop")
 
         (activity as SyncthingActivity?)?.let { activity ->
             val versionName = activity.packageManager.getPackageInfo(activity.packageName, 0)?.versionName
@@ -26,6 +27,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 }
                 true
             }
+        }
+
+        forceStop.setOnPreferenceClickListener {
+            System.exit(0)
+
+            true
         }
     }
 }

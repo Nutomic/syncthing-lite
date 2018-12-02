@@ -7,6 +7,7 @@ import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.IndexTransaction
 import org.bouncycastle.util.encoders.Hex
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import java.util.*
 
 object IndexElementProcessor {
@@ -17,7 +18,8 @@ object IndexElementProcessor {
             folder: String,
             updates: List<BlockExchangeProtos.FileInfo>,
             oldRecords: Map<String, FileInfo>,
-            folderStatsUpdateCollector: FolderStatsUpdateCollector
+            folderStatsUpdateCollector: FolderStatsUpdateCollector,
+            enableDetailedException: Boolean
     ): List<FileInfo> {
         // this always keeps the last version per path
         val filesToProcess = updates
@@ -26,7 +28,18 @@ object IndexElementProcessor {
                 .distinctBy { it.name /* this is the whole path */ }
                 .reversed()
 
-        val preparedUpdates = filesToProcess.mapNotNull { prepareUpdate(folder, it) }
+        val preparedUpdates = filesToProcess.mapNotNull {
+            try {
+                prepareUpdate(folder, it)
+            } catch (ex: Exception) {
+                if (enableDetailedException) {
+                    throw IOException("error processing index update: ${it.name}", ex)
+                } else {
+                    throw ex
+                }
+            }
+        }
+
         val updatesToApply = preparedUpdates.filter { shouldUpdateRecord(oldRecords[it.first.path], it.first) }
 
         transaction.updateFileInfoAndBlocks(

@@ -29,9 +29,18 @@
             android:title="@string/settings_crash_handler_title"
             android:summary="@string/settings_crash_handler_summary" />
 
+        <CheckBoxPreference
+            android:key="detailed_exception"
+            android:title="@string/settings_detailed_exception_title"
+            android:summary="@string/settings_detailed_exception_summary" />
+
         <Preference
             android:key="app_version"
             android:title="@string/settings_app_version_title"/>
+
+        <Preference
+            android:key="force_stop"
+            android:title="@string/settings_force_stop" />
 
     </PreferenceCategory>
 

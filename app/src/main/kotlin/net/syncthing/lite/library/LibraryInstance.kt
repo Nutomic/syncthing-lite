@@ -7,6 +7,7 @@ import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.repository.android.SqliteIndexRepository
 import net.syncthing.repository.android.TempDirectoryLocalRepository
 import net.syncthing.repository.android.database.RepositoryDatabase
+import org.jetbrains.anko.defaultSharedPreferences
 import java.io.File
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -53,7 +54,8 @@ class LibraryInstance (context: Context) {
                     closeDatabaseOnClose = false,
                     clearTempStorageHook = { tempRepository.deleteAllData() }
             ),
-            tempRepository = tempRepository
+            tempRepository = tempRepository,
+            enableDetailedException = context.defaultSharedPreferences.getBoolean("detailed_exception", false)
     )
     val folderBrowser = syncthingClient.indexHandler.folderBrowser
     val indexBrowser = syncthingClient.indexHandler.indexBrowser

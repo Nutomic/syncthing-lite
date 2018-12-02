@@ -38,7 +38,8 @@ class IndexMessageQueueProcessor (
         private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
         private val onFullIndexAcquiredEvents: BroadcastChannel<String>,
         private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStats>,
-        private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean
+        private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean,
+        private val enableDetailedException: Boolean
 ) {
     private data class IndexUpdateAction(val update: BlockExchangeProtos.IndexUpdate, val clusterConfigInfo: ClusterConfigInfo, val peerDeviceId: DeviceId)
     private data class StoredIndexUpdateAction(val updateId: String, val clusterConfigInfo: ClusterConfigInfo, val peerDeviceId: DeviceId)
@@ -115,7 +116,8 @@ class IndexMessageQueueProcessor (
             val indexResult = IndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                     message = message,
                     peerDeviceId = peerDeviceId,
-                    transaction = indexTransaction
+                    transaction = indexTransaction,
+                    enableDetailedException = enableDetailedException
             )
 
             val endTime = System.currentTimeMillis()

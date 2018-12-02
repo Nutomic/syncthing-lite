@@ -34,8 +34,12 @@ import java.io.IOException
 
 data class IndexRecordAcquiredEvent(val folderId: String, val files: List<FileInfo>, val indexInfo: IndexInfo)
 
-class IndexHandler(private val configuration: Configuration, val indexRepository: IndexRepository,
-                   private val tempRepository: TempRepository) : Closeable {
+class IndexHandler(
+        configuration: Configuration,
+        val indexRepository: IndexRepository,
+        tempRepository: TempRepository,
+        enableDetailedException: Boolean
+) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<String>(capacity = 16)
@@ -47,7 +51,8 @@ class IndexHandler(private val configuration: Configuration, val indexRepository
             isRemoteIndexAcquired = ::isRemoteIndexAcquired,
             onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
             onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
-            onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents
+            onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents,
+            enableDetailedException = enableDetailedException
     )
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
