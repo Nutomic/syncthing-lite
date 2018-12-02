@@ -103,7 +103,7 @@ object ClusterConfigHandler {
 
                 val oldFolderEntry = configuration.folders.find { it.folderId == folderInfo.folderId }
 
-                if (oldFolderEntry != null) {
+                if (oldFolderEntry == null) {
                     configuration.folders = configuration.folders + newFolderInfo
                     newSharedFolders.add(newFolderInfo)
                     logger.info("new folder shared = {}", folderInfo)
