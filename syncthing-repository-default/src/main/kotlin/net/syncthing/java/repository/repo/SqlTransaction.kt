@@ -273,7 +273,7 @@ class SqlTransaction(
         }
     }
 
-    override fun updateFileInfoAndBlocks(fileInfos: List<FileInfo>, fileBlocks: List<FileBlocks>) {
+    override fun updateFileInfoAndBlocks(fileInfos: List<FileInfo>, fileBlocks: List<FileBlocks>) = runIfAllowed {
         connection.prepareStatement("MERGE INTO file_blocks"
                 + " (folder,path,hash,size,blocks)"
                 + " VALUES (?,?,?,?,?)").use { prepareStatement ->
@@ -422,9 +422,17 @@ class SqlTransaction(
     }
 
     @Throws(SQLException::class)
-    private fun updateFolderStats(connection: Connection, folder: String, deltaFileCount: Long, deltaDirCount: Long, deltaSize: Long, lastUpdate: Date): FolderStats {
+    private fun updateFolderStats(
+            connection: Connection,
+            folder: String,
+            deltaFileCount: Long,
+            deltaDirCount: Long,
+            deltaSize: Long,
+            lastUpdate: Date
+    ): FolderStats = runIfAllowed {
         val oldFolderStats = findFolderStats(folder)
         val newFolderStats: FolderStats
+
         if (oldFolderStats == null) {
             newFolderStats = FolderStats(
                     dirCount = deltaDirCount,
@@ -442,63 +450,10 @@ class SqlTransaction(
             )
         }
         updateFolderStats(connection, newFolderStats)
-        return newFolderStats
+
+        newFolderStats
     }
 
-    //    private void updateFolderStats() {
-    //        logger.info("updateFolderStats BEGIN");
-    //        final Map<String, FolderStats.Builder> map = Maps.newHashMap();
-    //        final Function<String, FolderStats.Builder> func = new Function<String, FolderStats.Builder>() {
-    //            @Override
-    //            public FolderStats.Builder apply(String folder) {
-    //                FolderStats.Builder res = map.get(folder);
-    //                if (res == null) {
-    //                    res = FolderStats.newBuilder().setFolder(folder);
-    //                    map.put(folder, res);
-    //                }
-    //                return res;
-    //            }
-    //        };
-    //        final List<FolderStats> list;
-    //        try (Connection connection = getConnection()) {
-    //            try (PreparedStatement prepareStatement = connection.prepareStatement("SELECT folder, COUNT(*) AS file_count, SUM(size) AS size, MAX(last_modified) AS last_update FROM file_info WHERE file_type=? AND is_deleted=FALSE GROUP BY folder")) {
-    //                prepareStatement.setString(1, FileType.FILE.name());
-    //                ResultSet resultSet = prepareStatement.executeQuery();
-    //                while (resultSet.next()) {
-    //                    FolderStats.Builder builder = func.apply(resultSet.getString("folder"));
-    //                    builder.setSize(resultSet.getLong("size"));
-    //                    builder.setFileCount(resultSet.getLong("file_count"));
-    //                    builder.setLastUpdate(new Date(resultSet.getLong("last_update")));
-    //                }
-    //            }
-    //            try (PreparedStatement prepareStatement = connection.prepareStatement("SELECT folder, COUNT(*) AS dir_count FROM file_info WHERE file_type=? AND is_deleted=FALSE GROUP BY folder")) {
-    //                prepareStatement.setString(1, FileType.DIRECTORY.name());
-    //                ResultSet resultSet = prepareStatement.executeQuery();
-    //                while (resultSet.next()) {
-    //                    FolderStats.Builder builder = func.apply(resultSet.getString("folder"));
-    //                    builder.setDirCount(resultSet.getLong("dir_count"));
-    //                }
-    //            }
-    //            list = Lists.newArrayList(Iterables.transform(map.values(), new Function<FolderStats.Builder, FolderStats>() {
-    //                @Override
-    //                public FolderStats apply(FolderStats.Builder builder) {
-    //                    return builder.build();
-    //                }
-    //            }));
-    //            for (FolderStats folderStats : list) {
-    //                updateFolderStats(connection, folderStats);
-    //            }
-    //        } catch (SQLException ex) {
-    //            throw new RuntimeException(ex);
-    //        }
-    //        logger.info("updateFolderStats END");
-    //        eventBus.post(new FolderStatsUpdatedEvent() {
-    //            @Override
-    //            public List<FolderStats> getFolderStats() {
-    //                return Collections.unmodifiableList(list);
-    //            }
-    //        });
-    //    }
     @Throws(SQLException::class)
     private fun updateFolderStats(connection: Connection, folderStats: FolderStats) {
         assert(folderStats.fileCount >= 0)
@@ -524,17 +479,4 @@ class SqlTransaction(
             localSequence = resultSet.getLong("local_sequence"),
             maxSequence = resultSet.getLong("max_sequence")
     )
-
-    @Throws(SQLException::class)
-    private fun readDeviceAddress(resultSet: ResultSet): DeviceAddress {
-        val instanceId = resultSet.getLong("instance_id")
-        return DeviceAddress.Builder()
-                .setAddress(resultSet.getString("address_url"))
-                .setDeviceId(DeviceId(resultSet.getString("device_id")))
-                .setInstanceId(if (instanceId == 0L) null else instanceId)
-                .setProducer(DeviceAddress.AddressProducer.valueOf(resultSet.getString("address_producer")))
-                .setScore(resultSet.getInt("address_score"))
-                .setLastModified(Date(resultSet.getLong("last_modified")))
-                .build()
-    }
 }

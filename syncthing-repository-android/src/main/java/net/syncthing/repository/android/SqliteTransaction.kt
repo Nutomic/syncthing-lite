@@ -101,7 +101,13 @@ class SqliteTransaction(
         database.folderStats().findFolderStats(folder)?.native
     }
 
-    override fun updateOrInsertFolderStats(folder: String, deltaFileCount: Long, deltaDirCount: Long, deltaSize: Long, lastUpdate: Date) {
+    override fun updateOrInsertFolderStats(
+            folder: String,
+            deltaFileCount: Long,
+            deltaDirCount: Long,
+            deltaSize: Long,
+            lastUpdate: Date
+    ) = runIfAllowed {
         if (database.folderStats().updateFolderStats(folder, deltaFileCount, deltaDirCount, deltaSize, lastUpdate) == 0L) {
             database.folderStats().insertFolderStats(FolderStatsItem(folder, deltaFileCount, deltaDirCount, lastUpdate, deltaSize))
         }
