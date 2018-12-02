@@ -81,6 +81,12 @@ class ConnectionActorWrapper (
     // this triggers a disconnection
     // the ConnectionActorGenerator will reconnect soon
     fun reconnect() {
-        currentConnectionActor?.close()
+        val actor = currentConnectionActor
+
+        GlobalScope.launch {
+            if (actor != null) {
+                ConnectionActorUtil.disconnect(actor)
+            }
+        }
     }
 }

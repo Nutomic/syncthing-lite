@@ -42,4 +42,8 @@ object ConnectionActorUtil {
 
         deferred.await()
     }
+
+    suspend fun disconnect(actor: SendChannel<ConnectionAction>) {
+        actor.send(CloseConnectionAction)
+    }
 }
