@@ -9,7 +9,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.bep.folder.FolderBrowser
@@ -69,8 +68,8 @@ class LibraryHandler(context: Context) {
             job = Job()
 
             GlobalScope.launch (job) {
-                libraryInstance.syncthingClient.indexHandler.subscribeToOnFullIndexAcquiredEvents().consume {
-                    indexUpdateCompleteMessages.send(receive())
+                libraryInstance.syncthingClient.indexHandler.subscribeToOnFullIndexAcquiredEvents().consumeEach {
+                    indexUpdateCompleteMessages.send(it)
                 }
             }
 
