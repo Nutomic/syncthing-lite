@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import net.syncthing.lite.BuildConfig
 import org.jetbrains.anko.defaultSharedPreferences
@@ -14,6 +16,7 @@ class Application: Application() {
     companion object {
         private const val LOG_TAG = "Application"
         private const val PREF_ENABLE_CRASH_HANDLER = "crash_handler"
+        private val handler = Handler(Looper.getMainLooper())
     }
 
     override fun onCreate() {
@@ -21,12 +24,13 @@ class Application: Application() {
 
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        val mainThread = Thread.currentThread()
 
         if (defaultHandler == null) {
             Log.w(LOG_TAG, "could not get default crash handler")
         }
 
-        Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
+        fun handleCrash(ex: Throwable) {
             Log.w(LOG_TAG, "app crashed", ex)
 
             val enableCustomCrashHandling = defaultSharedPreferences.getBoolean(PREF_ENABLE_CRASH_HANDLER, false)
@@ -43,9 +47,17 @@ class Application: Application() {
             }
 
             if (defaultHandler != null) {
-                defaultHandler.uncaughtException(thread, ex)
+                defaultHandler.uncaughtException(mainThread, ex)
             } else {
                 System.exit(1)
+            }
+        }
+
+        Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
+            if (Looper.getMainLooper() === Looper.myLooper()) {
+                handleCrash(ex)
+            } else {
+                handler.post { handleCrash(ex) }
             }
         }
     }
