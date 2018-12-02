@@ -102,7 +102,10 @@ class FolderBrowserActivity : SyncthingActivity() {
                 } else {
                     supportActionBar?.title = if (PathUtils.isRoot(listing.path)) folder else PathUtils.getFileName(listing.path)
                     binding.isLoading = false
-                    adapter.data = if (listing is DirectoryContentListing) listing.entries else emptyList()
+                    adapter.data = if (listing is DirectoryContentListing)
+                        listing.entries.sortedWith(IndexBrowser.sortAlphabeticallyDirectoriesFirst)
+                    else
+                        emptyList()
                 }
             }
         }
