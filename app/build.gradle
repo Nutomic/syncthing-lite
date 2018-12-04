@@ -6,7 +6,6 @@ apply plugin: 'com.github.triplet.play'
 
 android {
     compileSdkVersion 27
-    buildToolsVersion "28.0.2"
     dataBinding.enabled = true
 
     playAccountConfigs {
