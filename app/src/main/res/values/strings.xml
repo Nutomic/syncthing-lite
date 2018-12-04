@@ -36,6 +36,7 @@
     <string name="intro_page_three_title">Share your folders</string>
     <string name="intro_page_two_description">Enter a Syncthing device ID, or scan a device ID from a QR code</string>
     <string name="intro_page_three_description">Now accept the device with ID %1$s, and share a folder with it. It may take a few minutes until the devices connect.</string>
+    <string name="intro_page_three_searching_device">Trying to find the other device. This may take a moment.</string>
     <string name="settings">Settings</string>
     <string name="settings_app_version_title">App version</string>
     <string name="settings_local_device_name">Local device name</string>

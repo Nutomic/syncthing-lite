@@ -15,6 +15,7 @@ import com.github.paolorotolo.appintro.AppIntro
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.lite.R
@@ -181,12 +182,22 @@ class IntroActivity : AppIntro() {
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
             binding = DataBindingUtil.inflate(inflater, R.layout.fragment_intro_three, container, false)
 
+            launch {
+                val ownDeviceId = libraryHandler.libraryManager.withLibrary { it.configuration.localDeviceId }
+
+                libraryHandler.subscribeToConnectionStatus().consumeEach {
+                    if (it.values.find { it.addresses.isNotEmpty() } != null) {
+                        val desc = activity?.getString(R.string.intro_page_three_description, "<b>$ownDeviceId</b>")
+                        binding.description.text = Html.fromHtml(desc)
+                    } else {
+                        binding.description.text = getString(R.string.intro_page_three_searching_device)
+                    }
+                }
+            }
+
             libraryHandler.library { config, client, _ ->
                 GlobalScope.launch (Dispatchers.Main) {
                     client.addOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
-                    val deviceId = config.localDeviceId.deviceId
-                    val desc = activity?.getString(R.string.intro_page_three_description, "<b>$deviceId</b>")
-                    binding.description.text = Html.fromHtml(desc)
                 }
             }
 
