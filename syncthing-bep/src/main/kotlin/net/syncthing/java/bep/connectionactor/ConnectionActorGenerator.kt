@@ -23,6 +23,11 @@ import net.syncthing.java.core.configuration.Configuration
 import org.slf4j.LoggerFactory
 import java.io.IOException
 
+data class Connection (
+        val actor: SendChannel<ConnectionAction>,
+        val clusterConfigInfo: ClusterConfigInfo
+)
+
 object ConnectionActorGenerator {
     private val closed = Channel<ConnectionAction>().apply { cancel() }
     private val logger = LoggerFactory.getLogger(ConnectionActorGenerator::class.java)
@@ -89,16 +94,40 @@ object ConnectionActorGenerator {
             configuration: Configuration,
             indexHandler: IndexHandler,
             requestHandler: (BlockExchangeProtos.Request) -> Deferred<BlockExchangeProtos.Response>
-    ) = GlobalScope.produce<Pair<SendChannel<ConnectionAction>, ClusterConfigInfo>> {
+    ) = GlobalScope.produce<Pair<Connection, ConnectionInfo>> {
         var currentActor: SendChannel<ConnectionAction> = closed
+        var currentClusterConfig = ClusterConfigInfo.dummy
         var currentDeviceAddress: DeviceAddress? = null
+        var currentStatus = ConnectionInfo.empty
+
+        suspend fun dispatchStatus() {
+            send(Connection(currentActor, currentClusterConfig) to currentStatus)
+        }
 
         suspend fun closeCurrent() {
             if (currentActor != closed) {
                 currentActor.close()
                 currentActor = closed
-                send(currentActor to ClusterConfigInfo.dummy)
+                currentClusterConfig = ClusterConfigInfo.dummy
+
+                if (currentStatus.status != ConnectionStatus.Disconnected) {
+                    currentStatus = currentStatus.copy(status = ConnectionStatus.Disconnected)
+                }
+
+                dispatchStatus()
             }
+        }
+
+        suspend fun dispatchConnection(
+                connection: SendChannel<ConnectionAction>,
+                clusterConfig: ClusterConfigInfo,
+                deviceAddress: DeviceAddress
+        ) {
+            currentActor = connection
+            currentDeviceAddress = deviceAddress
+            currentClusterConfig = clusterConfig
+
+            dispatchStatus()
         }
 
         suspend fun tryConnectingToAddressHandleBaseErrors(deviceAddress: DeviceAddress) = try {
@@ -118,31 +147,37 @@ object ConnectionActorGenerator {
             null
         }
 
-        suspend fun dispatchConnection(
-                connection: SendChannel<ConnectionAction>,
-                clusterConfig: ClusterConfigInfo,
-                deviceAddress: DeviceAddress
-        ) {
-            currentActor = connection
-            currentDeviceAddress = deviceAddress
-
-            send(connection to clusterConfig)
-        }
-
         suspend fun tryConnectingToAddress(deviceAddress: DeviceAddress): Boolean {
             closeCurrent()
 
-            var connection = tryConnectingToAddressHandleBaseErrors(deviceAddress) ?: return false
+            suspend fun handleCancel() {
+                currentStatus = currentStatus.copy(
+                        status = ConnectionStatus.Disconnected
+                )
+                dispatchStatus()
+            }
+
+            currentStatus = currentStatus.copy(
+                    status = ConnectionStatus.Connecting,
+                    currentAddress = deviceAddress
+            )
+            dispatchStatus()
+
+            var connection = tryConnectingToAddressHandleBaseErrors(deviceAddress) ?: return run {handleCancel(); false}
 
             if (connection.second.newSharedFolders.isNotEmpty()) {
                 logger.debug("connected to $deviceAddress with new folders -> reconnect")
                 // reconnect to send new cluster config
                 connection.first.close()
-                connection = tryConnectingToAddressHandleBaseErrors(deviceAddress) ?: return false
+                connection = tryConnectingToAddressHandleBaseErrors(deviceAddress) ?: return run {handleCancel(); false}
             }
 
             logger.debug("connected to $deviceAddress")
 
+            currentStatus = currentStatus.copy(
+                    status = ConnectionStatus.Connected,
+                    currentAddress = deviceAddress
+            )
             dispatchConnection(connection.first, connection.second, deviceAddress)
 
             return true
@@ -157,18 +192,26 @@ object ConnectionActorGenerator {
         val reconnectTicker = ticker(delayMillis = 30 * 1000, initialDelayMillis = 0)
 
         deviceAddressSource.consume {
-            var lastDeviceAddressList: List<DeviceAddress> = emptyList()
-
             while (true) {
-                if (isConnected()) {
-                    lastDeviceAddressList = deviceAddressSource.poll() ?: lastDeviceAddressList
+                run {
+                    // get the new list version if there is any
+                    val newDeviceAddressList = deviceAddressSource.poll()
 
-                    if (lastDeviceAddressList.isNotEmpty()) {
+                    if (newDeviceAddressList != null) {
+                        currentStatus = currentStatus.copy(addresses = newDeviceAddressList)
+                        dispatchStatus()
+                    }
+                }
+
+                if (isConnected()) {
+                    val deviceAddressList = currentStatus.addresses
+
+                    if (deviceAddressList.isNotEmpty()) {
                         if (reconnectTicker.poll() != null) {
-                            if (currentDeviceAddress != lastDeviceAddressList.first()) {
+                            if (currentDeviceAddress != deviceAddressList.first()) {
                                 val oldDeviceAddress = currentDeviceAddress!!
 
-                                if (!tryConnectingToAddress(lastDeviceAddressList.first())) {
+                                if (!tryConnectingToAddress(deviceAddressList.first())) {
                                     tryConnectingToAddress(oldDeviceAddress)
                                 }
                             }
@@ -179,11 +222,15 @@ object ConnectionActorGenerator {
 
                     delay(500)  // don't take too much CPU
                 } else /* is not connected */ {
-                    // get the new list version if there is any
-                    lastDeviceAddressList = deviceAddressSource.poll() ?: lastDeviceAddressList
+                    if (currentStatus.status == ConnectionStatus.Connected) {
+                        currentStatus = currentStatus.copy(status = ConnectionStatus.Disconnected)
+                        dispatchStatus()
+                    }
+
+                    val deviceAddressList = currentStatus.addresses
 
                     // try all addresses
-                    for (address in lastDeviceAddressList) {
+                    for (address in deviceAddressList) {
                         if (tryConnectingToAddress(address)) {
                             break
                         }
@@ -194,9 +241,14 @@ object ConnectionActorGenerator {
                     reconnectTicker.poll()
 
                     // wait for new device address list but not more than 15 seconds before the next iteration
-                    lastDeviceAddressList = withTimeoutOrNull(15 * 1000) {
+                    val newDeviceAddressList = withTimeoutOrNull(15 * 1000) {
                         deviceAddressSource.receive()
-                    } ?: lastDeviceAddressList
+                    }
+
+                    if (newDeviceAddressList != null) {
+                        currentStatus = currentStatus.copy(addresses = newDeviceAddressList)
+                        dispatchStatus()
+                    }
                 }
             }
         }

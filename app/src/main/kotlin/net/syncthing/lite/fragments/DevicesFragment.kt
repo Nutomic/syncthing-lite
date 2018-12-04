@@ -10,9 +10,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import com.google.zxing.integration.android.IntentIntegrator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
+import net.syncthing.java.bep.connectionactor.ConnectionInfo
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.lite.R
 import net.syncthing.lite.adapters.DeviceAdapterListener
@@ -34,25 +34,7 @@ class DevicesFragment : SyncthingFragment() {
                               savedInstanceState: Bundle?): View? {
         binding = DataBindingUtil.inflate(layoutInflater, R.layout.fragment_devices, container, false)
         binding.addDevice.setOnClickListener { showDialog() }
-        return binding.root
-    }
 
-    override fun onResume() {
-        super.onResume()
-        libraryHandler.syncthingClient { it.addOnConnectionChangedListener { _ -> updateDeviceList() } }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        libraryHandler.syncthingClient { it.removeOnConnectionChangedListener{ _ -> updateDeviceList() } }
-    }
-
-    override fun onLibraryLoaded() {
-        initDeviceList()
-        updateDeviceList()
-    }
-
-    private fun initDeviceList() {
         binding.list.adapter = adapter
 
         adapter.listener = object: DeviceAdapterListener {
@@ -64,8 +46,8 @@ class DevicesFragment : SyncthingFragment() {
                             libraryHandler.library { config, syncthingClient, _ ->
                                 config.peers = config.peers.filterNot { it.deviceId == deviceInfo.deviceId }.toSet()
                                 config.persistLater()
-                                updateDeviceList()
 
+                                // TODO: update the device list (should become a side effect of the call below)
                                 syncthingClient.disconnectFromRemovedDevices()
                             }
                         }
@@ -75,15 +57,17 @@ class DevicesFragment : SyncthingFragment() {
                 return false
             }
         }
-    }
 
-    private fun updateDeviceList() {
-        libraryHandler.syncthingClient { syncthingClient ->
-            GlobalScope.launch (Dispatchers.Main) {
-                adapter.data = syncthingClient.getPeerStatus()
-                binding.isEmpty = adapter.data.isEmpty()
+        launch {
+            libraryHandler.subscribeToConnectionStatus().consumeEach { connectionInfo ->
+                val devices = libraryHandler.libraryManager.withLibrary { it.configuration.peers }
+
+                adapter.data = devices.map { device -> device to (connectionInfo[device.deviceId] ?: ConnectionInfo.empty) }
+                binding.isEmpty = devices.isEmpty()
             }
         }
+
+        return binding.root
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
@@ -117,7 +101,7 @@ class DevicesFragment : SyncthingFragment() {
                     ?.setOnClickListener {
                         try {
                             val deviceId = binding.deviceId.text.toString()
-                            Util.importDeviceId(libraryHandler, context, deviceId, { updateDeviceList() })
+                            Util.importDeviceId(libraryHandler, context, deviceId, { /* TODO: Is updateDeviceList() still required? */ })
                             addDeviceDialog?.dismiss()
                         } catch (e: IOException) {
                             binding.deviceId.error = getString(R.string.invalid_device_id)

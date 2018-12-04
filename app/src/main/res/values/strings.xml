@@ -64,4 +64,8 @@
     </string>
     <string name="dialog_file_save_as">Save as</string>
     <string name="pending_index_updates">%d index updates pending</string>
+    <string name="device_status_connecting">Connecting to %s</string>
+    <string name="device_status_connected">Connected to %s</string>
+    <string name="device_status_disconnected">Will retry connecting soon - there are %d known addresses</string>
+    <string name="device_status_no_address">No known address for the device</string>
 </resources>

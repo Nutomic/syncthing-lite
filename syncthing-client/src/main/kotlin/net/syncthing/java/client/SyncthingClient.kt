@@ -77,6 +77,7 @@ class SyncthingClient(
         connections.reconnectAllConnections()
     }
 
+    // TODO: remove these callbacks
     fun addOnConnectionChangedListener(listener: (DeviceId) -> Unit) {
         onConnectionChangedListeners.add(listener)
     }
@@ -129,11 +130,7 @@ class SyncthingClient(
         )
     }
 
-    fun getPeerStatus() = configuration.peers.map { device ->
-        device.copy(
-                isConnected = connections.getByDeviceId(device.deviceId).isConnected
-        )
-    }
+    fun subscribeToConnectionStatus() = connections.subscribeToConnectionStatusMap()
 
     override fun close() {
         discoveryHandler.close()

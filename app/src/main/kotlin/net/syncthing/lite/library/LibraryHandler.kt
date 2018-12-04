@@ -9,8 +9,10 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
+import net.syncthing.java.bep.connectionactor.ConnectionInfo
 import net.syncthing.java.bep.folder.FolderBrowser
 import net.syncthing.java.bep.folder.FolderStatus
 import net.syncthing.java.client.SyncthingClient
@@ -37,6 +39,7 @@ class LibraryHandler(context: Context) {
     private val isListeningPortTakenInternal = MutableLiveData<Boolean>().apply { postValue(false) }
     private val indexUpdateCompleteMessages = BroadcastChannel<String>(capacity = 16)
     private val folderStatusList = BroadcastChannel<List<FolderStatus>>(capacity = Channel.CONFLATED)
+    private val connectionStatus = ConflatedBroadcastChannel<Map<DeviceId, ConnectionInfo>>()
     private var job: Job = Job()
 
     val isListeningPortTaken: LiveData<Boolean> = isListeningPortTakenInternal
@@ -76,6 +79,12 @@ class LibraryHandler(context: Context) {
             GlobalScope.launch (job) {
                 libraryInstance.folderBrowser.folderInfoAndStatusStream().consumeEach {
                     folderStatusList.send(it)
+                }
+            }
+
+            GlobalScope.launch (job) {
+                libraryInstance.syncthingClient.subscribeToConnectionStatus().consumeEach {
+                    connectionStatus.send(it)
                 }
             }
         }
@@ -139,4 +148,5 @@ class LibraryHandler(context: Context) {
 
     fun subscribeToOnFullIndexAcquiredEvents() = indexUpdateCompleteMessages.openSubscription()
     fun subscribeToFolderStatusList() = folderStatusList.openSubscription()
+    fun subscribeToConnectionStatus() = connectionStatus.openSubscription()
 }

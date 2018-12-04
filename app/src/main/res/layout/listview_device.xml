@@ -8,45 +8,58 @@
             type="String" />
 
         <variable
+            name="status"
+            type="String" />
+
+        <variable
             name="isConnected"
             type="Boolean" />
     </data>
 
-    <RelativeLayout
+    <LinearLayout
+        android:orientation="horizontal"
         android:background="?selectableItemBackground"
+        android:padding="8dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="12dp"
-        android:paddingLeft="24dp"
-        android:paddingRight="24dp"
-        android:paddingTop="12dp">
+        android:layout_height="wrap_content">
 
         <ImageView
+            android:layout_gravity="center_vertical"
             android:id="@+id/device_icon"
             android:layout_width="32dp"
             android:layout_height="32dp"
             tools:src="@drawable/ic_laptop_green_24dp"
-            android:src="@{safeUnbox(isConnected) ? @drawable/ic_laptop_green_24dp : @drawable/ic_laptop_red_24dp}"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"/>
+            android:src="@{safeUnbox(isConnected) ? @drawable/ic_laptop_green_24dp : @drawable/ic_laptop_red_24dp}" />
 
-        <TextView
-            tools:text="Computer"
-            android:text="@{name}"
-            android:id="@+id/device_name"
+        <View
+            android:layout_width="16dp"
+            android:layout_height="0dp" />
+
+        <LinearLayout
+            android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_alignParentEnd="true"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:layout_alignParentTop="true"
-            android:gravity="top"
-            android:textAlignment="gravity"
-            android:paddingStart="40dp"
-            android:paddingEnd="40dp"
-            android:textSize="18sp"
-            android:textStyle="bold"/>
+            android:layout_height="wrap_content">
 
-    </RelativeLayout>
+            <TextView
+                tools:text="Computer"
+                android:text="@{name}"
+                android:id="@+id/device_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAlignment="gravity"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:text="@{status}"
+                tools:text="Trying to connect to 127.0.0.1 ..."
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </layout>

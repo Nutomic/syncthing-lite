@@ -3,12 +3,15 @@ package net.syncthing.lite.adapters
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import net.syncthing.java.bep.connectionactor.ConnectionInfo
+import net.syncthing.java.bep.connectionactor.ConnectionStatus
 import net.syncthing.java.core.beans.DeviceInfo
+import net.syncthing.lite.R
 import net.syncthing.lite.databinding.ListviewDeviceBinding
 import kotlin.properties.Delegates
 
 class DevicesAdapter: RecyclerView.Adapter<DeviceViewHolder>() {
-    var data: List<DeviceInfo> by Delegates.observable(listOf()) {
+    var data: List<Pair<DeviceInfo, ConnectionInfo>> by Delegates.observable(listOf()) {
         _, _, _ -> notifyDataSetChanged()
     }
 
@@ -19,7 +22,7 @@ class DevicesAdapter: RecyclerView.Adapter<DeviceViewHolder>() {
     }
 
     override fun getItemCount() = data.size
-    override fun getItemId(position: Int) = data[position].deviceId.deviceId.hashCode().toLong()
+    override fun getItemId(position: Int) = data[position].first.deviceId.deviceId.hashCode().toLong()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = DeviceViewHolder(
             ListviewDeviceBinding.inflate(
@@ -28,13 +31,23 @@ class DevicesAdapter: RecyclerView.Adapter<DeviceViewHolder>() {
     )
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
-        val deviceStats = data[position]
         val binding = holder.binding
+        val context = binding.root.context
+        val (deviceInfo, connectionInfo) = data[position]
 
-        binding.name = deviceStats.name
-        binding.isConnected = deviceStats.isConnected
+        binding.name = deviceInfo.name
+        binding.isConnected = connectionInfo.status == ConnectionStatus.Connected
 
-        binding.root.setOnLongClickListener { listener?.onDeviceLongClicked(deviceStats) ?: false }
+        binding.status = when (connectionInfo.status) {
+            ConnectionStatus.Connected -> context.getString(R.string.device_status_connected, connectionInfo.currentAddress?.address)
+            ConnectionStatus.Connecting -> context.getString(R.string.device_status_connecting, connectionInfo.currentAddress?.address)
+            ConnectionStatus.Disconnected -> if (connectionInfo.addresses.isEmpty())
+                context.getString(R.string.device_status_no_address)
+            else
+                context.getString(R.string.device_status_disconnected, connectionInfo.addresses.size)
+        }
+
+        binding.root.setOnLongClickListener { listener?.onDeviceLongClicked(deviceInfo) ?: false }
 
         binding.executePendingBindings()
     }

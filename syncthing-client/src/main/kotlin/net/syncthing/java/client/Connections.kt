@@ -13,14 +13,25 @@
  */
 package net.syncthing.java.client
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
+import net.syncthing.java.bep.connectionactor.ConnectionInfo
 import net.syncthing.java.core.beans.DeviceId
 
 class Connections (val generate: (DeviceId) -> ConnectionActorWrapper) {
     private val map = mutableMapOf<DeviceId, ConnectionActorWrapper>()
+    private val connectionStatus = ConflatedBroadcastChannel<Map<DeviceId, ConnectionInfo>>(emptyMap())
+    private val connectionStatusLock = Mutex()
+    private val job = Job()
 
     fun getByDeviceId(deviceId: DeviceId): ConnectionActorWrapper {
-        return synchronized(map) {
+        synchronized(map) {
             val oldEntry = map[deviceId]
 
             if (oldEntry != null) {
@@ -29,6 +40,17 @@ class Connections (val generate: (DeviceId) -> ConnectionActorWrapper) {
                 val newEntry = generate(deviceId)
 
                 map[deviceId] = newEntry
+
+                GlobalScope.launch (job) {
+                    newEntry.subscribeToConnectionInfo().consumeEach {  status ->
+                        connectionStatusLock.withLock {
+                            connectionStatus.send(
+                                    connectionStatus.value +
+                                            mapOf(deviceId to status)
+                            )
+                        }
+                    }
+                }
 
                 return newEntry
             }
@@ -39,6 +61,8 @@ class Connections (val generate: (DeviceId) -> ConnectionActorWrapper) {
         synchronized(map) {
             map.values.forEach { it.shutdown() }
         }
+
+        job.cancel()
     }
 
     fun reconnectAllConnections() {
@@ -46,4 +70,6 @@ class Connections (val generate: (DeviceId) -> ConnectionActorWrapper) {
             map.values.forEach { it.reconnect() }
         }
     }
+
+    fun subscribeToConnectionStatusMap() = connectionStatus.openSubscription()
 }
