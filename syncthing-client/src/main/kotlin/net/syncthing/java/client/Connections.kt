@@ -71,5 +71,11 @@ class Connections (val generate: (DeviceId) -> ConnectionActorWrapper) {
         }
     }
 
+    fun reconnect(deviceId: DeviceId) {
+        synchronized(map) {
+            map[deviceId]?.reconnect()
+        }
+    }
+
     fun subscribeToConnectionStatusMap() = connectionStatus.openSubscription()
 }

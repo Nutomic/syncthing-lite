@@ -33,42 +33,44 @@ object ClusterConfigHandler {
         val builder = BlockExchangeProtos.ClusterConfig.newBuilder()
 
         indexHandler.indexRepository.runInTransaction { indexTransaction ->
-            for (folder in configuration.folders) {
-                val folderBuilder = BlockExchangeProtos.Folder.newBuilder()
-                        .setId(folder.folderId)
-                        .setLabel(folder.label)
+            configuration.folders
+                    .filter { it.deviceIdWhitelist.contains(deviceId) }
+                    .forEach { folder ->
+                        val folderBuilder = BlockExchangeProtos.Folder.newBuilder()
+                                .setId(folder.folderId)
+                                .setLabel(folder.label)
 
-                // add this device
-                folderBuilder.addDevices(
-                        BlockExchangeProtos.Device.newBuilder()
-                                .setId(ByteString.copyFrom(configuration.localDeviceId.toHashData()))
-                                .setIndexId(indexTransaction.getSequencer().indexId())
-                                .setMaxSequence(indexTransaction.getSequencer().currentSequence())
-                )
+                        // add this device
+                        folderBuilder.addDevices(
+                                BlockExchangeProtos.Device.newBuilder()
+                                        .setId(ByteString.copyFrom(configuration.localDeviceId.toHashData()))
+                                        .setIndexId(indexTransaction.getSequencer().indexId())
+                                        .setMaxSequence(indexTransaction.getSequencer().currentSequence())
+                        )
 
-                // add other device
-                val indexSequenceInfo = indexTransaction.findIndexInfoByDeviceAndFolder(deviceId, folder.folderId)
+                        // add other device
+                        val indexSequenceInfo = indexTransaction.findIndexInfoByDeviceAndFolder(deviceId, folder.folderId)
 
-                folderBuilder.addDevices(
-                        BlockExchangeProtos.Device.newBuilder()
-                                .setId(ByteString.copyFrom(deviceId.toHashData()))
-                                .apply {
-                                    indexSequenceInfo?.let {
-                                        setIndexId(indexSequenceInfo.indexId)
-                                        setMaxSequence(indexSequenceInfo.localSequence)
+                        folderBuilder.addDevices(
+                                BlockExchangeProtos.Device.newBuilder()
+                                        .setId(ByteString.copyFrom(deviceId.toHashData()))
+                                        .apply {
+                                            indexSequenceInfo?.let {
+                                                indexId = indexSequenceInfo.indexId
+                                                maxSequence = indexSequenceInfo.localSequence
 
-                                        logger.info("send delta index info device = {} index = {} max (local) sequence = {}",
-                                                indexSequenceInfo.deviceId,
-                                                indexSequenceInfo.indexId,
-                                                indexSequenceInfo.localSequence)
-                                    }
-                                }
-                )
+                                                logger.info("send delta index info device = {} index = {} max (local) sequence = {}",
+                                                        indexSequenceInfo.deviceId,
+                                                        indexSequenceInfo.indexId,
+                                                        indexSequenceInfo.localSequence)
+                                            }
+                                        }
+                        )
 
-                builder.addFolders(folderBuilder)
+                        builder.addFolders(folderBuilder)
 
-                // TODO: add the other devices to the cluster config
-            }
+                        // TODO: add the other devices to the cluster config
+                    }
         }
 
         return builder.build()
@@ -85,7 +87,7 @@ object ClusterConfigHandler {
         val newSharedFolders = mutableListOf<FolderInfo>()
 
         for (folder in clusterConfig.foldersList ?: emptyList()) {
-            var folderInfo = ClusterConfigFolderInfo(folder.id, folder.label)
+            var folderInfo = ClusterConfigFolderInfo(folder.id, folder.label, isDeviceInSharedFolderWhitelist = false)
             val devicesById = (folder.devicesList ?: emptyList())
                     .associateBy { input ->
                         DeviceId.fromHashData(input.id!!.toByteArray())
@@ -99,17 +101,30 @@ object ClusterConfigHandler {
                 folderInfo = folderInfo.copy(isShared = true)
                 logger.info("folder shared from device = {} folder = {}", otherDeviceId, folderInfo)
 
-                val newFolderInfo = FolderInfo(folderInfo.folderId, folderInfo.label)
-
                 val oldFolderEntry = configuration.folders.find { it.folderId == folderInfo.folderId }
 
                 if (oldFolderEntry == null) {
+                    folderInfo = folderInfo.copy(isDeviceInSharedFolderWhitelist = true)
+
+                    val newFolderInfo = FolderInfo(
+                            folderId = folderInfo.folderId,
+                            label = folderInfo.label,
+                            deviceIdWhitelist = setOf(otherDeviceId),
+                            deviceIdBlacklist = emptySet()
+                    )
+
                     configuration.folders = configuration.folders + newFolderInfo
                     newSharedFolders.add(newFolderInfo)
                     logger.info("new folder shared = {}", folderInfo)
                 } else {
-                    if (oldFolderEntry != newFolderInfo) {
-                        configuration.folders = configuration.folders.filter { it != oldFolderEntry }.toSet() + setOf(newFolderInfo)
+                    if (oldFolderEntry.deviceIdWhitelist.contains(otherDeviceId)) {
+                        folderInfo = folderInfo.copy(isDeviceInSharedFolderWhitelist = true)
+
+                        if (oldFolderEntry.label != folderInfo.label) {
+                            configuration.folders = configuration.folders.filter { it != oldFolderEntry }.toSet() + setOf(
+                                    oldFolderEntry.copy(label = folderInfo.label)
+                            )
+                        }
                     }
                 }
             } else {
@@ -132,7 +147,7 @@ class ClusterConfigInfo (val folderInfo: List<ClusterConfigFolderInfo>, val newS
 
     val folderInfoById = folderInfo.associateBy { it.folderId }
     val sharedFolderIds: Set<String> by lazy {
-        folderInfo.filter { it.isShared }.map { it.folderId }.toSet()
+        folderInfo.filter { it.isShared && it.isDeviceInSharedFolderWhitelist }.map { it.folderId }.toSet()
     }
 }
 
@@ -140,7 +155,8 @@ data class ClusterConfigFolderInfo(
         val folderId: String,
         val label: String = folderId,
         val isAnnounced: Boolean = false,
-        val isShared: Boolean = false
+        val isShared: Boolean = false,
+        val isDeviceInSharedFolderWhitelist: Boolean
 ) {
     init {
         assert(folderId.isNotEmpty())

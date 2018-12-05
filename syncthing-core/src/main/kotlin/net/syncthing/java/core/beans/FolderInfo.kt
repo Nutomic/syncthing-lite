@@ -17,20 +17,54 @@ package net.syncthing.java.core.beans
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 
-data class FolderInfo(val folderId: String, val label: String) {
+// the whitelist are device ids with which the folder should be shared
+// the blacklist are device ids with which the folder should not be shared
+data class FolderInfo(
+        val folderId: String,
+        val label: String,
+        val deviceIdWhitelist: Set<DeviceId>,
+        val deviceIdBlacklist: Set<DeviceId>
+) {
     companion object {
         private const val FOLDER_ID = "folderId"
         private const val LABEL = "label"
+        private const val DEVICE_ID_WHITELIST = "deviceWhitelist"
+        private const val DEVICE_ID_BLACKLIST = "deviceBlacklist"
 
         fun parse(reader: JsonReader): FolderInfo {
             var folderId: String? = null
             var label: String? = null
+            // the following fields were added later and thus have got a default value
+            var deviceIdWhitelist = emptySet<DeviceId>()
+            var deviceIdBlacklist = emptySet<DeviceId>()
 
             reader.beginObject()
             while (reader.hasNext()) {
                 when (reader.nextName()) {
                     FOLDER_ID -> folderId = reader.nextString()
                     LABEL -> label = reader.nextString()
+                    DEVICE_ID_WHITELIST -> {
+                        reader.beginArray()
+
+                        deviceIdWhitelist = mutableSetOf<DeviceId>().apply {
+                            while (reader.hasNext()) {
+                                add(DeviceId(reader.nextString()))
+                            }
+                        }
+
+                        reader.endArray()
+                    }
+                    DEVICE_ID_BLACKLIST -> {
+                        reader.beginArray()
+
+                        deviceIdBlacklist = mutableSetOf<DeviceId>().apply {
+                            while (reader.hasNext()) {
+                                add(DeviceId(reader.nextString()))
+                            }
+                        }
+
+                        reader.endArray()
+                    }
                     else -> reader.skipValue()
                 }
             }
@@ -38,13 +72,16 @@ data class FolderInfo(val folderId: String, val label: String) {
 
             return FolderInfo(
                     folderId = folderId!!,
-                    label = label!!
+                    label = label!!,
+                    deviceIdBlacklist = deviceIdBlacklist,
+                    deviceIdWhitelist = deviceIdWhitelist
             )
         }
     }
 
     init {
         assert(!folderId.isEmpty())
+        assert(deviceIdWhitelist.find { deviceIdBlacklist.contains(it) } == null)
     }
 
     override fun toString(): String {
@@ -56,6 +93,14 @@ data class FolderInfo(val folderId: String, val label: String) {
 
         writer.name(FOLDER_ID).value(folderId)
         writer.name(LABEL).value(label)
+
+        writer.name(DEVICE_ID_WHITELIST).beginArray()
+        deviceIdWhitelist.forEach { writer.value(it.deviceId) }
+        writer.endArray()
+
+        writer.name(DEVICE_ID_BLACKLIST).beginArray()
+        deviceIdBlacklist.forEach { writer.value(it.deviceId) }
+        writer.endArray()
 
         writer.endObject()
     }

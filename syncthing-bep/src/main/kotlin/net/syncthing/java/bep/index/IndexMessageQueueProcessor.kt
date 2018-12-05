@@ -106,6 +106,13 @@ class IndexMessageQueueProcessor (
     private suspend fun doHandleIndexMessageReceivedEvent(action: IndexUpdateAction) {
         val (message, clusterConfigInfo, peerDeviceId) = action
 
+        val folderInfo = clusterConfigInfo.folderInfoById[message.folder]
+                ?: throw IllegalStateException("got folder info for folder without known folder info")
+
+        if (!folderInfo.isDeviceInSharedFolderWhitelist) {
+            throw IllegalStateException("received index update for folder which is not shared")
+        }
+
         logger.info("processing index message with {} records", message.filesCount)
 
         val (indexResult, wasIndexAcquired) = indexRepository.runInTransaction { indexTransaction ->
