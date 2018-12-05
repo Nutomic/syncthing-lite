@@ -16,7 +16,8 @@ data class FolderStatus(
                         folder,
                         folder,
                         deviceIdBlacklist = emptySet(),
-                        deviceIdWhitelist = emptySet()
+                        deviceIdWhitelist = emptySet(),
+                        ignoredDeviceIdList = emptySet()
                 ),
                 stats = FolderStats.createDummy(folder),
                 indexInfo = emptyList()

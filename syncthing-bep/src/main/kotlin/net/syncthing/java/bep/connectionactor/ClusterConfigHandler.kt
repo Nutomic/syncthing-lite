@@ -110,7 +110,8 @@ object ClusterConfigHandler {
                             folderId = folderInfo.folderId,
                             label = folderInfo.label,
                             deviceIdWhitelist = setOf(otherDeviceId),
-                            deviceIdBlacklist = emptySet()
+                            deviceIdBlacklist = emptySet(),
+                            ignoredDeviceIdList = emptySet()
                     )
 
                     configuration.folders = configuration.folders + newFolderInfo
