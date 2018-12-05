@@ -46,7 +46,7 @@ object Util {
         val deviceId2 = DeviceId(deviceId.toUpperCase(Locale.US))
         libraryHandler?.library { configuration, syncthingClient, _ ->
             if (!configuration.peerIds.contains(deviceId2)) {
-                configuration.peers = configuration.peers + DeviceInfo(deviceId2, null)
+                configuration.peers = configuration.peers + DeviceInfo(deviceId2, deviceId2.shortId)
                 configuration.persistLater()
                 syncthingClient.connectToNewlyAddedDevices()
                 GlobalScope.launch (Dispatchers.Main) {

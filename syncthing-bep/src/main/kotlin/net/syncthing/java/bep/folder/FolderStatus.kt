@@ -12,7 +12,12 @@ data class FolderStatus(
 ) {
     companion object {
         fun createDummy(folder: String) = FolderStatus(
-                info = FolderInfo(folder, folder),
+                info = FolderInfo(
+                        folder,
+                        folder,
+                        deviceIdBlacklist = emptySet(),
+                        deviceIdWhitelist = emptySet()
+                ),
                 stats = FolderStats.createDummy(folder),
                 indexInfo = emptyList()
         )
