@@ -122,8 +122,16 @@ object ClusterConfigHandler {
                         folderInfo = folderInfo.copy(isDeviceInSharedFolderWhitelist = true)
 
                         if (oldFolderEntry.label != folderInfo.label) {
-                            configuration.folders = configuration.folders.filter { it != oldFolderEntry }.toSet() + setOf(
+                            configuration.folders = configuration.folders.filter { it.folderId != folderInfo.folderId }.toSet() + setOf(
                                     oldFolderEntry.copy(label = folderInfo.label)
+                            )
+                        }
+                    } else {
+                        if (!oldFolderEntry.deviceIdBlacklist.contains(otherDeviceId)) {
+                            configuration.folders = configuration.folders.filter { it.folderId != folderInfo.folderId }.toSet() + setOf(
+                                    oldFolderEntry.copy(
+                                            deviceIdBlacklist = oldFolderEntry.deviceIdBlacklist + setOf(otherDeviceId)
+                                    )
                             )
                         }
                     }
