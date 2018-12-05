@@ -70,6 +70,8 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                                             deviceIdBlacklist = oldFolderEntry.deviceIdBlacklist - setOf(device.deviceId)
                                     )
                             )
+
+                            it.configuration.persistLater()
                         }
                     }
 
@@ -87,6 +89,8 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                                             ignoredDeviceIdList = oldFolderEntry.deviceIdWhitelist + setOf(device.deviceId)
                                     )
                             )
+
+                            it.configuration.persistLater()
                         }
                     }
 
