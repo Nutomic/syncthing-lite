@@ -5,8 +5,9 @@ import com.google.gson.stream.JsonWriter
 import net.syncthing.java.core.utils.NetworkUtils
 import org.apache.commons.codec.binary.Base32
 import java.io.IOException
+import java.io.Serializable
 
-data class DeviceId @Throws(IOException::class) constructor(val deviceId: String) {
+data class DeviceId @Throws(IOException::class) constructor(val deviceId: String): Serializable {
 
     init {
         val withoutDashes = this.deviceId.replace("-", "")

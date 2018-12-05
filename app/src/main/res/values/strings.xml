@@ -69,4 +69,8 @@
     <string name="device_status_connected">Connected to %s</string>
     <string name="device_status_disconnected">Will retry connecting soon - there are %d known addresses</string>
     <string name="device_status_no_address">No known address for the device</string>
+    <string name="dialog_enable_folder_sync_for_new_device_title">Enable folder sync for new device</string>
+    <string name="dialog_enable_folder_sync_for_new_device_text">Do you want to sync %1$s with %2$s (%3$s)?</string>
+    <string name="dialog_enable_folder_sync_for_new_device_positive">Sync</string>
+    <string name="dialog_enable_folder_sync_for_new_device_negative">Do not sync</string>
 </resources>

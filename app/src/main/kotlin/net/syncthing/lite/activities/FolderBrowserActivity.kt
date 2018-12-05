@@ -17,6 +17,7 @@ import net.syncthing.lite.R
 import net.syncthing.lite.adapters.FolderContentsAdapter
 import net.syncthing.lite.adapters.FolderContentsListener
 import net.syncthing.lite.databinding.ActivityFolderBrowserBinding
+import net.syncthing.lite.dialogs.EnableFolderSyncForNewDeviceDialog
 import net.syncthing.lite.dialogs.FileMenuDialogFragment
 import net.syncthing.lite.dialogs.FileUploadDialog
 import net.syncthing.lite.dialogs.ReconnectIssueDialogFragment
@@ -106,6 +107,29 @@ class FolderBrowserActivity : SyncthingActivity() {
                         listing.entries.sortedWith(IndexBrowser.sortAlphabeticallyDirectoriesFirst)
                     else
                         emptyList()
+                }
+            }
+        }
+
+        if (savedInstanceState == null) {
+            launch {
+                val devicesToAskFor = libraryHandler.libraryManager.withLibrary {
+                    val folderInfo = it.configuration.folders.find { it.folderId == folder }
+                    val notIgnoredBlacklistEntries = folderInfo?.notIgnoredBlacklistEntries ?: emptySet()
+
+                    notIgnoredBlacklistEntries.mapNotNull { deviceId ->
+                        it.configuration.peers.find { peer -> peer.deviceId == deviceId }
+                    }
+                }
+
+                if (devicesToAskFor.isNotEmpty()) {
+                    EnableFolderSyncForNewDeviceDialog.newInstance(
+                            folderId = folder,
+                            devices = devicesToAskFor,
+                            folderName = libraryHandler.libraryManager.withLibrary {
+                                it.configuration.folders.find { it.folderId == folder }?.label ?: folder
+                            }
+                    ).show(supportFragmentManager)
                 }
             }
         }
