@@ -55,8 +55,8 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                 dialog.setMessage(getString(
                         R.string.dialog_enable_folder_sync_for_new_device_text,
                         folderName,
-                        device.deviceId,
-                        device.name
+                        device.name,
+                        device.deviceId.deviceId
                 ))
 
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -71,6 +71,7 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                                     )
                             )
 
+                            it.syncthingClient.reconnect(device.deviceId)
                             it.configuration.persistLater()
                         }
                     }
@@ -90,6 +91,7 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                                     )
                             )
 
+                            it.syncthingClient.reconnect(device.deviceId)
                             it.configuration.persistLater()
                         }
                     }

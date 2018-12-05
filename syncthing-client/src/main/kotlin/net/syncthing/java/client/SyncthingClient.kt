@@ -94,6 +94,10 @@ class SyncthingClient(
         getConnections()
     }
 
+    fun reconnect(deviceId: DeviceId) {
+        connections.reconnect(deviceId)
+    }
+
     fun connectToNewlyAddedDevices() {
         getConnections()
     }
