@@ -16,7 +16,6 @@ package net.syncthing.java.bep.connectionactor
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.consumeEach
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.core.beans.DeviceId
@@ -24,8 +23,7 @@ import java.io.IOException
 
 class ConnectionActorWrapper (
         private val source: ReceiveChannel<Pair<Connection, ConnectionInfo>>,
-        val deviceId: DeviceId,
-        val connectivityChangeListener: () -> Unit
+        val deviceId: DeviceId
 ) {
     private val job = Job()
 
@@ -40,20 +38,6 @@ class ConnectionActorWrapper (
             source.consumeEach { (connection, connectionInfo) ->
                 this@ConnectionActorWrapper.connection = connection
                 this@ConnectionActorWrapper.connectionInfo.send(connectionInfo)
-            }
-        }
-
-        GlobalScope.launch (job) {
-            var previousConnected = false
-
-            connectionInfo.openSubscription().consumeEach {
-                val nowConnected = it.status == ConnectionStatus.Connected
-
-                if (previousConnected != nowConnected) {
-                    previousConnected = nowConnected
-
-                    connectivityChangeListener()
-                }
             }
         }
     }

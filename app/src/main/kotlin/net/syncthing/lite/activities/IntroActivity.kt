@@ -177,10 +177,8 @@ class IntroActivity : AppIntro() {
      */
     class IntroFragmentThree : SyncthingFragment() {
 
-        private lateinit var binding: FragmentIntroThreeBinding
-
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-            binding = DataBindingUtil.inflate(inflater, R.layout.fragment_intro_three, container, false)
+            val binding = FragmentIntroThreeBinding.inflate(inflater, container, false)
 
             launch {
                 val ownDeviceId = libraryHandler.libraryManager.withLibrary { it.configuration.localDeviceId }
@@ -195,24 +193,15 @@ class IntroActivity : AppIntro() {
                 }
             }
 
-            libraryHandler.library { config, client, _ ->
-                GlobalScope.launch (Dispatchers.Main) {
-                    client.addOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
-                }
-            }
-
-            return binding.root
-        }
-
-        private fun onConnectionChanged(deviceId: DeviceId) {
-            libraryHandler.library { config, client, _ ->
-                GlobalScope.launch (Dispatchers.Main) {
-                    if (config.folders.isNotEmpty()) {
-                        client.removeOnConnectionChangedListener(this@IntroFragmentThree::onConnectionChanged)
+            launch {
+                libraryHandler.subscribeToFolderStatusList().consumeEach {
+                    if (it.isNotEmpty()) {
                         (activity as IntroActivity?)?.onDonePressed(this@IntroFragmentThree)
                     }
                 }
             }
+
+            return binding.root
         }
     }
 }

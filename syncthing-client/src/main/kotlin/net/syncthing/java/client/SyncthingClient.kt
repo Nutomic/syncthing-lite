@@ -41,7 +41,6 @@ class SyncthingClient(
 ) : Closeable {
     val indexHandler = IndexHandler(configuration, repository, tempRepository, enableDetailedException)
     val discoveryHandler = DiscoveryHandler(configuration)
-    private val onConnectionChangedListeners = Collections.synchronizedList(mutableListOf<(DeviceId) -> Unit>())
 
     private val requestHandlerRegistry = RequestHandlerRegistry()
     private val connections = Connections(
@@ -60,12 +59,7 @@ class SyncthingClient(
                                 indexHandler = indexHandler,
                                 configuration = configuration
                         ),
-                        deviceId = deviceId,
-                        connectivityChangeListener = {
-                            synchronized(onConnectionChangedListeners) {
-                                onConnectionChangedListeners.forEach { it(deviceId) }
-                            }
-                        }
+                        deviceId = deviceId
                 )
             }
     )
@@ -75,16 +69,6 @@ class SyncthingClient(
         configuration.folders = emptySet()
         configuration.persistLater()
         connections.reconnectAllConnections()
-    }
-
-    // TODO: remove these callbacks
-    fun addOnConnectionChangedListener(listener: (DeviceId) -> Unit) {
-        onConnectionChangedListeners.add(listener)
-    }
-
-    fun removeOnConnectionChangedListener(listener: (DeviceId) -> Unit) {
-        assert(onConnectionChangedListeners.contains(listener))
-        onConnectionChangedListeners.remove(listener)
     }
 
     private fun getConnections() = configuration.peerIds.map { connections.getByDeviceId(it) }
@@ -142,6 +126,5 @@ class SyncthingClient(
         repository.close()
         tempRepository.close()
         connections.shutdown()
-        assert(onConnectionChangedListeners.isEmpty())
     }
 }
