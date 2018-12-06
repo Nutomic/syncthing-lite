@@ -8,12 +8,11 @@ import android.support.v4.app.FragmentManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.MimeTypeMap
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.databinding.DialogFileBinding
 import net.syncthing.lite.dialogs.downloadfile.DownloadFileDialogFragment
 import net.syncthing.lite.dialogs.downloadfile.DownloadFileSpec
-import org.apache.commons.io.FilenameUtils
+import net.syncthing.lite.utils.MimeType
 
 class FileMenuDialogFragment: BottomSheetDialogFragment() {
     companion object {
@@ -48,9 +47,7 @@ class FileMenuDialogFragment: BottomSheetDialogFragment() {
                     Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
 
-                        type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                                FilenameUtils.getExtension(fileSpec.fileName)
-                        )
+                        type = MimeType.getFromUrl(fileSpec.fileName)
 
                         putExtra(Intent.EXTRA_TITLE, fileSpec.fileName)
                     },

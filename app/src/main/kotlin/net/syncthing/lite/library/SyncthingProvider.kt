@@ -15,8 +15,8 @@ import net.syncthing.java.bep.index.browser.DirectoryNotFoundListing
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.beans.FolderInfo
 import net.syncthing.lite.R
+import net.syncthing.lite.utils.MimeType
 import java.io.FileNotFoundException
-import java.net.URLConnection
 
 class SyncthingProvider : DocumentsProvider() {
 
@@ -159,7 +159,7 @@ class SyncthingProvider : DocumentsProvider() {
                     if (fileInfo.isDirectory())
                         Document.MIME_TYPE_DIR
                     else
-                        URLConnection.guessContentTypeFromName(fileInfo.fileName)
+                        MimeType.getFromUrl(fileInfo.fileName)
             )
             add(Document.COLUMN_LAST_MODIFIED, fileInfo.lastModified)
             add(Document.COLUMN_FLAGS, 0)

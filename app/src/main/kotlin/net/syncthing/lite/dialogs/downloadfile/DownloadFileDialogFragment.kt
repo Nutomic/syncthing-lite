@@ -12,13 +12,12 @@ import android.os.Bundle
 import android.support.v4.app.DialogFragment
 import android.support.v4.app.FragmentManager
 import android.util.Log
-import android.webkit.MimeTypeMap
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.R
 import net.syncthing.lite.library.CacheFileProviderUrl
 import net.syncthing.lite.library.LibraryHandler
-import org.apache.commons.io.FilenameUtils
+import net.syncthing.lite.utils.MimeType
 import org.jetbrains.anko.newTask
 import org.jetbrains.anko.toast
 
@@ -89,7 +88,7 @@ class DownloadFileDialogFragment : DialogFragment() {
                     dismissAllowingStateLoss()
 
                     if (outputUri == null) {
-                        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(FilenameUtils.getExtension(fileSpec.fileName))
+                        val mimeType = MimeType.getFromUrl(fileSpec.fileName)
 
                         try {
                             context!!.startActivity(
