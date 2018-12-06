@@ -62,7 +62,7 @@ class FolderInfoDialog: SyncthingDialogFragment() {
                             isChecked = folderInfo.deviceIdWhitelist.contains(deviceId)
 
                             setOnCheckedChangeListener { _, isShared ->
-                                launch {
+                                this@FolderInfoDialog.launch {
                                     libraryHandler.libraryManager.withLibrary { library ->
                                         val oldFolders = library.configuration.folders
                                         var folderToChange = oldFolders.find { it.folderId == folderId }!!
