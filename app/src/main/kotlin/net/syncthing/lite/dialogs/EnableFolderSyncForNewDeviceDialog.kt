@@ -64,12 +64,16 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                         libraryHandler.libraryManager.withLibrary {
                             val oldFolderEntry = it.configuration.folders.find { it.folderId == folderId }!!
 
-                            it.configuration.folders = it.configuration.folders.filter { it != oldFolderEntry }.toSet() + setOf(
-                                    oldFolderEntry.copy(
-                                            deviceIdWhitelist = oldFolderEntry.deviceIdWhitelist + setOf(device.deviceId),
-                                            deviceIdBlacklist = oldFolderEntry.deviceIdBlacklist - setOf(device.deviceId)
-                                    )
-                            )
+                            it.configuration.update { oldConfig ->
+                                oldConfig.copy(
+                                        folders = oldConfig.folders.filter { it != oldFolderEntry }.toSet() + setOf(
+                                                oldFolderEntry.copy(
+                                                        deviceIdWhitelist = oldFolderEntry.deviceIdWhitelist + setOf(device.deviceId),
+                                                        deviceIdBlacklist = oldFolderEntry.deviceIdBlacklist - setOf(device.deviceId)
+                                                )
+                                        )
+                                )
+                            }
 
                             it.syncthingClient.reconnect(device.deviceId)
                             it.configuration.persistLater()
@@ -85,11 +89,15 @@ class EnableFolderSyncForNewDeviceDialog: SyncthingDialogFragment() {
                         libraryHandler.libraryManager.withLibrary {
                             val oldFolderEntry = it.configuration.folders.find { it.folderId == folderId }!!
 
-                            it.configuration.folders = it.configuration.folders.filter { it != oldFolderEntry }.toSet() + setOf(
-                                    oldFolderEntry.copy(
-                                            ignoredDeviceIdList = oldFolderEntry.deviceIdWhitelist + setOf(device.deviceId)
-                                    )
-                            )
+                            it.configuration.update { oldConfig ->
+                                oldConfig.copy(
+                                        folders = oldConfig.folders.filter { it != oldFolderEntry }.toSet() + setOf(
+                                                oldFolderEntry.copy(
+                                                        ignoredDeviceIdList = oldFolderEntry.deviceIdWhitelist + setOf(device.deviceId)
+                                                )
+                                        )
+                                )
+                            }
 
                             it.syncthingClient.reconnect(device.deviceId)
                             it.configuration.persistLater()

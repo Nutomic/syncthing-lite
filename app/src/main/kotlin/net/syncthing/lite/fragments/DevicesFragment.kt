@@ -43,12 +43,21 @@ class DevicesFragment : SyncthingFragment() {
                         .setTitle(getString(R.string.remove_device_title, deviceInfo.name))
                         .setMessage(getString(R.string.remove_device_message, deviceInfo.deviceId.deviceId.substring(0, 7)))
                         .setPositiveButton(android.R.string.yes) { _, _ ->
-                            libraryHandler.library { config, syncthingClient, _ ->
-                                config.peers = config.peers.filterNot { it.deviceId == deviceInfo.deviceId }.toSet()
-                                config.persistLater()
+                            launch {
+                                libraryHandler.libraryManager.withLibrary { library ->
+                                    library.configuration.update { oldConfig ->
+                                        oldConfig.copy(
+                                                peers = oldConfig.peers
+                                                        .filterNot { it.deviceId == deviceInfo.deviceId }
+                                                        .toSet()
+                                        )
+                                    }
 
-                                // TODO: update the device list (should become a side effect of the call below)
-                                syncthingClient.disconnectFromRemovedDevices()
+                                    library.configuration.persistLater()
+
+                                    // TODO: update the device list (should become a side effect of the call below)
+                                    library.syncthingClient.disconnectFromRemovedDevices()
+                                }
                             }
                         }
                         .setNegativeButton(android.R.string.no, null)
@@ -101,7 +110,7 @@ class DevicesFragment : SyncthingFragment() {
                     ?.setOnClickListener {
                         try {
                             val deviceId = binding.deviceId.text.toString()
-                            Util.importDeviceId(libraryHandler, context, deviceId, { /* TODO: Is updateDeviceList() still required? */ })
+                            Util.importDeviceId(libraryHandler.libraryManager, context!!, deviceId, { /* TODO: Is updateDeviceList() still required? */ })
                             addDeviceDialog?.dismiss()
                         } catch (e: IOException) {
                             binding.deviceId.error = getString(R.string.invalid_device_id)

@@ -86,62 +86,69 @@ object ClusterConfigHandler {
         val folderInfoList = mutableListOf<ClusterConfigFolderInfo>()
         val newSharedFolders = mutableListOf<FolderInfo>()
 
-        for (folder in clusterConfig.foldersList ?: emptyList()) {
-            var folderInfo = ClusterConfigFolderInfo(folder.id, folder.label, isDeviceInSharedFolderWhitelist = false)
-            val devicesById = (folder.devicesList ?: emptyList())
-                    .associateBy { input ->
-                        DeviceId.fromHashData(input.id!!.toByteArray())
-                    }
-            val otherDevice = devicesById[otherDeviceId]
-            val ourDevice = devicesById[configuration.localDeviceId]
-            if (otherDevice != null) {
-                folderInfo = folderInfo.copy(isAnnounced = true)
-            }
-            if (ourDevice != null) {
-                folderInfo = folderInfo.copy(isShared = true)
-                logger.info("folder shared from device = {} folder = {}", otherDeviceId, folderInfo)
+        configuration.update { oldConfig ->
+            val configFolders = oldConfig.folders.toMutableSet()
 
-                val oldFolderEntry = configuration.folders.find { it.folderId == folderInfo.folderId }
+            for (folder in clusterConfig.foldersList ?: emptyList()) {
+                var folderInfo = ClusterConfigFolderInfo(folder.id, folder.label, isDeviceInSharedFolderWhitelist = false)
+                val devicesById = (folder.devicesList ?: emptyList())
+                        .associateBy { input ->
+                            DeviceId.fromHashData(input.id!!.toByteArray())
+                        }
+                val otherDevice = devicesById[otherDeviceId]
+                val ourDevice = devicesById[configuration.localDeviceId]
+                if (otherDevice != null) {
+                    folderInfo = folderInfo.copy(isAnnounced = true)
+                }
+                if (ourDevice != null) {
+                    folderInfo = folderInfo.copy(isShared = true)
+                    logger.info("folder shared from device = {} folder = {}", otherDeviceId, folderInfo)
 
-                if (oldFolderEntry == null) {
-                    folderInfo = folderInfo.copy(isDeviceInSharedFolderWhitelist = true)
+                    val oldFolderEntry = configFolders.find { it.folderId == folderInfo.folderId }
 
-                    val newFolderInfo = FolderInfo(
-                            folderId = folderInfo.folderId,
-                            label = folderInfo.label,
-                            deviceIdWhitelist = setOf(otherDeviceId),
-                            deviceIdBlacklist = emptySet(),
-                            ignoredDeviceIdList = emptySet()
-                    )
-
-                    configuration.folders = configuration.folders + newFolderInfo
-                    newSharedFolders.add(newFolderInfo)
-                    logger.info("new folder shared = {}", folderInfo)
-                } else {
-                    if (oldFolderEntry.deviceIdWhitelist.contains(otherDeviceId)) {
+                    if (oldFolderEntry == null) {
                         folderInfo = folderInfo.copy(isDeviceInSharedFolderWhitelist = true)
 
-                        if (oldFolderEntry.label != folderInfo.label) {
-                            configuration.folders = configuration.folders.filter { it.folderId != folderInfo.folderId }.toSet() + setOf(
-                                    oldFolderEntry.copy(label = folderInfo.label)
-                            )
-                        }
+                        val newFolderInfo = FolderInfo(
+                                folderId = folderInfo.folderId,
+                                label = folderInfo.label,
+                                deviceIdWhitelist = setOf(otherDeviceId),
+                                deviceIdBlacklist = emptySet(),
+                                ignoredDeviceIdList = emptySet()
+                        )
+
+                        configFolders.add(newFolderInfo)
+                        newSharedFolders.add(newFolderInfo)
+                        logger.info("new folder shared = {}", folderInfo)
                     } else {
-                        if (!oldFolderEntry.deviceIdBlacklist.contains(otherDeviceId)) {
-                            configuration.folders = configuration.folders.filter { it.folderId != folderInfo.folderId }.toSet() + setOf(
-                                    oldFolderEntry.copy(
-                                            deviceIdBlacklist = oldFolderEntry.deviceIdBlacklist + setOf(otherDeviceId)
-                                    )
-                            )
+                        if (oldFolderEntry.deviceIdWhitelist.contains(otherDeviceId)) {
+                            folderInfo = folderInfo.copy(isDeviceInSharedFolderWhitelist = true)
+
+                            if (oldFolderEntry.label != folderInfo.label) {
+                                configFolders.remove(oldFolderEntry)
+                                configFolders.add(oldFolderEntry.copy(label = folderInfo.label))
+                            }
+                        } else {
+                            if (!oldFolderEntry.deviceIdBlacklist.contains(otherDeviceId)) {
+                                configFolders.remove(oldFolderEntry)
+                                configFolders.add(
+                                        oldFolderEntry.copy(
+                                                deviceIdBlacklist = oldFolderEntry.deviceIdBlacklist + setOf(otherDeviceId)
+                                        )
+                                )
+                            }
                         }
                     }
+                } else {
+                    logger.info("folder not shared from device = {} folder = {}", otherDeviceId, folderInfo)
                 }
-            } else {
-                logger.info("folder not shared from device = {} folder = {}", otherDeviceId, folderInfo)
+
+                folderInfoList.add(folderInfo)
             }
 
-            folderInfoList.add(folderInfo)
+            oldConfig.copy(folders = configFolders)
         }
+
         configuration.persistLater()
         indexHandler.handleClusterConfigMessageProcessedEvent(clusterConfig)
 

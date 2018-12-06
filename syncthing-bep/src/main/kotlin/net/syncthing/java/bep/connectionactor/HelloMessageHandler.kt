@@ -73,7 +73,7 @@ object HelloMessageHandler {
         )
     }
 
-    fun processHelloMessage(
+    suspend fun processHelloMessage(
             hello: BlockExchangeProtos.Hello,
             configuration: Configuration,
             deviceId: DeviceId
@@ -81,14 +81,17 @@ object HelloMessageHandler {
         logger.info("Received hello message, deviceName=${hello.deviceName}, clientName=${hello.clientName}, clientVersion=${hello.clientVersion}")
 
         // update the local device name
-        // TODO: this could need some locking
-        configuration.peers = configuration.peers.map { peer ->
-            if (peer.deviceId == deviceId) {
-                DeviceInfo(deviceId, hello.deviceName)
-            } else {
-                peer
-            }
-        }.toSet()
+        configuration.update { oldConfig ->
+            oldConfig.copy(
+                    peers = oldConfig.peers.map { peer ->
+                        if (peer.deviceId == deviceId) {
+                            DeviceInfo(deviceId, hello.deviceName)
+                        } else {
+                            peer
+                        }
+                    }.toSet()
+            )
+        }
 
         configuration.persistLater()
     }

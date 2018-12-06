@@ -3,8 +3,11 @@ package net.syncthing.lite.fragments
 import android.os.Bundle
 import android.support.v7.preference.EditTextPreference
 import android.support.v7.preference.PreferenceFragmentCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import net.syncthing.lite.R
-import net.syncthing.lite.activities.SyncthingActivity
+import net.syncthing.lite.library.DefaultLibraryManager
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
@@ -14,19 +17,27 @@ class SettingsFragment : PreferenceFragmentCompat() {
         val localDeviceName = findPreference("local_device_name") as EditTextPreference
         val appVersion      = findPreference("app_version")
         val forceStop       = findPreference("force_stop")
+        val libraryManager  = DefaultLibraryManager.with(context!!)
 
-        (activity as SyncthingActivity?)?.let { activity ->
-            val versionName = activity.packageManager.getPackageInfo(activity.packageName, 0)?.versionName
-            appVersion.summary = versionName
-
-            activity.libraryHandler.configuration { localDeviceName.text = it.localDeviceName }
-            localDeviceName.setOnPreferenceChangeListener { _, _ ->
-                activity.libraryHandler.configuration { conf ->
-                    conf.localDeviceName = localDeviceName.text
-                    conf.persistLater()
-                }
-                true
+        GlobalScope.launch (Dispatchers.Main) {
+            libraryManager.withLibrary { library ->
+                localDeviceName.text = library.configuration.localDeviceName
             }
+        }
+
+        appVersion.summary = context!!.packageManager.getPackageInfo(context!!.packageName, 0)?.versionName
+
+        localDeviceName.setOnPreferenceChangeListener { _, _ ->
+            val newDeviceName = localDeviceName.text
+
+            GlobalScope.launch {
+                libraryManager.withLibrary { library ->
+                    library.configuration.update { it.copy(localDeviceName = newDeviceName) }
+                    library.configuration.persistLater()
+                }
+            }
+
+            true
         }
 
         forceStop.setOnPreferenceClickListener {

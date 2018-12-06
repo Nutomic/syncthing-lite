@@ -64,26 +64,28 @@ class FolderInfoDialog: SyncthingDialogFragment() {
                             setOnCheckedChangeListener { _, isShared ->
                                 this@FolderInfoDialog.launch {
                                     libraryHandler.libraryManager.withLibrary { library ->
-                                        val oldFolders = library.configuration.folders
-                                        var folderToChange = oldFolders.find { it.folderId == folderId }!!
-                                        val foldersNotToChange = oldFolders.filterNot { it.folderId == folderId }.toSet()
-
-                                        if (isShared) {
-                                            folderToChange = folderToChange.copy(
-                                                    ignoredDeviceIdList = folderToChange.ignoredDeviceIdList.filterNot { it == deviceId }.toSet(),
-                                                    deviceIdBlacklist = folderToChange.deviceIdBlacklist.filterNot { it == deviceId }.toSet(),
-                                                    deviceIdWhitelist = folderToChange.deviceIdWhitelist + setOf(deviceId)
-                                            )
-                                        } else {
-                                            folderToChange = folderToChange.copy(
-                                                    deviceIdWhitelist = folderToChange.deviceIdWhitelist.filterNot { it == deviceId }.toSet(),
-                                                    deviceIdBlacklist = folderToChange.deviceIdBlacklist + setOf(deviceId),
-                                                    ignoredDeviceIdList = folderToChange.ignoredDeviceIdList + setOf(deviceId)
-                                            )
-                                        }
-
                                         // update the config
-                                        library.configuration.folders = foldersNotToChange + setOf(folderToChange)
+                                        library.configuration.update { oldConfig ->
+                                            val oldFolders = oldConfig.folders
+                                            var folderToChange = oldFolders.find { it.folderId == folderId }!!
+                                            val foldersNotToChange = oldFolders.filterNot { it.folderId == folderId }.toSet()
+
+                                            if (isShared) {
+                                                folderToChange = folderToChange.copy(
+                                                        ignoredDeviceIdList = folderToChange.ignoredDeviceIdList.filterNot { it == deviceId }.toSet(),
+                                                        deviceIdBlacklist = folderToChange.deviceIdBlacklist.filterNot { it == deviceId }.toSet(),
+                                                        deviceIdWhitelist = folderToChange.deviceIdWhitelist + setOf(deviceId)
+                                                )
+                                            } else {
+                                                folderToChange = folderToChange.copy(
+                                                        deviceIdWhitelist = folderToChange.deviceIdWhitelist.filterNot { it == deviceId }.toSet(),
+                                                        deviceIdBlacklist = folderToChange.deviceIdBlacklist + setOf(deviceId),
+                                                        ignoredDeviceIdList = folderToChange.ignoredDeviceIdList + setOf(deviceId)
+                                                )
+                                            }
+
+                                            oldConfig.copy(folders = foldersNotToChange + folderToChange)
+                                        }
                                         library.configuration.persistLater()
 
                                         // apply the change

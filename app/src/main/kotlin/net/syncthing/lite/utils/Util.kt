@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.DeviceInfo
 import net.syncthing.lite.R
-import net.syncthing.lite.library.LibraryHandler
+import net.syncthing.lite.library.LibraryManager
 import org.apache.commons.lang3.StringUtils.capitalize
 import org.jetbrains.anko.toast
 import java.io.IOException
@@ -23,11 +23,11 @@ object Util {
         val manufacturer = Build.MANUFACTURER ?: ""
         val model = Build.MODEL ?: ""
         val deviceName =
-            if (model.startsWith(manufacturer)) {
-                capitalize(model)
-            } else {
-                capitalize(manufacturer) + " " + model
-            }
+                if (model.startsWith(manufacturer)) {
+                    capitalize(model)
+                } else {
+                    capitalize(manufacturer) + " " + model
+                }
         return deviceName ?: "android"
     }
 
@@ -41,22 +41,34 @@ object Util {
     }
 
     @Throws(IOException::class)
-    fun importDeviceId(libraryHandler: LibraryHandler?, context: Context?, deviceId: String,
-                       onComplete: () -> Unit) {
-        val deviceId2 = DeviceId(deviceId.toUpperCase(Locale.US))
-        libraryHandler?.library { configuration, syncthingClient, _ ->
-            if (!configuration.peerIds.contains(deviceId2)) {
-                configuration.peers = configuration.peers + DeviceInfo(deviceId2, deviceId2.shortId)
-                configuration.persistLater()
-                syncthingClient.connectToNewlyAddedDevices()
-                GlobalScope.launch (Dispatchers.Main) {
-                    context?.toast(context.getString(R.string.device_import_success, deviceId2.shortId))
+    fun importDeviceId(libraryManager: LibraryManager, context: Context, deviceId: String, onComplete: () -> Unit) {
+        val newDeviceId = DeviceId(deviceId.toUpperCase(Locale.US))
+
+        GlobalScope.launch (Dispatchers.Main) {
+            libraryManager.withLibrary { library ->
+                val didAddDevice = library.configuration.update { oldConfig ->
+                    if (oldConfig.peers.find { it.deviceId == newDeviceId } != null) {
+                        // already known
+
+                        oldConfig
+                    } else {
+                        oldConfig.copy(
+                                peers = oldConfig.peers + DeviceInfo(newDeviceId, newDeviceId.shortId)
+                        )
+                    }
+                }
+
+                if (didAddDevice) {
+                    library.configuration.persistLater()
+                    library.syncthingClient.connectToNewlyAddedDevices()
+
+                    context.toast(context.getString(R.string.device_import_success, newDeviceId.shortId))
                     onComplete()
+                } else {
+                    context.toast(context.getString(R.string.device_already_known, newDeviceId.shortId))
                 }
-            } else {
-                GlobalScope.launch (Dispatchers.Main) {
-                    context?.toast(context.getString(R.string.device_already_known, deviceId2.shortId))
-                }
+
+                null
             }
         }
     }

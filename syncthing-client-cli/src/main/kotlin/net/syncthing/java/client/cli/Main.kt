@@ -86,7 +86,15 @@ class Main(private val commandLine: CommandLine) {
                         .map { DeviceId(it.trim()) }
                         .toList()
                 System.out.println("set peers = $peers")
-                configuration.peers = peers.map { DeviceInfo(it, it.shortId) }.toSet()
+
+                runBlocking {
+                    configuration.update { oldConfig ->
+                        oldConfig.copy(
+                                peers = peers.map { DeviceInfo(it, it.shortId) }.toSet()
+                        )
+                    }
+                }
+
                 configuration.persistNow()
             }
             "p" -> {

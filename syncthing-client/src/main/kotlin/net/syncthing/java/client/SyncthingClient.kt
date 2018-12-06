@@ -64,9 +64,11 @@ class SyncthingClient(
             }
     )
 
-    fun clearCacheAndIndex() {
+    suspend fun clearCacheAndIndex() {
         indexHandler.clearIndex()
-        configuration.folders = emptySet()
+        configuration.update {
+            it.copy(folders = emptySet())
+        }
         configuration.persistLater()
         connections.reconnectAllConnections()
     }

@@ -73,6 +73,19 @@ class IntroActivity : AppIntro() {
      * Display some simple welcome text.
      */
     class IntroFragmentOne : SyncthingFragment() {
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+
+            launch {
+                libraryHandler.libraryManager.withLibrary { library ->
+                    library.configuration.update { oldConfig ->
+                        oldConfig.copy(localDeviceName = Util.getDeviceName())
+                    }
+
+                    library.configuration.persistLater()
+                }
+            }
+        }
 
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
             val binding = FragmentIntroOneBinding.inflate(inflater, container, false)
@@ -80,15 +93,6 @@ class IntroActivity : AppIntro() {
             libraryHandler.isListeningPortTaken.observe(this, Observer { binding.listeningPortTaken = it })
 
             return binding.root
-        }
-
-        override fun onLibraryLoaded() {
-            super.onLibraryLoaded()
-
-            libraryHandler.configuration { config ->
-                config.localDeviceName = Util.getDeviceName()
-                config.persistLater()
-            }
         }
     }
 
@@ -123,7 +127,7 @@ class IntroActivity : AppIntro() {
         fun isDeviceIdValid(): Boolean {
             return try {
                 val deviceId = binding.enterDeviceId.deviceId.text.toString()
-                Util.importDeviceId(libraryHandler, context, deviceId, { })
+                Util.importDeviceId(libraryHandler.libraryManager, context!!, deviceId, { })
                 true
             } catch (e: IOException) {
                 binding.enterDeviceId.deviceId.error = getString(R.string.invalid_device_id)
