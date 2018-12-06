@@ -13,6 +13,7 @@ import net.syncthing.lite.activities.FolderBrowserActivity
 import net.syncthing.lite.adapters.FolderListAdapterListener
 import net.syncthing.lite.adapters.FoldersListAdapter
 import net.syncthing.lite.databinding.FragmentFoldersBinding
+import net.syncthing.lite.dialogs.FolderInfoDialog
 import org.jetbrains.anko.intentFor
 
 class FoldersFragment : SyncthingFragment() {
@@ -26,6 +27,14 @@ class FoldersFragment : SyncthingFragment() {
                                 FolderBrowserActivity.EXTRA_FOLDER_NAME to folderInfo.folderId
                         )
                 )
+            }
+
+            override fun onFolderLongClicked(folderInfo: FolderInfo): Boolean {
+                FolderInfoDialog
+                        .newInstance(folderId = folderInfo.folderId)
+                        .show(fragmentManager!!)
+
+                return true
             }
         }
 

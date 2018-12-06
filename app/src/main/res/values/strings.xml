@@ -73,4 +73,6 @@
     <string name="dialog_enable_folder_sync_for_new_device_text">Do you want to sync %1$s with %2$s (%3$s)?</string>
     <string name="dialog_enable_folder_sync_for_new_device_positive">Sync</string>
     <string name="dialog_enable_folder_sync_for_new_device_negative">Do not sync</string>
+    <string name="dialog_folder_info_device_list">Share folder with:</string>
+    <string name="dialog_folder_info_device_list_item">%1$s (%2$s)</string>
 </resources>

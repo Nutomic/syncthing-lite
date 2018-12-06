@@ -55,6 +55,10 @@ class FoldersListAdapter: RecyclerView.Adapter<FolderListViewHolder>() {
         binding.root.setOnClickListener {
             listener?.onFolderClicked(folderInfo, folderStats)
         }
+
+        binding.root.setOnLongClickListener {
+            listener?.onFolderLongClicked(folderInfo) ?: false
+        }
     }
 }
 
@@ -62,4 +66,5 @@ class FolderListViewHolder(val binding: ListviewFolderBinding): RecyclerView.Vie
 
 interface FolderListAdapterListener {
     fun onFolderClicked(folderInfo: FolderInfo, folderStats: FolderStats)
+    fun onFolderLongClicked(folderInfo: FolderInfo): Boolean
 }

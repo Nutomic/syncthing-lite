@@ -1,9 +1,9 @@
 package net.syncthing.lite.fragments
 
-import android.support.v4.app.DialogFragment
+import net.syncthing.lite.async.CoroutineDialogFragment
 import net.syncthing.lite.library.LibraryHandler
 
-abstract class SyncthingDialogFragment : DialogFragment() {
+abstract class SyncthingDialogFragment : CoroutineDialogFragment() {
     val libraryHandler: LibraryHandler by lazy { LibraryHandler(
             context = context!!
     )}
