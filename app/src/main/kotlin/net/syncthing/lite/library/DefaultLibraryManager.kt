@@ -43,7 +43,10 @@ object DefaultLibraryManager {
                     instance = LibraryManager(
                             synchronousInstanceCreator = {
                                 LibraryInstance(context) { ex ->
-                                    Toast.makeText(context, R.string.toast_error, Toast.LENGTH_LONG).show()
+                                    // this delay ensures that the toast is shown even if the UI thread is busy
+                                    handler.postDelayed({
+                                        Toast.makeText(context, R.string.toast_error, Toast.LENGTH_LONG).show()
+                                    }, 100L)
 
                                     ErrorStorage.reportError(context, "${ex.component}\n${ex.detailsReadableString}\n${Log.getStackTraceString(ex.exception)}")
                                 }
