@@ -87,35 +87,38 @@ class DevicesFragment : SyncthingFragment() {
     }
 
     private fun showDialog() {
-        addDeviceDialogBinding = DataBindingUtil.inflate(LayoutInflater.from(context), R.layout.view_enter_device_id, null, false)
-        addDeviceDialogBinding?.let { binding ->
-            binding.scanQrCode.setOnClickListener {
-                FragmentIntentIntegrator(this@DevicesFragment).initiateScan()
-            }
-            binding.deviceId.post {
-                val imm = context!!.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(binding.deviceId, InputMethodManager.SHOW_IMPLICIT)
-            }
+        val binding = ViewEnterDeviceIdBinding.inflate(LayoutInflater.from(context), null, false)
+        addDeviceDialogBinding = binding
 
-            addDeviceDialog = AlertDialog.Builder(context)
-                    .setTitle(R.string.device_id_dialog_title)
-                    .setView(binding.root)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
-
-            // Use different listener to keep dialog open after button click.
-            // https://stackoverflow.com/a/15619098
-            addDeviceDialog?.getButton(AlertDialog.BUTTON_POSITIVE)
-                    ?.setOnClickListener {
-                        try {
-                            val deviceId = binding.deviceId.text.toString()
-                            Util.importDeviceId(libraryHandler.libraryManager, context!!, deviceId, { /* TODO: Is updateDeviceList() still required? */ })
-                            addDeviceDialog?.dismiss()
-                        } catch (e: IOException) {
-                            binding.deviceId.error = getString(R.string.invalid_device_id)
-                        }
-                    }
+        binding.scanQrCode.setOnClickListener {
+            FragmentIntentIntegrator(this@DevicesFragment).initiateScan()
         }
+        binding.deviceId.post {
+            val imm = context!!.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(binding.deviceId, InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        val dialog = AlertDialog.Builder(context)
+                .setTitle(R.string.device_id_dialog_title)
+                .setView(binding.root)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+
+        addDeviceDialog = dialog
+
+        fun handleAddClick() {
+            try {
+                val deviceId = binding.deviceId.text.toString()
+                Util.importDeviceId(libraryHandler.libraryManager, context!!, deviceId, { /* TODO: Is updateDeviceList() still required? */ })
+                dialog.dismiss()
+            } catch (e: IOException) {
+                binding.deviceId.error = getString(R.string.invalid_device_id)
+            }
+        }
+
+        // Use different listener to keep dialog open after button click.
+        // https://stackoverflow.com/a/15619098
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)!!.setOnClickListener { handleAddClick() }
     }
 }
