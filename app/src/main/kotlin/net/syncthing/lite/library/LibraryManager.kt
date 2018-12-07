@@ -8,6 +8,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -93,7 +94,7 @@ class LibraryManager (
     fun shutdownIfThereAreZeroUsers(listener: (wasShutdownPerformed: Boolean) -> Unit = {}) {
         startStopExecutor.submit {
             if (userCounter == 0) {
-                instanceStream.value?.shutdown()
+                runBlocking { instanceStream.value?.shutdown() }
                 instanceStream.offer(null)
 
                 handler.post { isRunningListener(false) }

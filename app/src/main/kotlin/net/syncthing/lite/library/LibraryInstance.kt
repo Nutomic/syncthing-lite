@@ -60,7 +60,7 @@ class LibraryInstance (context: Context) {
     val folderBrowser = syncthingClient.indexHandler.folderBrowser
     val indexBrowser = syncthingClient.indexHandler.indexBrowser
 
-    fun shutdown() {
+    suspend fun shutdown() {
         syncthingClient.close()
         configuration.persistNow()
     }

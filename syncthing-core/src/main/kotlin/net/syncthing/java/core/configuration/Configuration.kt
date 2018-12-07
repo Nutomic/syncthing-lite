@@ -2,6 +2,10 @@ package net.syncthing.java.core.configuration
 
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.core.beans.DeviceId
@@ -20,6 +24,7 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val modifyLock = Mutex()
+    private val saveLock = Mutex()
 
     private val configFile = File(configFolder, ConfigFileName)
     val databaseFolder = File(configFolder, DatabaseFolderName)
@@ -47,7 +52,7 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
                     customDiscoveryServers = emptySet(),
                     useDefaultDiscoveryServers = true
             )
-            persistNow()
+            runBlocking { persistNow() }
         } else {
             config = Config.parse(JsonReader(StringReader(configFile.readText())))
         }
@@ -106,30 +111,39 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
         }
     }
 
-    fun persistNow() {
+    suspend fun persistNow() {
         persist()
     }
 
     fun persistLater() {
-        Thread { persist() }.start()
+        GlobalScope.launch (Dispatchers.IO) { persist() }
     }
 
-    private fun persist() {
-        if (isSaved)
-            return
+    private suspend fun persist() {
+        saveLock.withLock {
+            val (config1, isConfig1Saved) = modifyLock.withLock { config to isSaved }
 
-        config.let {
+            if (isConfig1Saved) {
+                return
+            }
+
             System.out.println("writing config to $configFile")
+
             configFile.writeText(
                     StringWriter().apply {
                         JsonWriter(this).apply {
                             setIndent("  ")
 
-                            config.serialize(this)
+                            config1.serialize(this)
                         }
                     }.toString()
             )
-            isSaved = true
+
+            modifyLock.withLock {
+                if (config1 === config) {
+                    isSaved = true
+                }
+            }
         }
     }
 
