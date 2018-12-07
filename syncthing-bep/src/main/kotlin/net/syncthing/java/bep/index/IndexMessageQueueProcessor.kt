@@ -14,19 +14,18 @@
  */
 package net.syncthing.java.bep.index
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FolderStats
+import net.syncthing.java.core.exception.ExceptionReport
+import net.syncthing.java.core.exception.reportExceptions
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
@@ -39,7 +38,7 @@ class IndexMessageQueueProcessor (
         private val onFullIndexAcquiredEvents: BroadcastChannel<String>,
         private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStats>,
         private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean,
-        private val enableDetailedException: Boolean
+        exceptionReportHandler: (ExceptionReport) -> Unit
 ) {
     private data class IndexUpdateAction(val update: BlockExchangeProtos.IndexUpdate, val clusterConfigInfo: ClusterConfigInfo, val peerDeviceId: DeviceId)
     private data class StoredIndexUpdateAction(val updateId: String, val clusterConfigInfo: ClusterConfigInfo, val peerDeviceId: DeviceId)
@@ -81,13 +80,13 @@ class IndexMessageQueueProcessor (
     }
 
     init {
-        GlobalScope.launch(Dispatchers.IO + job) {
+        GlobalScope.async(Dispatchers.IO + job) {
             indexUpdateProcessingQueue.consumeEach {
                 doHandleIndexMessageReceivedEvent(it)
             }
-        }
+        }.reportExceptions("IndexMessageQueueProcessor.indexUpdateProcessingQueue", exceptionReportHandler)
 
-        GlobalScope.launch(Dispatchers.IO + job) {
+        GlobalScope.async(Dispatchers.IO + job) {
             indexUpdateProcessStoredQueue.consumeEach { action ->
                 logger.debug("processing index message event from temp record {}", action.updateId)
 
@@ -100,7 +99,7 @@ class IndexMessageQueueProcessor (
                         action.peerDeviceId
                 ))
             }
-        }
+        }.reportExceptions("IndexMessageQueueProcessor.indexUpdateProcessStoredQueue", exceptionReportHandler)
     }
 
     private suspend fun doHandleIndexMessageReceivedEvent(action: IndexUpdateAction) {
@@ -123,8 +122,7 @@ class IndexMessageQueueProcessor (
             val indexResult = IndexMessageProcessor.doHandleIndexMessageReceivedEvent(
                     message = message,
                     peerDeviceId = peerDeviceId,
-                    transaction = indexTransaction,
-                    enableDetailedException = enableDetailedException
+                    transaction = indexTransaction
             )
 
             val endTime = System.currentTimeMillis()

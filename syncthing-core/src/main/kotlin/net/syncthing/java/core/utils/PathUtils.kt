@@ -14,6 +14,9 @@
  */
 package net.syncthing.java.core.utils
 
+import net.syncthing.java.core.exception.ExceptionDetailException
+import net.syncthing.java.core.exception.ExceptionDetails
+
 object PathUtils {
     const val ROOT_PATH = ""
     const val PATH_SEPARATOR = "/"
@@ -47,13 +50,25 @@ object PathUtils {
 
     private fun assertPathValid(path: String) {
         if (!isValidPath(path)) {
-            throw IllegalArgumentException("provided path is invalid")
+            throw ExceptionDetailException(
+                    IllegalArgumentException("provided path is invalid"),
+                    ExceptionDetails(
+                            component = "PathUtils",
+                            details = "processed path: $path"
+                    )
+            )
         }
     }
 
     private fun assertFilenameValid(filename: String) {
         if (!isFilenameValid(filename)) {
-            throw IllegalArgumentException("provided filename is invalid")
+            throw ExceptionDetailException(
+                    IllegalArgumentException("provided filename is invalid"),
+                    ExceptionDetails(
+                            component = "PathUtils",
+                            details = "processed filename: $filename"
+                    )
+            )
         }
     }
 

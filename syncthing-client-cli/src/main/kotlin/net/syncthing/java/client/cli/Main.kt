@@ -48,7 +48,13 @@ class Main(private val commandLine: CommandLine) {
 
             val repository = SqlRepository(configuration.databaseFolder)
 
-            SyncthingClient(configuration, repository, repository).use { syncthingClient ->
+            SyncthingClient(
+                    configuration,
+                    repository,
+                    repository
+            ) { ex ->
+                throw ex.exception
+            }.use { syncthingClient ->
                 val main = Main(cmd)
                 cmd.options.forEach { main.handleOption(it, configuration, syncthingClient) }
             }
@@ -95,7 +101,7 @@ class Main(private val commandLine: CommandLine) {
                     }
                 }
 
-                configuration.persistNow()
+                runBlocking { configuration.persistNow() }
             }
             "p" -> {
                 val folderAndPath = option.value

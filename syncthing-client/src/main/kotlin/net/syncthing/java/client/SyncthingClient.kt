@@ -26,21 +26,21 @@ import net.syncthing.java.bep.index.IndexHandler
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.exception.ExceptionReport
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.TempRepository
 import net.syncthing.java.discovery.DiscoveryHandler
 import java.io.Closeable
 import java.io.InputStream
-import java.util.*
 
 class SyncthingClient(
         private val configuration: Configuration,
         private val repository: IndexRepository,
         private val tempRepository: TempRepository,
-        enableDetailedException: Boolean = false
+        exceptionReportHandler: (ExceptionReport) -> Unit
 ) : Closeable {
-    val indexHandler = IndexHandler(configuration, repository, tempRepository, enableDetailedException)
-    val discoveryHandler = DiscoveryHandler(configuration)
+    val indexHandler = IndexHandler(configuration, repository, tempRepository, exceptionReportHandler)
+    val discoveryHandler = DiscoveryHandler(configuration, exceptionReportHandler)
 
     private val requestHandlerRegistry = RequestHandlerRegistry()
     private val connections = Connections(
@@ -59,7 +59,8 @@ class SyncthingClient(
                                 indexHandler = indexHandler,
                                 configuration = configuration
                         ),
-                        deviceId = deviceId
+                        deviceId = deviceId,
+                        exceptionReportHandler = exceptionReportHandler
                 )
             }
     )

@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.exception.ExceptionReport
 import net.syncthing.java.discovery.protocol.GlobalDiscoveryHandler
 import net.syncthing.java.discovery.protocol.LocalDiscoveryHandler
 import net.syncthing.java.discovery.utils.AddressRanker
@@ -27,19 +28,27 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.*
 
-class DiscoveryHandler(private val configuration: Configuration) : Closeable {
+class DiscoveryHandler(
+        private val configuration: Configuration,
+        exceptionReportHandler: (ExceptionReport) -> Unit
+) : Closeable {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val globalDiscoveryHandler = GlobalDiscoveryHandler(configuration)
-    private val localDiscoveryHandler = LocalDiscoveryHandler(configuration, { message ->
-        logger.info("received device address list from local discovery")
+    private val localDiscoveryHandler = LocalDiscoveryHandler(
+            configuration,
+            exceptionReportHandler,
+            { message ->
+                logger.info("received device address list from local discovery")
 
-        GlobalScope.launch {
-            processDeviceAddressBg(message.addresses)
-        }
-    }, { deviceId ->
-        onMessageFromUnknownDeviceListeners.forEach { listener -> listener(deviceId) }
-    })
+                GlobalScope.launch {
+                    processDeviceAddressBg(message.addresses)
+                }
+            },
+            { deviceId ->
+                onMessageFromUnknownDeviceListeners.forEach { listener -> listener(deviceId) }
+            }
+    )
     val devicesAddressesManager = DevicesAddressesManager()
     private var isClosed = false
     private val onMessageFromUnknownDeviceListeners = Collections.synchronizedSet(HashSet<(DeviceId) -> Unit>())

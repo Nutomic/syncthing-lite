@@ -24,6 +24,7 @@ import net.syncthing.java.bep.folder.FolderBrowser
 import net.syncthing.java.bep.index.browser.IndexBrowser
 import net.syncthing.java.core.beans.*
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.exception.ExceptionReport
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
 import net.syncthing.java.core.interfaces.TempRepository
@@ -38,7 +39,7 @@ class IndexHandler(
         configuration: Configuration,
         val indexRepository: IndexRepository,
         tempRepository: TempRepository,
-        enableDetailedException: Boolean
+        exceptionReportHandler: (ExceptionReport) -> Unit
 ) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
@@ -52,7 +53,7 @@ class IndexHandler(
             onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
             onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
             onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents,
-            enableDetailedException = enableDetailedException
+            exceptionReportHandler = exceptionReportHandler
     )
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()

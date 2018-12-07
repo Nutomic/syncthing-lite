@@ -19,11 +19,14 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.consumeEach
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.core.beans.DeviceId
+import net.syncthing.java.core.exception.ExceptionReport
+import net.syncthing.java.core.exception.reportExceptions
 import java.io.IOException
 
 class ConnectionActorWrapper (
         private val source: ReceiveChannel<Pair<Connection, ConnectionInfo>>,
-        val deviceId: DeviceId
+        val deviceId: DeviceId,
+        private val exceptionReportHandler: (ExceptionReport) -> Unit
 ) {
     private val job = Job()
 
@@ -34,12 +37,12 @@ class ConnectionActorWrapper (
         get() = connectionInfo.valueOrNull?.status == ConnectionStatus.Connected
 
     init {
-        GlobalScope.launch (job) {
+        GlobalScope.async (job) {
             source.consumeEach { (connection, connectionInfo) ->
                 this@ConnectionActorWrapper.connection = connection
                 this@ConnectionActorWrapper.connectionInfo.send(connectionInfo)
             }
-        }
+        }.reportExceptions("ConnectionActorWrapper(${deviceId.deviceId})", exceptionReportHandler)
     }
 
     suspend fun sendRequest(request: BlockExchangeProtos.Request) = ConnectionActorUtil.sendRequest(

@@ -2,6 +2,7 @@ package net.syncthing.lite.library
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.repository.android.SqliteIndexRepository
@@ -55,7 +56,9 @@ class LibraryInstance (context: Context) {
                     clearTempStorageHook = { tempRepository.deleteAllData() }
             ),
             tempRepository = tempRepository,
-            enableDetailedException = context.defaultSharedPreferences.getBoolean("detailed_exception", false)
+            exceptionReportHandler = { ex ->
+                Log.d("LibraryInstance", "${ex.component}\n${ex.detailsReadableString}\n${Log.getStackTraceString(ex.exception)}")
+            }
     )
     val folderBrowser = syncthingClient.indexHandler.folderBrowser
     val indexBrowser = syncthingClient.indexHandler.indexBrowser

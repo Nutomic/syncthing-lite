@@ -14,35 +14,37 @@
  */
 package net.syncthing.java.discovery.protocol
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.configuration.Configuration
+import net.syncthing.java.core.exception.ExceptionReport
+import net.syncthing.java.core.exception.reportExceptions
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
 
-internal class LocalDiscoveryHandler(private val configuration: Configuration,
-                                     private val onMessageReceivedListener: (LocalDiscoveryMessage) -> Unit,
-                                     private val onMessageFromUnknownDeviceListener: (DeviceId) -> Unit = {}) : Closeable {
+internal class LocalDiscoveryHandler(
+        private val configuration: Configuration,
+        private val exceptionReportHandler: (ExceptionReport) -> Unit,
+        private val onMessageReceivedListener: (LocalDiscoveryMessage) -> Unit,
+        private val onMessageFromUnknownDeviceListener: (DeviceId) -> Unit = {}
+) : Closeable {
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val job = Job()
 
     fun sendAnnounceMessage() {
-        GlobalScope.launch (Dispatchers.IO) {
+        GlobalScope.async (Dispatchers.IO) {
             LocalDiscoveryUtil.sendAnnounceMessage(
                     ownDeviceId = configuration.localDeviceId,
                     instanceId = configuration.instanceId
             )
-        }
+        }.reportExceptions("LocalDiscoveryHandler.sendAnnounceMessage", exceptionReportHandler)
     }
 
     fun startListener() {
-        GlobalScope.launch (job) {
+        GlobalScope.async (job) {
             try {
                 LocalDiscoveryUtil.listenForAnnounceMessages().consumeEach { message ->
                     if (message.deviceId == configuration.localDeviceId) {
@@ -60,7 +62,7 @@ internal class LocalDiscoveryHandler(private val configuration: Configuration,
             } catch (ex: IOException) {
                 logger.warn("Failed to listen for announcement messages", ex)
             }
-        }
+        }.reportExceptions("LocalDiscoveryHandler.startListener", exceptionReportHandler)
     }
 
     override fun close() {

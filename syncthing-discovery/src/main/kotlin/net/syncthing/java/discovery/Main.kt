@@ -83,14 +83,20 @@ class Main {
     private fun queryLocalDiscovery(configuration: Configuration, deviceId: DeviceId): Collection<DeviceAddress> {
         val lock = Object()
         val discoveredAddresses = mutableListOf<DeviceAddress>()
-        val handler = LocalDiscoveryHandler(configuration, { message ->
-            synchronized(lock) {
-                if (message.deviceId == deviceId) {
-                    discoveredAddresses.addAll(message.addresses)
-                    lock.notify()
+        val handler = LocalDiscoveryHandler(
+                configuration,
+                {
+                    throw it.exception
+                },
+                { message ->
+                    synchronized(lock) {
+                        if (message.deviceId == deviceId) {
+                            discoveredAddresses.addAll(message.addresses)
+                            lock.notify()
+                        }
+                    }
                 }
-            }
-        })
+        )
         handler.startListener()
         handler.sendAnnounceMessage()
         synchronized(lock) {

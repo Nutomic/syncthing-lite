@@ -14,8 +14,7 @@ object IndexMessageProcessor {
     fun doHandleIndexMessageReceivedEvent(
             message: BlockExchangeProtos.IndexUpdate,
             peerDeviceId: DeviceId,
-            transaction: IndexTransaction,
-            enableDetailedException: Boolean
+            transaction: IndexTransaction
     ): Result {
         val folderId = message.folder
 
@@ -29,8 +28,7 @@ object IndexMessageProcessor {
                 oldRecords = oldRecords,
                 folder = folderId,
                 folderStatsUpdateCollector = folderStatsUpdateCollector,
-                updates = message.filesList,
-                enableDetailedException = enableDetailedException
+                updates = message.filesList
         )
 
         var sequence: Long = -1
