@@ -13,6 +13,7 @@
  */
 package net.syncthing.java.core.exception
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlin.Exception
 
@@ -68,7 +69,11 @@ fun Job.reportExceptions(component: String, exceptionReportHandler: (ExceptionRe
     invokeOnCompletion {
         if (it != null) {
             if (it is Exception) {
-                exceptionReportHandler(ExceptionReport.fromException(it, component))
+                if (it is CancellationException) {
+                    // ignore
+                } else {
+                    exceptionReportHandler(ExceptionReport.fromException(it, component))
+                }
             } else {
                 throw it
             }
