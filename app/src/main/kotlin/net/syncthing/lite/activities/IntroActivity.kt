@@ -12,9 +12,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import com.github.paolorotolo.appintro.AppIntro
+import com.github.paolorotolo.appintro.ISlidePolicy
 import com.google.zxing.integration.android.IntentIntegrator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.launch
 import net.syncthing.java.core.beans.DeviceId
@@ -40,14 +39,6 @@ class IntroActivity : AppIntro() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Disable continue button on second slide until a valid device ID is entered.
-        nextButton.setOnClickListener {
-            val fragment = fragments[pager.currentItem]
-            if (fragment !is IntroFragmentTwo || fragment.isDeviceIdValid()) {
-                pager.goToNextSlide()
-            }
-        }
 
         addSlide(IntroFragmentOne())
         addSlide(IntroFragmentTwo())
@@ -95,7 +86,7 @@ class IntroActivity : AppIntro() {
     /**
      * Display device ID entry field and QR scanner option.
      */
-    class IntroFragmentTwo : SyncthingFragment() {
+    class IntroFragmentTwo : SyncthingFragment(), ISlidePolicy {
 
         private lateinit var binding: FragmentIntroTwoBinding
 
@@ -129,6 +120,12 @@ class IntroActivity : AppIntro() {
                 binding.enterDeviceId.deviceId.error = getString(R.string.invalid_device_id)
                 false
             }
+        }
+
+        override fun isPolicyRespected() = isDeviceIdValid()
+
+        override fun onUserIllegallyRequestedNextPage() {
+            // nothing to do, but some user feedback would be nice
         }
 
         private val addedDeviceIds = HashSet<DeviceId>()
