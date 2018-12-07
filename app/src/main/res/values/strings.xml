@@ -45,6 +45,9 @@
     <string name="settings_shutdown_delay_summary">Time before shuting down the Syncthing client after its last usage</string>
     <string name="settings_force_stop">Force stop this App</string>
     <string name="settings_last_error_title">Last error</string>
+    <string name="settings_last_error_summary">View the details of the last error</string>
+    <string name="settings_report_bug_title">Report a bug</string>
+    <string name="settings_report_bug_summary">Open the issues for this App at GitHub</string>
     <string name="copy_to_clipboard">Copy to clipboard</string>
     <string name="copied_to_clipboard">Copied to the clipboard</string>
     <string name="device_id_dialog_title">Enter Device ID</string>

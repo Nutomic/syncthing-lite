@@ -26,11 +26,17 @@
 
         <Preference
             android:key="last_crash"
-            android:title="@string/settings_last_error_title" />
+            android:title="@string/settings_last_error_title"
+            android:summary="@string/settings_last_error_summary" />
 
         <Preference
             android:key="app_version"
             android:title="@string/settings_app_version_title"/>
+
+        <Preference
+            android:key="report_bug"
+            android:title="@string/settings_report_bug_title"
+            android:summary="@string/settings_report_bug_summary" />
 
         <Preference
             android:key="force_stop"

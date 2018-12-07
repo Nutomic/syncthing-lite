@@ -1,5 +1,7 @@
 package net.syncthing.lite.fragments
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.support.v7.preference.EditTextPreference
 import android.support.v7.preference.PreferenceFragmentCompat
@@ -20,6 +22,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         val appVersion      = findPreference("app_version")
         val forceStop       = findPreference("force_stop")
         val lastCrash       = findPreference("last_crash")
+        val reportBug       = findPreference("report_bug")
         val libraryManager  = DefaultLibraryManager.with(context!!)
 
         GlobalScope.launch (Dispatchers.Main) {
@@ -51,6 +54,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         lastCrash.setOnPreferenceClickListener {
             ErrorReportDialog.newInstance(ErrorStorage.getLastErrorReport(context!!)).show(fragmentManager!!)
+
+            true
+        }
+
+        reportBug.setOnPreferenceClickListener {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/syncthing/syncthing-lite/issues")))
 
             true
         }
