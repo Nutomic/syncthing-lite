@@ -22,11 +22,14 @@ import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.withContext
 import net.syncthing.java.core.beans.DeviceAddress
 import net.syncthing.java.core.beans.DeviceId
+import net.syncthing.java.core.exception.ExceptionDetailException
+import net.syncthing.java.core.exception.ExceptionDetails
 import net.syncthing.java.core.utils.NetworkUtils
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.IOException
+import java.lang.Exception
 import java.net.*
 import java.nio.ByteBuffer
 
@@ -117,14 +120,24 @@ object LocalDiscoveryUtil {
                 if (broadcastAddress != null) {
                     logger.debug("sending broadcast announce on {}", broadcastAddress)
 
-                    DatagramSocket().use { broadcastSocket ->
-                        broadcastSocket.broadcast = true
+                    try {
+                        DatagramSocket().use { broadcastSocket ->
+                            broadcastSocket.broadcast = true
 
-                        broadcastSocket.send(DatagramPacket(
-                                discoveryMessage,
-                                discoveryMessage.size,
-                                broadcastAddress,
-                                LISTENING_PORT))
+                            broadcastSocket.send(DatagramPacket(
+                                    discoveryMessage,
+                                    discoveryMessage.size,
+                                    broadcastAddress,
+                                    LISTENING_PORT))
+                        }
+                    } catch (ex: Exception) {
+                        throw ExceptionDetailException(
+                                ex,
+                                ExceptionDetails(
+                                        component = "LocalDiscoveryUtil.sendAnnounceMessage",
+                                        details = "interface: $networkInterface\naddress: $interfaceAddress\nbroadcast address: $broadcastAddress"
+                                )
+                        )
                     }
                 }
             }
