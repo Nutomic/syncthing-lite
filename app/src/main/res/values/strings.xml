@@ -43,9 +43,10 @@
     <string name="settings_local_device_summary">The name that other devices will see for this device</string>
     <string name="settings_shutdown_delay_title">Shutdown delay</string>
     <string name="settings_shutdown_delay_summary">Time before shuting down the Syncthing client after its last usage</string>
-    <string name="settings_crash_handler_title">Custom Crash-Handler</string>
-    <string name="settings_crash_handler_summary">Copy the error message to the clipboard when the App crashes</string>
     <string name="settings_force_stop">Force stop this App</string>
+    <string name="settings_last_error_title">Last error</string>
+    <string name="copy_to_clipboard">Copy to clipboard</string>
+    <string name="copied_to_clipboard">Copied to the clipboard</string>
     <string name="device_id_dialog_title">Enter Device ID</string>
     <string name="settings_shutdown_delay_10_seconds">10 seconds</string>
     <string name="settings_shutdown_delay_30_seconds">30 seconds</string>
@@ -69,4 +70,5 @@
     <string name="dialog_enable_folder_sync_for_new_device_negative">Do not sync</string>
     <string name="dialog_folder_info_device_list">Share folder with:</string>
     <string name="dialog_folder_info_device_list_item">%1$s (%2$s)</string>
+    <string name="toast_error">Something went wrong in Syncthing Lite. You can view the details from the settings of Syncthing Lite.</string>
 </resources>

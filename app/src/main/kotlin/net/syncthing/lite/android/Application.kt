@@ -1,28 +1,20 @@
 package net.syncthing.lite.android
 
 import android.app.Application
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import net.syncthing.lite.BuildConfig
-import org.jetbrains.anko.defaultSharedPreferences
-import java.io.PrintWriter
-import java.io.StringWriter
+import net.syncthing.lite.error.ErrorStorage
 
 class Application: Application() {
     companion object {
         private const val LOG_TAG = "Application"
-        private const val PREF_ENABLE_CRASH_HANDLER = "crash_handler"
         private val handler = Handler(Looper.getMainLooper())
     }
 
     override fun onCreate() {
         super.onCreate()
 
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         val mainThread = Thread.currentThread()
 
@@ -33,18 +25,10 @@ class Application: Application() {
         fun handleCrash(ex: Throwable) {
             Log.w(LOG_TAG, "app crashed", ex)
 
-            val enableCustomCrashHandling = defaultSharedPreferences.getBoolean(PREF_ENABLE_CRASH_HANDLER, false)
-
-            if (enableCustomCrashHandling) {
-                clipboard.primaryClip = ClipData.newPlainText(
-                        "stacktrace",
-                        StringWriter().apply {
-                            append("Version: ").append(BuildConfig.VERSION_NAME).append('\n')
-                            append(Log.getStackTraceString(ex)).append('\n')
-                            ex.printStackTrace(PrintWriter(this))
-                        }.buffer.toString()
-                )
-            }
+            ErrorStorage.reportError(
+                    this,
+                    Log.getStackTraceString(ex)
+            )
 
             if (defaultHandler != null) {
                 defaultHandler.uncaughtException(mainThread, ex)

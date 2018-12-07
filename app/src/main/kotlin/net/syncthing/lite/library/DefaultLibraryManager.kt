@@ -4,8 +4,10 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import net.syncthing.lite.BuildConfig
 import net.syncthing.lite.R
+import net.syncthing.lite.error.ErrorStorage
 import org.jetbrains.anko.defaultSharedPreferences
 
 object DefaultLibraryManager {
@@ -39,7 +41,13 @@ object DefaultLibraryManager {
                     }
 
                     instance = LibraryManager(
-                            synchronousInstanceCreator = { LibraryInstance(context) },
+                            synchronousInstanceCreator = {
+                                LibraryInstance(context) { ex ->
+                                    Toast.makeText(context, R.string.toast_error, Toast.LENGTH_SHORT).show()
+
+                                    ErrorStorage.reportError(context, "${ex.component}\n${ex.detailsReadableString}\n${Log.getStackTraceString(ex.exception)}")
+                                }
+                            },
                             userCounterListener = {
                                 newUserCounter ->
 

@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import net.syncthing.lite.R
+import net.syncthing.lite.dialogs.ErrorReportDialog
+import net.syncthing.lite.error.ErrorStorage
 import net.syncthing.lite.library.DefaultLibraryManager
 
 class SettingsFragment : PreferenceFragmentCompat() {
@@ -17,6 +19,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         val localDeviceName = findPreference("local_device_name") as EditTextPreference
         val appVersion      = findPreference("app_version")
         val forceStop       = findPreference("force_stop")
+        val lastCrash       = findPreference("last_crash")
         val libraryManager  = DefaultLibraryManager.with(context!!)
 
         GlobalScope.launch (Dispatchers.Main) {
@@ -42,6 +45,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         forceStop.setOnPreferenceClickListener {
             System.exit(0)
+
+            true
+        }
+
+        lastCrash.setOnPreferenceClickListener {
+            ErrorReportDialog.newInstance(ErrorStorage.getLastErrorReport(context!!)).show(fragmentManager!!)
 
             true
         }
