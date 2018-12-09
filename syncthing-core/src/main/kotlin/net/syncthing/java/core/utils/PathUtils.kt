@@ -35,37 +35,55 @@ object PathUtils {
     }
 
     private fun containsWindowsPathSeparator(path: String) = path.contains(PATH_SEPARATOR_WIN)
-    private fun startsWithPathSeperator(path: String) = path.startsWith(PATH_SEPARATOR)
-    private fun isValidPath(path: String) = (!containsRelativeElements(path)) and
-            (!containsWindowsPathSeparator(path)) and
-            path.isNotEmpty() and
-            (!startsWithPathSeperator(path))
+    private fun startsWithPathSeparator(path: String) = path.startsWith(PATH_SEPARATOR)
 
     private fun containsPathSeparator(file: String) = file.contains(PATH_SEPARATOR) or file.contains(PATH_SEPARATOR_WIN)
-    private fun isFilenameValid(file: String) = file.isNotBlank() and
-            (!containsPathSeparator(file))
 
     private fun assertPathValid(path: String) {
-        if (!isValidPath(path)) {
+        fun throwException(reason: String) {
             throw ExceptionDetailException(
-                    IllegalArgumentException("provided path is invalid"),
+                    IllegalArgumentException("provided path is invalid because it $reason"),
                     ExceptionDetails(
                             component = "PathUtils",
-                            details = "processed path: $path"
+                            details = "processed path: \"$path\""
                     )
             )
+        }
+
+        if (containsRelativeElements(path)) {
+            throwException("contains relative path elements")
+        }
+
+        if (containsWindowsPathSeparator(path)) {
+            throwException("contains windows path separators")
+        }
+
+        if (path.isEmpty()) {
+            throwException("is empty")
+        }
+
+        if (startsWithPathSeparator(path)) {
+            throwException("starts with a path separator")
         }
     }
 
     private fun assertFilenameValid(filename: String) {
-        if (!isFilenameValid(filename)) {
+        fun throwException(reason: String) {
             throw ExceptionDetailException(
-                    IllegalArgumentException("provided filename is invalid"),
+                    IllegalArgumentException("provided filename is invalid because the filename $reason"),
                     ExceptionDetails(
                             component = "PathUtils",
-                            details = "processed filename: $filename"
+                            details = "processed filename: \"$filename\""
                     )
             )
+        }
+
+        if (filename.isBlank()) {
+            throwException("is blank")
+        }
+
+        if (containsPathSeparator(filename)) {
+            throwException("contains a path separator")
         }
     }
 
