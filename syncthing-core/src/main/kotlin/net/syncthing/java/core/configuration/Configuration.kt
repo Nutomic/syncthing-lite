@@ -4,6 +4,8 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import kotlinx.coroutines.channels.sendBlocking
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -25,12 +27,12 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val modifyLock = Mutex()
     private val saveLock = Mutex()
+    private val configChannel = ConflatedBroadcastChannel<Config>()
 
     private val configFile = File(configFolder, ConfigFileName)
     val databaseFolder = File(configFolder, DatabaseFolderName)
 
     private var isSaved = true
-    private var config: Config
 
     init {
         configFolder.mkdirs()
@@ -44,19 +46,23 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
             }
             val keystoreData = KeystoreHandler.Loader().generateKeystore()
             isSaved = false
-            config = Config(peers = setOf(), folders = setOf(),
-                    localDeviceName = localDeviceName,
-                    localDeviceId = keystoreData.first.deviceId,
-                    keystoreData = Base64.toBase64String(keystoreData.second),
-                    keystoreAlgorithm = keystoreData.third,
-                    customDiscoveryServers = emptySet(),
-                    useDefaultDiscoveryServers = true
+            configChannel.sendBlocking(
+                    Config(peers = setOf(), folders = setOf(),
+                            localDeviceName = localDeviceName,
+                            localDeviceId = keystoreData.first.deviceId,
+                            keystoreData = Base64.toBase64String(keystoreData.second),
+                            keystoreAlgorithm = keystoreData.third,
+                            customDiscoveryServers = emptySet(),
+                            useDefaultDiscoveryServers = true
+                    )
             )
             runBlocking { persistNow() }
         } else {
-            config = Config.parse(JsonReader(StringReader(configFile.readText())))
+            configChannel.sendBlocking(
+                    Config.parse(JsonReader(StringReader(configFile.readText())))
+            )
         }
-        logger.debug("Loaded config = $config")
+        logger.debug("Loaded config = ${configChannel.value}")
     }
 
     companion object {
@@ -68,40 +74,42 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
     val instanceId = Math.abs(Random().nextLong())
 
     val localDeviceId: DeviceId
-        get() = DeviceId(config.localDeviceId)
+        get() = DeviceId(configChannel.value.localDeviceId)
 
     val discoveryServers: Set<DiscoveryServer>
-        get() = config.customDiscoveryServers + (if (config.useDefaultDiscoveryServers) DiscoveryServer.defaultDiscoveryServers else emptySet())
+        get() = configChannel.value.let { config ->
+            config.customDiscoveryServers + (if (config.useDefaultDiscoveryServers) DiscoveryServer.defaultDiscoveryServers else emptySet())
+        }
 
     val keystoreData: ByteArray
-        get() = Base64.decode(config.keystoreData)
+        get() = Base64.decode(configChannel.value.keystoreData)
 
     val keystoreAlgorithm: String
-        get() = config.keystoreAlgorithm
+        get() = configChannel.value.keystoreAlgorithm
 
     val clientName = "syncthing-java"
 
     val clientVersion = javaClass.`package`.implementationVersion ?: "0.0.0"
 
     val peerIds: Set<DeviceId>
-        get() = config.peers.map { it.deviceId }.toSet()
+        get() = configChannel.value.peers.map { it.deviceId }.toSet()
 
     val localDeviceName: String
-        get() = config.localDeviceName
+        get() = configChannel.value.localDeviceName
 
     val folders: Set<FolderInfo>
-        get() = config.folders
+        get() = configChannel.value.folders
 
     val peers: Set<DeviceInfo>
-        get() = config.peers
+        get() = configChannel.value.peers
 
     suspend fun update(operation: suspend (Config) -> Config): Boolean {
         modifyLock.withLock {
-            val oldConfig = config
-            val newConfig = operation(config)
+            val oldConfig = configChannel.value
+            val newConfig = operation(oldConfig)
 
             if (oldConfig != newConfig) {
-                config = newConfig
+                configChannel.send(newConfig)
                 isSaved = false
 
                 return true
@@ -121,7 +129,7 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
 
     private suspend fun persist() {
         saveLock.withLock {
-            val (config1, isConfig1Saved) = modifyLock.withLock { config to isSaved }
+            val (config1, isConfig1Saved) = modifyLock.withLock { configChannel.value to isSaved }
 
             if (isConfig1Saved) {
                 return
@@ -140,12 +148,14 @@ class Configuration(configFolder: File = DefaultConfigFolder) {
             )
 
             modifyLock.withLock {
-                if (config1 === config) {
+                if (config1 === configChannel.value) {
                     isSaved = true
                 }
             }
         }
     }
+
+    fun subscribe() = configChannel.openSubscription()
 
     override fun toString() = "Configuration(peers=$peers, folders=$folders, localDeviceName=$localDeviceName, " +
             "localDeviceId=${localDeviceId.deviceId}, discoveryServers=$discoveryServers, instanceId=$instanceId, " +
