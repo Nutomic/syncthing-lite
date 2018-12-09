@@ -44,7 +44,7 @@ class IndexHandler(
     private val logger = LoggerFactory.getLogger(javaClass)
     private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<String>(capacity = 16)
-    private val onFolderStatsUpdatedEvents = BroadcastChannel<FolderStats>(capacity = 16)
+    private val onFolderStatsUpdatedEvents = BroadcastChannel<FolderStatsChangedEvent>(capacity = 16)
 
     private val indexMessageProcessor = IndexMessageQueueProcessor(
             indexRepository = indexRepository,
@@ -62,8 +62,9 @@ class IndexHandler(
 
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
-    fun clearIndex() {
+    suspend fun clearIndex() {
         indexRepository.runInTransaction { it.clearIndex() }
+        onFolderStatsUpdatedEvents.send(FolderStatsResetEvent)
     }
 
     private fun isRemoteIndexAcquiredWithoutTransaction(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
@@ -176,7 +177,7 @@ class IndexHandler(
     val indexBrowser = IndexBrowser(indexRepository, this)
 
     suspend fun sendFolderStatsUpdate(event: FolderStats) {
-        onFolderStatsUpdatedEvents.send(event)
+        onFolderStatsUpdatedEvents.send(FolderStatsUpdatedEvent(event))
     }
 
     override fun close() {

@@ -23,7 +23,6 @@ import kotlinx.coroutines.sync.withLock
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
 import net.syncthing.java.core.beans.DeviceId
-import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.exception.ExceptionReport
 import net.syncthing.java.core.exception.reportExceptions
 import net.syncthing.java.core.interfaces.IndexRepository
@@ -36,7 +35,7 @@ class IndexMessageQueueProcessor (
         private val tempRepository: TempRepository,
         private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
         private val onFullIndexAcquiredEvents: BroadcastChannel<String>,
-        private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStats>,
+        private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStatsChangedEvent>,
         private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean,
         exceptionReportHandler: (ExceptionReport) -> Unit
 ) {
@@ -138,7 +137,7 @@ class IndexMessageQueueProcessor (
             onIndexRecordAcquiredEvents.send(IndexRecordAcquiredEvent(message.folder, indexResult.updatedFiles, indexResult.newIndexInfo))
         }
 
-        onFolderStatsUpdatedEvents.send(indexResult.newFolderStats)
+        onFolderStatsUpdatedEvents.send(FolderStatsUpdatedEvent(indexResult.newFolderStats))
 
         if (wasIndexAcquired) {
             logger.debug("index acquired")
