@@ -14,8 +14,10 @@
  */
 package net.syncthing.java.bep.index
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.consume
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import net.syncthing.java.bep.BlockExchangeProtos
 import net.syncthing.java.bep.connectionactor.ClusterConfigInfo
@@ -63,7 +65,10 @@ class IndexHandler(
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
 
     suspend fun clearIndex() {
-        indexRepository.runInTransaction { it.clearIndex() }
+        withContext(Dispatchers.IO) {
+            indexRepository.runInTransaction { it.clearIndex() }
+        }
+
         onFolderStatsUpdatedEvents.send(FolderStatsResetEvent)
     }
 

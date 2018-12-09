@@ -102,12 +102,10 @@ class MainActivity : SyncthingActivity() {
     }
 
     private fun cleanCacheAndIndex() {
-        GlobalScope.launch (Dispatchers.Main) {
+        launch {
             libraryHandler.libraryManager.withLibrary {
                 it.syncthingClient.clearCacheAndIndex()
             }
-
-            recreate()
         }
     }
 }
