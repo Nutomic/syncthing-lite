@@ -22,10 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.syncthing.java.bep.BlockExchangeProtos.Vector
 import net.syncthing.java.bep.connectionactor.ConnectionActorWrapper
-import net.syncthing.java.bep.index.FolderStatsUpdateCollector
-import net.syncthing.java.bep.index.IndexElementProcessor
-import net.syncthing.java.bep.index.IndexHandler
-import net.syncthing.java.bep.index.IndexMessageProcessor
+import net.syncthing.java.bep.index.*
 import net.syncthing.java.core.beans.BlockInfo
 import net.syncthing.java.core.beans.DeviceId
 import net.syncthing.java.core.beans.FileInfo.Version
@@ -108,16 +105,20 @@ class BlockPusher(private val localDeviceId: DeviceId,
         }
 
         logger.debug("send index update for file = {}", targetPath)
-        val indexListenerStream = indexHandler.subscribeToOnIndexRecordAcquiredEvents()
+        val indexListenerStream = indexHandler.subscribeToOnIndexUpdateEvents()
         GlobalScope.launch {
-            indexListenerStream.consumeEach { (indexFolderId, newRecords, _) ->
-                if (indexFolderId == folderId) {
-                    for (fileInfo2 in newRecords) {
-                        if (fileInfo2.path == targetPath && fileInfo2.hash == dataSource.getHash()) { //TODO check not invalid
-                            //                                sentBlocks.addAll(dataSource.getHashes());
-                            isCompleted.set(true)
-                            synchronized(updateLock) {
-                                updateLock.notifyAll()
+            indexListenerStream.consumeEach { event ->
+                if (event is IndexRecordAcquiredEvent) {
+                    val (indexFolderId, newRecords, _) = event
+
+                    if (indexFolderId == folderId) {
+                        for (fileInfo2 in newRecords) {
+                            if (fileInfo2.path == targetPath && fileInfo2.hash == dataSource.getHash()) { //TODO check not invalid
+                                //                                sentBlocks.addAll(dataSource.getHashes());
+                                isCompleted.set(true)
+                                synchronized(updateLock) {
+                                    updateLock.notifyAll()
+                                }
                             }
                         }
                     }

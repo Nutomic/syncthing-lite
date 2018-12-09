@@ -21,9 +21,7 @@ import kotlinx.coroutines.channels.first
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.syncthing.java.bep.index.FolderStatsResetEvent
-import net.syncthing.java.bep.index.FolderStatsUpdatedEvent
-import net.syncthing.java.bep.index.IndexHandler
+import net.syncthing.java.bep.index.*
 import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.configuration.Configuration
 import java.io.Closeable
@@ -79,11 +77,17 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler,
             }
 
             async {
-                indexHandler.subscribeToOnIndexRecordAcquiredEvents().consumeEach { event ->
+                indexHandler.subscribeToOnIndexUpdateEvents().consumeEach { event ->
                     updateLock.withLock {
-                        val oldList = currentIndexInfo[event.folderId] ?: emptyList()
-                        val newList = oldList.filter { it.deviceId != event.indexInfo.deviceId } + event.indexInfo
-                        currentIndexInfo[event.folderId] = newList
+                        when (event) {
+                            is IndexRecordAcquiredEvent -> {
+                                val oldList = currentIndexInfo[event.folderId] ?: emptyList()
+                                val newList = oldList.filter { it.deviceId != event.indexInfo.deviceId } + event.indexInfo
+
+                                currentIndexInfo[event.folderId] = newList
+                            }
+                            IndexInfoClearedEvent -> currentIndexInfo.clear()
+                        }.let { /* require that all cases are handled */ }
 
                         dispatch()
                     }

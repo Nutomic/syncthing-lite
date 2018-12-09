@@ -19,7 +19,10 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.withContext
+import net.syncthing.java.bep.index.FolderStatsUpdatedEvent
 import net.syncthing.java.bep.index.IndexHandler
+import net.syncthing.java.bep.index.IndexInfoUpdateEvent
+import net.syncthing.java.bep.index.IndexRecordAcquiredEvent
 import net.syncthing.java.core.beans.FileInfo
 import net.syncthing.java.core.interfaces.IndexRepository
 import net.syncthing.java.core.interfaces.IndexTransaction
@@ -64,7 +67,7 @@ class IndexBrowser internal constructor(
     }
 
     fun streamDirectoryListing(folder: String, path: String) = GlobalScope.produce {
-        indexHandler.subscribeToOnIndexRecordAcquiredEvents().consume {
+        indexHandler.subscribeToOnIndexUpdateEvents().consume {
             val directoryName = PathUtils.getFileName(path)
             val parentPath = if (PathUtils.isRoot(path)) null else PathUtils.getParentPath(path)
             val parentDirectoryName = if (parentPath != null) PathUtils.getFileName(parentPath) else null
@@ -107,37 +110,39 @@ class IndexBrowser internal constructor(
 
             // handle updates
             for (event in this) {
-                var hadChanges = false
+                if (event is IndexRecordAcquiredEvent) {
+                    var hadChanges = false
 
-                if (event.folderId == folder) {
-                    event.files.forEach { fileUpdate ->
-                        // entry change
-                        if (fileUpdate.parent == path) {
-                            hadChanges = true
+                    if (event.folderId == folder) {
+                        event.files.forEach { fileUpdate ->
+                            // entry change
+                            if (fileUpdate.parent == path) {
+                                hadChanges = true
 
-                            entries = entries.filter { it.fileName != fileUpdate.fileName }
+                                entries = entries.filter { it.fileName != fileUpdate.fileName }
 
-                            if (!fileUpdate.isDeleted) {
-                                entries += listOf(fileUpdate)
+                                if (!fileUpdate.isDeleted) {
+                                    entries += listOf(fileUpdate)
+                                }
+                            }
+
+                            // handle directory info changes
+                            if (fileUpdate.parent == parentPath && fileUpdate.fileName == directoryName) {
+                                directoryInfo = if (fileUpdate.isDeleted) null else fileUpdate
+                                hadChanges = true
+                            }
+
+                            // handle parent directory info changes
+                            if (fileUpdate.parent == parentParentPath && fileUpdate.fileName == parentDirectoryName) {
+                                parentEntry = if (fileUpdate.isDeleted) null else fileUpdate
+                                hadChanges = true
                             }
                         }
-
-                        // handle directory info changes
-                        if (fileUpdate.parent == parentPath && fileUpdate.fileName == directoryName) {
-                            directoryInfo = if (fileUpdate.isDeleted) null else fileUpdate
-                            hadChanges = true
-                        }
-
-                        // handle parent directory info changes
-                        if (fileUpdate.parent == parentParentPath && fileUpdate.fileName == parentDirectoryName) {
-                            parentEntry = if (fileUpdate.isDeleted) null else fileUpdate
-                            hadChanges = true
-                        }
                     }
-                }
 
-                if (hadChanges) {
-                    dispatch()
+                    if (hadChanges) {
+                        dispatch()
+                    }
                 }
             }
         }

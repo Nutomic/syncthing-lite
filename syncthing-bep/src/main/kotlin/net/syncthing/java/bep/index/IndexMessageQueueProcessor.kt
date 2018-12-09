@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory
 class IndexMessageQueueProcessor (
         private val indexRepository: IndexRepository,
         private val tempRepository: TempRepository,
-        private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexRecordAcquiredEvent>,
+        private val onIndexRecordAcquiredEvents: BroadcastChannel<IndexInfoUpdateEvent>,
         private val onFullIndexAcquiredEvents: BroadcastChannel<String>,
         private val onFolderStatsUpdatedEvents: BroadcastChannel<FolderStatsChangedEvent>,
         private val isRemoteIndexAcquired: (ClusterConfigInfo, DeviceId, IndexTransaction) -> Boolean,

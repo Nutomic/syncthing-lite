@@ -35,8 +35,6 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.io.IOException
 
-data class IndexRecordAcquiredEvent(val folderId: String, val files: List<FileInfo>, val indexInfo: IndexInfo)
-
 class IndexHandler(
         configuration: Configuration,
         val indexRepository: IndexRepository,
@@ -44,7 +42,7 @@ class IndexHandler(
         exceptionReportHandler: (ExceptionReport) -> Unit
 ) : Closeable {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val onIndexRecordAcquiredEvents = BroadcastChannel<IndexRecordAcquiredEvent>(capacity = 16)
+    private val indexInfoUpdateEvents = BroadcastChannel<IndexInfoUpdateEvent>(capacity = 16)
     private val onFullIndexAcquiredEvents = BroadcastChannel<String>(capacity = 16)
     private val onFolderStatsUpdatedEvents = BroadcastChannel<FolderStatsChangedEvent>(capacity = 16)
 
@@ -52,14 +50,14 @@ class IndexHandler(
             indexRepository = indexRepository,
             tempRepository = tempRepository,
             isRemoteIndexAcquired = ::isRemoteIndexAcquired,
-            onIndexRecordAcquiredEvents = onIndexRecordAcquiredEvents,
+            onIndexRecordAcquiredEvents = indexInfoUpdateEvents,
             onFullIndexAcquiredEvents = onFullIndexAcquiredEvents,
             onFolderStatsUpdatedEvents = onFolderStatsUpdatedEvents,
             exceptionReportHandler = exceptionReportHandler
     )
 
     fun subscribeToOnFullIndexAcquiredEvents() = onFullIndexAcquiredEvents.openSubscription()
-    fun subscribeToOnIndexRecordAcquiredEvents() = onIndexRecordAcquiredEvents.openSubscription()
+    fun subscribeToOnIndexUpdateEvents() = indexInfoUpdateEvents.openSubscription()
     fun subscribeFolderStatsUpdatedEvents() = onFolderStatsUpdatedEvents.openSubscription()
 
     fun getNextSequenceNumber() = indexRepository.runInTransaction { it.getSequencer().nextSequence() }
@@ -70,6 +68,7 @@ class IndexHandler(
         }
 
         onFolderStatsUpdatedEvents.send(FolderStatsResetEvent)
+        indexInfoUpdateEvents.send(IndexInfoClearedEvent)
     }
 
     private fun isRemoteIndexAcquiredWithoutTransaction(clusterConfigInfo: ClusterConfigInfo, peerDeviceId: DeviceId): Boolean {
@@ -141,7 +140,7 @@ class IndexHandler(
         }
 
         updatedIndexInfos.forEach {
-            onIndexRecordAcquiredEvents.send(
+            indexInfoUpdateEvents.send(
                     IndexRecordAcquiredEvent(
                             folderId = it.folderId,
                             indexInfo = it,
@@ -186,7 +185,7 @@ class IndexHandler(
     }
 
     override fun close() {
-        onIndexRecordAcquiredEvents.close()
+        indexInfoUpdateEvents.close()
         onFullIndexAcquiredEvents.close()
         indexMessageProcessor.stop()
     }
