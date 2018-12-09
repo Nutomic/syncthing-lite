@@ -93,6 +93,12 @@ class FolderBrowser internal constructor(private val indexHandler: IndexHandler,
                     }
                 }
             }
+
+            async {
+                configuration.subscribe().consumeEach {
+                    dispatch()
+                }
+            }
         }
     }
 
