@@ -34,19 +34,16 @@ object PathUtils {
         return pathSegments.contains(PARENT_PATH) or pathSegments.contains(CURRENT_PATH)
     }
 
-    private fun isTrimmed(value: String) = value.trim() == value
     private fun containsWindowsPathSeparator(path: String) = path.contains(PATH_SEPARATOR_WIN)
     private fun startsWithPathSeperator(path: String) = path.startsWith(PATH_SEPARATOR)
     private fun isValidPath(path: String) = (!containsRelativeElements(path)) and
             (!containsWindowsPathSeparator(path)) and
             path.isNotEmpty() and
-            (!startsWithPathSeperator(path)) and
-            isTrimmed(path)
+            (!startsWithPathSeperator(path))
 
     private fun containsPathSeparator(file: String) = file.contains(PATH_SEPARATOR) or file.contains(PATH_SEPARATOR_WIN)
     private fun isFilenameValid(file: String) = file.isNotBlank() and
-            (!containsPathSeparator(file)) and
-            isTrimmed(file)
+            (!containsPathSeparator(file))
 
     private fun assertPathValid(path: String) {
         if (!isValidPath(path)) {
