@@ -5,43 +5,50 @@ import net.syncthing.java.core.beans.IndexInfo
 import net.syncthing.java.core.interfaces.IndexTransaction
 
 object UpdateIndexInfo {
-    fun updateIndexInfo(
+    fun updateIndexInfoFromClusterConfig(
             transaction: IndexTransaction,
             folder: String,
             deviceId: DeviceId,
-            indexId: Long?,
-            maxSequence: Long?,
-            localSequence: Long?
+            indexId: Long,
+            maxSequence: Long
     ): IndexInfo {
         val oldIndexSequenceInfo = transaction.findIndexInfoByDeviceAndFolder(deviceId, folder)
 
-        var newIndexSequenceInfo = oldIndexSequenceInfo ?: kotlin.run {
-            assert(indexId != null) {
-                "index sequence info not found, and supplied null index id (folder = $folder, device = $deviceId)"
-            }
+        var newIndexSequenceInfo = oldIndexSequenceInfo ?: IndexInfo(
+                folderId = folder,
+                deviceId = deviceId.deviceId,
+                indexId = indexId,
+                localSequence = 0,
+                maxSequence = -1
+        )
 
-            IndexInfo(
-                    folderId = folder,
-                    deviceId = deviceId.deviceId,
-                    indexId = indexId!!,
-                    localSequence = 0,
-                    maxSequence = -1
-            )
-        }
-
-        if (indexId != null && indexId != newIndexSequenceInfo.indexId) {
+        if (indexId != newIndexSequenceInfo.indexId) {
             newIndexSequenceInfo = newIndexSequenceInfo.copy(indexId = indexId)
         }
 
-        if (maxSequence != null && maxSequence > newIndexSequenceInfo.maxSequence) {
+        if (maxSequence > newIndexSequenceInfo.maxSequence) {
             newIndexSequenceInfo = newIndexSequenceInfo.copy(maxSequence = maxSequence)
         }
+
+        if (oldIndexSequenceInfo != newIndexSequenceInfo) {
+            transaction.updateIndexInfo(newIndexSequenceInfo)
+        }
+
+        return newIndexSequenceInfo
+    }
+
+    fun updateIndexInfoFromIndexElementProcessor(
+            transaction: IndexTransaction,
+            oldIndexInfo: IndexInfo,
+            localSequence: Long?
+    ): IndexInfo {
+        var newIndexSequenceInfo = oldIndexInfo
 
         if (localSequence != null && localSequence > newIndexSequenceInfo.localSequence) {
             newIndexSequenceInfo = newIndexSequenceInfo.copy(localSequence = localSequence)
         }
 
-        if (oldIndexSequenceInfo != newIndexSequenceInfo) {
+        if (oldIndexInfo != newIndexSequenceInfo) {
             transaction.updateIndexInfo(newIndexSequenceInfo)
         }
 

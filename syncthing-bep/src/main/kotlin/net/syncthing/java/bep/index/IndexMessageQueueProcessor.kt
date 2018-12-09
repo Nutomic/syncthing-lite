@@ -82,7 +82,14 @@ class IndexMessageQueueProcessor (
     init {
         GlobalScope.async(Dispatchers.IO + job) {
             indexUpdateProcessingQueue.consumeEach {
-                doHandleIndexMessageReceivedEvent(it)
+                try {
+                    doHandleIndexMessageReceivedEvent(it)
+                } catch (ex: IndexMessageProcessor.IndexInfoNotFoundException) {
+                    // ignored
+                    // this is expected when the data is deleted but some index updates are still in the queue
+
+                    logger.warn("could not find index info for index update")
+                }
             }
         }.reportExceptions("IndexMessageQueueProcessor.indexUpdateProcessingQueue", exceptionReportHandler)
 

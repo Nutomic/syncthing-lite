@@ -7,6 +7,7 @@ import net.syncthing.java.core.beans.FolderStats
 import net.syncthing.java.core.beans.IndexInfo
 import net.syncthing.java.core.interfaces.IndexTransaction
 import org.slf4j.LoggerFactory
+import java.lang.RuntimeException
 
 object IndexMessageProcessor {
     private val logger = LoggerFactory.getLogger(IndexMessageProcessor::class.java)
@@ -17,6 +18,8 @@ object IndexMessageProcessor {
             transaction: IndexTransaction
     ): Result {
         val folderId = message.folder
+        val oldIndexInfo = transaction.findIndexInfoByDeviceAndFolder(peerDeviceId, folderId)
+                ?: throw IndexInfoNotFoundException()
 
         logger.debug("processing {} index records for folder {}", message.filesList.size, folderId)
 
@@ -31,15 +34,19 @@ object IndexMessageProcessor {
                 updates = message.filesList
         )
 
-        var sequence: Long = -1
+        val newIndexInfo = if (message.filesList.isEmpty()) {
+            oldIndexInfo
+        } else {
+            var sequence: Long = -1
 
-        for (newRecord in message.filesList) {
-            sequence = Math.max(newRecord.sequence, sequence)
+            for (newRecord in message.filesList) {
+                sequence = Math.max(newRecord.sequence, sequence)
+            }
+
+            handleFolderStatsUpdate(transaction, folderStatsUpdateCollector)
+
+            UpdateIndexInfo.updateIndexInfoFromIndexElementProcessor(transaction, oldIndexInfo, sequence)
         }
-
-        handleFolderStatsUpdate(transaction, folderStatsUpdateCollector)
-
-        val newIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folderId, peerDeviceId, null, null, sequence)
 
         return Result(newIndexInfo, newRecords.toList(), transaction.findFolderStats(folderId) ?: FolderStats.createDummy(folderId))
     }
@@ -59,4 +66,5 @@ object IndexMessageProcessor {
     }
 
     data class Result(val newIndexInfo: IndexInfo, val updatedFiles: List<FileInfo>, val newFolderStats: FolderStats)
+    class IndexInfoNotFoundException: RuntimeException()
 }

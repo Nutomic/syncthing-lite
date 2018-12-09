@@ -124,7 +124,7 @@ class IndexHandler(
                 for (deviceRecord in folderRecord.devicesList) {
                     val deviceId = DeviceId.fromHashData(deviceRecord.id.toByteArray())
                     if (deviceRecord.hasIndexId() && deviceRecord.hasMaxSequence()) {
-                        val folderIndexInfo = UpdateIndexInfo.updateIndexInfo(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence, null)
+                        val folderIndexInfo = UpdateIndexInfo.updateIndexInfoFromClusterConfig(transaction, folder, deviceId, deviceRecord.indexId, deviceRecord.maxSequence)
                         logger.debug("acquired folder index info from cluster config = {}", folderIndexInfo)
                         updatedIndexInfos.add(folderIndexInfo)
                     }
