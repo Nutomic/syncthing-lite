@@ -29,32 +29,34 @@ object ConnectionActorUtil {
     }
 
     suspend fun sendRequest(request: BlockExchangeProtos.Request, actor: SendChannel<ConnectionAction>): BlockExchangeProtos.Response {
-        if (actor.isClosedForSend) {
-            throw IOException("not connected")
+        try {
+            val deferred = CompletableDeferred<BlockExchangeProtos.Response>()
+
+            actor.send(SendRequestConnectionAction(request, deferred))
+
+            return deferred.await()
+        } catch (ex: Exception) {
+            throw IOException("not connected", ex)
         }
-
-        val deferred = CompletableDeferred<BlockExchangeProtos.Response>()
-
-        actor.send(SendRequestConnectionAction(request, deferred))
-
-        return deferred.await()
     }
 
     suspend fun sendIndexUpdate(update: BlockExchangeProtos.IndexUpdate, actor: SendChannel<ConnectionAction>) {
-        if (actor.isClosedForSend) {
-            throw IOException("not connected")
+        try {
+            val deferred = CompletableDeferred<Unit?>()
+
+            actor.send(SendIndexUpdateAction(update, deferred))
+
+            deferred.await()
+        } catch (ex: Exception) {
+            throw IOException("not connected", ex)
         }
-
-        val deferred = CompletableDeferred<Unit?>()
-
-        actor.send(SendIndexUpdateAction(update, deferred))
-
-        deferred.await()
     }
 
     suspend fun disconnect(actor: SendChannel<ConnectionAction>) {
-        if (!actor.isClosedForSend) {
+        try {
             actor.send(CloseConnectionAction)
+        } catch (ex: Exception) {
+            // ignore if the channel is closed already
         }
     }
 }
