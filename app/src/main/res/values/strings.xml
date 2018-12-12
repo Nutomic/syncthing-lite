@@ -39,6 +39,8 @@
     <string name="intro_page_three_searching_device">Trying to find the other device. This may take a moment.</string>
     <string name="settings">Settings</string>
     <string name="settings_app_version_title">App version</string>
+    <string name="settings_file_extension_lowercase_title">Lower case file extension</string>
+    <string name="settings_file_extension_lowercase_summary">Converts file extensions to lower case for the mime type detection</string>
     <string name="settings_local_device_name">Local device name</string>
     <string name="settings_local_device_summary">The name that other devices will see for this device</string>
     <string name="settings_shutdown_delay_title">Shutdown delay</string>

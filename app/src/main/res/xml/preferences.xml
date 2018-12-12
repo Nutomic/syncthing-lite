@@ -24,6 +24,11 @@
 
         -->
 
+        <CheckBoxPreference
+            android:key="convert_file_extension_to_lower_case_for_mime_type"
+            android:title="@string/settings_file_extension_lowercase_title"
+            android:summary="@string/settings_file_extension_lowercase_summary" />
+
         <Preference
             android:key="last_crash"
             android:title="@string/settings_last_error_title"
