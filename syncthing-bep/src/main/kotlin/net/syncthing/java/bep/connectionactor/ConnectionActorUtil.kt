@@ -16,6 +16,7 @@ package net.syncthing.java.bep.connectionactor
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.SendChannel
 import net.syncthing.java.bep.BlockExchangeProtos
+import java.io.IOException
 
 object ConnectionActorUtil {
     suspend fun waitUntilConnected(actor: SendChannel<ConnectionAction>): ClusterConfigInfo {
@@ -28,6 +29,10 @@ object ConnectionActorUtil {
     }
 
     suspend fun sendRequest(request: BlockExchangeProtos.Request, actor: SendChannel<ConnectionAction>): BlockExchangeProtos.Response {
+        if (actor.isClosedForSend) {
+            throw IOException("not connected")
+        }
+
         val deferred = CompletableDeferred<BlockExchangeProtos.Response>()
 
         actor.send(SendRequestConnectionAction(request, deferred))
@@ -36,6 +41,10 @@ object ConnectionActorUtil {
     }
 
     suspend fun sendIndexUpdate(update: BlockExchangeProtos.IndexUpdate, actor: SendChannel<ConnectionAction>) {
+        if (actor.isClosedForSend) {
+            throw IOException("not connected")
+        }
+
         val deferred = CompletableDeferred<Unit?>()
 
         actor.send(SendIndexUpdateAction(update, deferred))
@@ -44,6 +53,8 @@ object ConnectionActorUtil {
     }
 
     suspend fun disconnect(actor: SendChannel<ConnectionAction>) {
-        actor.send(CloseConnectionAction)
+        if (!actor.isClosedForSend) {
+            actor.send(CloseConnectionAction)
+        }
     }
 }
