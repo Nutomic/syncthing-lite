@@ -1,5 +1,4 @@
-/* 
- * Copyright (C) 2016 Davide Imbriaco
+/*
  * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
@@ -12,17 +11,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.syncthing.java.core.interfaces
+package net.syncthing.java.repository
 
-import java.io.Closeable
-
-interface TempRepository: Closeable {
-
-    fun pushTempData(data: ByteArray): String
-
-    fun popTempData(key: String): ByteArray
-
-    fun deleteTempData(keys: List<String>)
-
-    fun deleteAllTempData()
-}
+internal class EncryptedTempRepositoryItem(
+        val iv: ByteArray,
+        val key: ByteArray,
+        val sha512: ByteArray
+)

@@ -88,4 +88,5 @@ dependencies {
     implementation 'com.github.apl-devs:appintro:v4.2.3'
 
     implementation project(':syncthing-repository-android')
+    implementation project(':syncthing-temp-repository-encryption')
 }

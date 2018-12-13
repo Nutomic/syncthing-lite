@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import net.syncthing.java.client.SyncthingClient
 import net.syncthing.java.core.configuration.Configuration
 import net.syncthing.java.core.exception.ExceptionReport
+import net.syncthing.java.repository.EncryptedTempRepository
 import net.syncthing.repository.android.SqliteIndexRepository
 import net.syncthing.repository.android.TempDirectoryLocalRepository
 import net.syncthing.repository.android.database.RepositoryDatabase
@@ -49,7 +50,11 @@ class LibraryInstance (
         }
     }
 
-    private val tempRepository = TempDirectoryLocalRepository(File(context.filesDir, "temp_repository"))
+    private val tempRepository = EncryptedTempRepository(
+            TempDirectoryLocalRepository(
+                    File(context.filesDir, "temp_repository")
+            )
+    )
 
     val isListeningPortTaken = checkIsListeningPortTaken()  // this must come first to work correctly
     val configuration = Configuration(configFolder = context.filesDir)
@@ -58,7 +63,7 @@ class LibraryInstance (
             repository = SqliteIndexRepository(
                     database = RepositoryDatabase.with(context),
                     closeDatabaseOnClose = false,
-                    clearTempStorageHook = { tempRepository.deleteAllData() }
+                    clearTempStorageHook = { tempRepository.deleteAllTempData() }
             ),
             tempRepository = tempRepository,
             exceptionReportHandler = { ex ->

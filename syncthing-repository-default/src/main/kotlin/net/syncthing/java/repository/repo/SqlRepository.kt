@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2016 Davide Imbriaco
+ * Copyright (C) 2018 Jonas Lochmann
  *
  * This Java file is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -223,6 +224,14 @@ class SqlRepository(databaseFolder: File) : Closeable, IndexRepository, TempRepo
                     statement.setString(1, key)
                     statement.executeUpdate()
                 }
+            }
+        }
+    }
+
+    override fun deleteAllTempData() {
+        getConnection().use { connection ->
+            connection.prepareStatement("DELETE FROM temporary_data").use { statement ->
+                statement.executeUpdate()
             }
         }
     }
