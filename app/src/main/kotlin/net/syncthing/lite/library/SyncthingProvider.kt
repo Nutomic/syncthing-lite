@@ -159,7 +159,7 @@ class SyncthingProvider : DocumentsProvider() {
                     if (fileInfo.isDirectory())
                         Document.MIME_TYPE_DIR
                     else
-                        MimeType.getFromUrl(fileInfo.fileName)
+                        MimeType.getFromFilename(fileInfo.fileName)
             )
             add(Document.COLUMN_LAST_MODIFIED, fileInfo.lastModified)
             add(Document.COLUMN_FLAGS, 0)

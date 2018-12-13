@@ -1,6 +1,7 @@
 package net.syncthing.lite.utils
 
 import android.webkit.MimeTypeMap
+import net.syncthing.java.core.utils.PathUtils
 
 object MimeType {
     private const val DEFAULT_MIME_TYPE = "application/octet-stream"
@@ -11,7 +12,7 @@ object MimeType {
         return mimeType ?: DEFAULT_MIME_TYPE
     }
 
-    fun getFromUrl(url: String) = getFromExtension(
-            MimeTypeMap.getFileExtensionFromUrl(url).toLowerCase()
+    fun getFromFilename(path: String) = getFromExtension(
+            PathUtils.getFileExtensionFromFilename(path).toLowerCase()
     )
 }

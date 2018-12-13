@@ -47,7 +47,7 @@ class FileMenuDialogFragment: BottomSheetDialogFragment() {
                     Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
 
-                        type = MimeType.getFromUrl(fileSpec.fileName)
+                        type = MimeType.getFromFilename(fileSpec.fileName)
 
                         putExtra(Intent.EXTRA_TITLE, fileSpec.fileName)
                     },

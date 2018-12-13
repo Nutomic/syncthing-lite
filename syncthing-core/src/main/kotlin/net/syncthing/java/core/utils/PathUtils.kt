@@ -130,4 +130,12 @@ object PathUtils {
 
         return dir.removeSuffix(PATH_SEPARATOR) + file
     }
+
+    fun getFileExtensionFromFilename(filename: String): String {
+        assertFilenameValid(filename)
+
+        val dotIndex = filename.lastIndexOf(".")
+
+        return if (dotIndex != 0) filename.substring(dotIndex + 1) else ""
+    }
 }

@@ -88,7 +88,7 @@ class DownloadFileDialogFragment : DialogFragment() {
                     dismissAllowingStateLoss()
 
                     if (outputUri == null) {
-                        val mimeType = MimeType.getFromUrl(fileSpec.fileName)
+                        val mimeType = MimeType.getFromFilename(fileSpec.fileName)
 
                         try {
                             context!!.startActivity(
