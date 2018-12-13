@@ -74,4 +74,5 @@
     <string name="dialog_folder_info_device_list">Share folder with:</string>
     <string name="dialog_folder_info_device_list_item">%1$s (%2$s)</string>
     <string name="toast_error">Something went wrong in Syncthing Lite. You can view the details from the settings of Syncthing Lite.</string>
+    <string name="folder_browser_home">Home</string>
 </resources>

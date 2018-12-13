@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Intent
 import android.databinding.DataBindingUtil
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.channels.consumeEach
@@ -183,5 +185,27 @@ class FolderBrowserActivity : SyncthingActivity() {
         } else {
             super.onActivityResult(requestCode, resultCode, intent)
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.folder_browser, menu)
+
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.go_home -> {
+            finish()
+
+            true
+        }
+        android.R.id.home -> {
+            if (!goUp()) {
+                finish()
+            }
+
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
     }
 }
